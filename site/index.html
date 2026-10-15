@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="no-js">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -13,6 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+  <script>document.documentElement.classList.replace('no-js', 'js')</script>
 </head>
 <body>
   <div class="glow g1"></div>
@@ -20,7 +21,8 @@
 
   <header class="nav">
     <a class="brand" href="#top"><img src="assets/optic-symbol.svg" width="28" height="28" alt="" /> OPTIC</a>
-    <nav>
+    <button class="menu" aria-label="Abrir menu" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span></span></button>
+    <nav id="site-nav">
       <a href="#instalar">Instalar</a>
       <a href="#usar">Usar</a>
       <a href="#atalhos">Atalhos</a>
@@ -31,7 +33,7 @@
 
   <main id="top">
     <!-- hero -->
-    <section class="hero">
+    <section class="hero" data-hero>
       <div class="hero-text">
         <p class="eyebrow">Android TV · Google TV</p>
         <h1>Controle sua TV<br /><span class="grad">pelo computador.</span></h1>
@@ -49,12 +51,12 @@
 
     <!-- features -->
     <section class="features">
-      <article><h3>Acha a TV sozinho</h3><p>Abra e a TV aparece na lista. Pareamento com o código que surge na tela, só uma vez.</p></article>
-      <article><h3>Tudo do controle</h3><p>Setas, OK, voltar, início, volume, canais, mídia e power, com atalhos de teclado.</p></article>
-      <article><h3>Apps em um clique</h3><p>YouTube, Netflix, Prime Video, Globoplay e qualquer outro app da TV.</p></article>
-      <article><h3>Digite na TV</h3><p>Escreva buscas pelo teclado do PC, sem caçar letra por letra.</p></article>
-      <article><h3>Modo compacto</h3><p>Uma janelinha sempre no topo, ao lado do que você estiver fazendo.</p></article>
-      <article><h3>100% local</h3><p>O PC fala direto com a TV na sua rede. Nada passa por servidores.</p></article>
+      <article><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16v10H4z"/><path d="M9 21h6M12 17v4"/><path d="M8 3l4 4 4-4"/></svg></span><h3>Acha a TV sozinho</h3><p>Abra e a TV aparece na lista. Pareamento com o código que surge na tela, só uma vez.</p></article>
+      <article><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 4v3M12 17v3M4 12h3M17 12h3"/></svg></span><h3>Tudo do controle</h3><p>Setas, OK, voltar, início, volume, canais, mídia e power, com atalhos de teclado.</p></article>
+      <article><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></svg></span><h3>Apps em um clique</h3><p>YouTube, Netflix, Prime Video, Disney+ e Spotify abrem direto pelo OPTIC.</p></article>
+      <article><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg></span><h3>Digite na TV</h3><p>Escreva buscas pelo teclado do PC, sem caçar letra por letra.</p></article>
+      <article><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1"/></svg></span><h3>Modo compacto</h3><p>Uma janelinha sempre no topo, ao lado do que você estiver fazendo.</p></article>
+      <article><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span><h3>100% local</h3><p>O PC fala direto com a TV na sua rede. Nada passa por servidores.</p></article>
     </section>
 
     <!-- install -->
@@ -158,7 +160,7 @@ cd OPTIC && ./install.sh</code></pre>
         <figure class="shot-sm"><img src="assets/compact.png" alt="Modo compacto do OPTIC" /><figcaption>Modo compacto: botão ao lado de minimizar</figcaption></figure>
       </div>
 
-      <div class="duo">
+      <div class="duo" tabindex="0" aria-label="Capturas de tela">
         <figure><img src="assets/quick-command.png" alt="Comandos rápidos" /><figcaption><kbd>Ctrl</kbd> <kbd>K</kbd>: digite "netflix", "volume 20", "digitar receita de bolo"…</figcaption></figure>
         <figure><img src="assets/settings.png" alt="Configurações" /><figcaption>Configurações › Janela: fechar esconde na bandeja</figcaption></figure>
       </div>
