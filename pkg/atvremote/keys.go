@@ -52,10 +52,14 @@ func KeyNames() []string {
 	return out
 }
 
-// Apps maps shortcut names to launch URIs for common Brazilian streaming apps.
+// Apps maps shortcut names to launch links. The TV only accepts http(s) or
+// app-specific links here: "market://launch?id=<pkg>" is answered with
+// RemoteError 7 and the TV closes the session.
 var Apps = map[string]string{
-	"youtube":   "market://launch?id=com.google.android.youtube.tv",
-	"netflix":   "market://launch?id=com.netflix.ninja",
-	"prime":     "market://launch?id=com.amazon.amazonvideo.livingroom",
-	"globoplay": "market://launch?id=com.globo.globotv",
+	"youtube":   "https://www.youtube.com",
+	"netflix":   "https://www.netflix.com/browse",
+	"prime":     "https://app.primevideo.com",
+	"globoplay": "https://globoplay.globo.com",
+	"disney":    "https://www.disneyplus.com",
+	"spotify":   "spotify://",
 }
