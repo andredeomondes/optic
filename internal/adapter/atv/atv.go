@@ -90,11 +90,12 @@ func (s session) SendKey(name string) error {
 	return s.r.SendKey(code)
 }
 
-// LaunchApp accepts a shortcut ("youtube") or a full deep link / market URI.
+// LaunchApp accepts a shortcut ("youtube"), a package or market URI, or a
+// link. Links the TV would reject are refused before sending (see applinks.go).
 func (s session) LaunchApp(nameOrURI string) error {
-	link := atvremote.Apps[nameOrURI]
-	if link == "" {
-		link = nameOrURI
+	link, err := resolveAppLink(nameOrURI)
+	if err != nil {
+		return err
 	}
 	return s.r.LaunchApp(link)
 }
