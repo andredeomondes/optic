@@ -5,7 +5,7 @@
 | Ferramenta | Versão |
 |---|---|
 | Go | 1.26+ |
-| Node.js | 20+ |
+| Node.js | 22.18+ (testes usam type stripping nativo) |
 | Wails CLI | v2.12 (`go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0`) |
 | NSIS (opcional, instalador Windows) | 3.x (`winget install NSIS.NSIS`) |
 
