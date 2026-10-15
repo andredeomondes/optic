@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 200" fill="none">
+  <!-- OPTIC horizontal lockup: symbol + wordmark (Space Grotesk SemiBold, tracking 0.12em).
+       Recreation; replace with the official file when available. -->
+  <defs>
+    <linearGradient id="h-frame" x1="20" y1="40" x2="180" y2="170" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#C084FC"/>
+      <stop offset="0.38" stop-color="#5B5CF6"/>
+      <stop offset="0.7" stop-color="#2F8CF6"/>
+      <stop offset="1" stop-color="#22F0F5"/>
+    </linearGradient>
+    <radialGradient id="h-screen" cx="100" cy="100" r="72" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0A3A7A"/>
+      <stop offset="1" stop-color="#1B1452"/>
+    </radialGradient>
+    <linearGradient id="h-dot" x1="84" y1="84" x2="116" y2="116" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#C084FC"/>
+      <stop offset="1" stop-color="#22F0F5"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="32" width="168" height="136" rx="36" fill="url(#h-frame)"/>
+  <path d="M58 54 L144 63 Q 156 64 156 76 L 156 128 Q 156 142 142 140 L 56 131 Q 42 129 42 115 L 42 67 Q 42 52 58 54 Z" fill="url(#h-screen)"/>
+  <circle cx="99" cy="98" r="19" fill="url(#h-dot)"/>
+  <text x="224" y="130" fill="#F7F8FF" font-family="'Space Grotesk', sans-serif" font-weight="600" font-size="92" letter-spacing="11">OPTIC</text>
+</svg>
