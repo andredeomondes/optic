@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=OPTIC
+Comment=Control your TV from your PC
+Exec=optic-desktop
+Icon=optic
+Categories=Utility;AudioVideo;
+Terminal=false
