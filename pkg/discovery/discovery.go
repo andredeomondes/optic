@@ -3,7 +3,9 @@ package discovery
 
 import (
 	"context"
+	"maps"
 	"net"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -86,10 +88,7 @@ func Discover(ctx context.Context, timeout time.Duration, services ...string) ([
 	<-ctx.Done()
 	wg.Wait()
 
-	out := make([]*Device, 0, len(devices))
-	for _, d := range devices {
-		out = append(out, d)
-	}
+	out := dedupe(devices)
 	sort.Slice(out, func(i, j int) bool { return out[i].Addr() < out[j].Addr() })
 	if len(out) == 0 && errOnce != nil {
 		return nil, errOnce
@@ -129,6 +128,66 @@ func merge(devices map[string]*Device, svc string, e *zeroconf.ServiceEntry) {
 	if md := d.TXT["md"]; md != "" {
 		d.Model = md
 	}
+}
+
+// dedupe joins entries that share any address. A TV may answer one service
+// with IPv4 + IPv6 and another (e.g. Cast) with IPv6 only; keyed by first
+// IP they would show up as two devices.
+func dedupe(devices map[string]*Device) []*Device {
+	var out []*Device
+next:
+	for _, d := range devices {
+		for _, o := range out {
+			if sharesIP(o, d) {
+				absorb(o, d)
+				continue next
+			}
+		}
+		out = append(out, d)
+	}
+	return out
+}
+
+func sharesIP(a, b *Device) bool {
+	for _, x := range a.IPs {
+		for _, y := range b.IPs {
+			if x.Equal(y) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// absorb merges src into dst, keeping dst's IPv4 first so Addr stays IPv4.
+func absorb(dst, src *Device) {
+	for _, ip := range src.IPs {
+		if !slices.ContainsFunc(dst.IPs, ip.Equal) {
+			dst.IPs = append(dst.IPs, ip)
+		}
+	}
+	slices.SortStableFunc(dst.IPs, func(a, b net.IP) int {
+		return boolInt(a.To4() == nil) - boolInt(b.To4() == nil)
+	})
+	maps.Copy(dst.Services, src.Services)
+	for k, v := range src.TXT {
+		if _, ok := dst.TXT[k]; !ok {
+			dst.TXT[k] = v
+		}
+	}
+	if dst.Name == "" || src.TXT["fn"] != "" {
+		dst.Name = src.Name
+	}
+	if dst.Model == "" {
+		dst.Model = src.Model
+	}
+}
+
+func boolInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 // unescape turns mDNS instance escapes like "TCL\ 55" into "TCL 55".
