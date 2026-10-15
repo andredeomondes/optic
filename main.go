@@ -1,0 +1,84 @@
+// Desktop app for OPTIC (Wails + React). The CLI lives in cmd/optic.
+//
+// This file is the composition root: it builds the adapters, injects them
+// into the use cases and hands the result to Wails. Nothing else wires
+// dependencies.
+package main
+
+import (
+	"embed"
+	"log"
+
+	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
+
+	"optic/internal/adapter/atv"
+	"optic/internal/adapter/filestore"
+	"optic/internal/adapter/mdns"
+	"optic/internal/control"
+	"optic/pkg/atvremote"
+)
+
+//go:embed all:frontend/dist
+var assets embed.FS
+
+//go:embed build/windows/icon.ico
+var trayIcon []byte
+
+// singleInstanceID identifies OPTIC so a second launch focuses the first.
+const singleInstanceID = "optic-desktop-8b5cf6"
+
+func main() {
+	cfgDir, err := atvremote.DefaultConfigDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+	store := filestore.Store{Dir: cfgDir}
+	shell := newShell(store, trayIcon)
+	tv := atv.New(cfgDir)
+	app := &App{
+		Shell: shell,
+		svc: control.New(control.Deps{
+			Discoverer: mdns.Discoverer{},
+			Connector:  tv,
+			Pairer:     tv,
+			Hosts:      store,
+			Events:     uiEvents{shell},
+		}),
+	}
+
+	err = wails.Run(&options.App{
+		Title:            "OPTIC",
+		Width:            820,
+		Height:           880,
+		MinWidth:         460,
+		MinHeight:        640,
+		Frameless:        true,
+		BackgroundColour: &options.RGBA{R: 0, G: 0, B: 0, A: 0},
+		AssetServer:      &assetserver.Options{Assets: assets},
+		OnStartup:        shell.startup,
+		OnShutdown:       app.shutdown,
+		OnBeforeClose:    shell.beforeClose,
+		Bind:             []interface{}{app},
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId:               singleInstanceID,
+			OnSecondInstanceLaunch: shell.onSecondInstance,
+		},
+		Windows: &windows.Options{
+			WebviewIsTransparent: true,
+			WindowIsTranslucent:  true,
+			BackdropType:         windows.Acrylic,
+		},
+		Mac: &mac.Options{
+			WebviewIsTransparent: true,
+			WindowIsTranslucent:  true,
+			About:                &mac.AboutInfo{Title: "OPTIC", Message: "Control your TV from your PC."},
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+}
