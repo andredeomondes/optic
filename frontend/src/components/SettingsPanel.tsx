@@ -1,0 +1,167 @@
+import { useEffect, useRef, useState } from 'react'
+import { AppWindow, Copy, Eraser, Info, Keyboard, ScrollText, Settings } from 'lucide-react'
+import { useRemote } from '../hooks/useRemote'
+import * as api from '../lib/backend'
+import { SHORTCUTS } from '../lib/shortcuts'
+import { Modal } from './Modal'
+
+type Tab = 'atalhos' | 'janela' | 'diagnostico' | 'sobre'
+
+/** Configurações: shortcuts, diagnostics (device info + protocol logs), about. */
+export function SettingsPanel({ onClose, initialTab = 'atalhos' }: { onClose: () => void; initialTab?: Tab }) {
+  const [tab, setTab] = useState<Tab>(initialTab)
+
+  return (
+    <Modal title="Configurações" icon={<Settings size={20} />} onClose={onClose} className="settings">
+      <nav className="tabs" role="tablist">
+        <TabBtn id="atalhos" tab={tab} setTab={setTab} icon={<Keyboard size={14} />} label="Atalhos" />
+        <TabBtn id="janela" tab={tab} setTab={setTab} icon={<AppWindow size={14} />} label="Janela" />
+        <TabBtn id="diagnostico" tab={tab} setTab={setTab} icon={<ScrollText size={14} />} label="Diagnóstico" />
+        <TabBtn id="sobre" tab={tab} setTab={setTab} icon={<Info size={14} />} label="Sobre" />
+      </nav>
+      <div className="tab-body" key={tab}>
+        {tab === 'atalhos' && <Shortcuts />}
+        {tab === 'janela' && <WindowPrefs />}
+        {tab === 'diagnostico' && <Diagnostics />}
+        {tab === 'sobre' && <About />}
+      </div>
+    </Modal>
+  )
+}
+
+function TabBtn({ id, tab, setTab, icon, label }: { id: Tab; tab: Tab; setTab: (t: Tab) => void; icon: React.ReactNode; label: string }) {
+  return (
+    <button role="tab" aria-selected={tab === id} className={`tab ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)}>
+      {icon} {label}
+    </button>
+  )
+}
+
+function Shortcuts() {
+  return (
+    <ul className="shortcut-list">
+      {SHORTCUTS.map((s) => (
+        <li key={s.label}>
+          <span>{s.label}</span>
+          <span className="keys">
+            {s.keys.map((k) => (
+              <kbd key={k}>{k}</kbd>
+            ))}
+          </span>
+        </li>
+      ))}
+      <li className="note">Atalhos de teclado funcionam com a janela do OPTIC em foco e fora do campo de texto.</li>
+    </ul>
+  )
+}
+
+/** Tray behaviour; the preference lives in Go because OnBeforeClose reads it. */
+function WindowPrefs() {
+  const [tray, setTray] = useState<boolean | null>(null)
+  const [closeToTray, setCloseToTray] = useState(false)
+
+  useEffect(() => {
+    if (!api.hasRuntime()) return
+    api.TrayAvailable().then(setTray).catch(() => setTray(false))
+    api.CloseToTray().then(setCloseToTray).catch(() => {})
+    return api.onEvent('prefs:closeToTray', setCloseToTray)
+  }, [])
+
+  return (
+    <ul className="shortcut-list">
+      <li>
+        <label className="pref" htmlFor="close-to-tray">
+          <span>Fechar esconde na bandeja</span>
+          <input
+            id="close-to-tray"
+            type="checkbox"
+            className="switch"
+            checked={closeToTray}
+            disabled={!tray}
+            onChange={(e) => api.SetCloseToTray(e.target.checked)}
+          />
+        </label>
+      </li>
+      <li className="note">
+        {tray === false
+          ? 'Ícone na bandeja indisponível neste sistema.'
+          : 'Clique no ícone da bandeja para reabrir. Para sair de vez, use “Sair” no menu do ícone.'}
+      </li>
+      <li className="note">Modo compacto: botão ao lado de minimizar, na barra de título.</li>
+    </ul>
+  )
+}
+
+function Diagnostics() {
+  const { log, clearLog, info, host, status, tvState, notify } = useRemote()
+  const endRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: 'end' })
+  }, [log.length])
+
+  const copy = async () => {
+    const text = log.map((l) => `${l.time} ${l.dir} ${l.text}`).join('\n')
+    try {
+      await navigator.clipboard.writeText(text)
+      notify('ok', 'Logs copiados')
+    } catch {
+      notify('err', 'Não foi possível copiar')
+    }
+  }
+
+  const rows: [string, string][] = [
+    ['Status', status],
+    ['IP', host || '—'],
+    ['Fabricante', info?.vendor || '—'],
+    ['Modelo', info?.model || '—'],
+    ['Android', info?.version || '—'],
+    ['Serviço remoto', info?.appVersion || '—'],
+    ['Volume', tvState?.volumeMax ? `${tvState.volume} / ${tvState.volumeMax}` : '—'],
+  ]
+
+  return (
+    <div className="diag">
+      <dl className="diag-grid">
+        {rows.map(([k, v]) => (
+          <div key={k}>
+            <dt>{k}</dt>
+            <dd>{v}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="label-row">
+        <span className="label">Logs do protocolo</span>
+        <span className="log-actions">
+          <button className="link" onClick={copy}>
+            <Copy size={12} /> copiar
+          </button>
+          <button className="link" onClick={clearLog}>
+            <Eraser size={12} /> limpar
+          </button>
+        </span>
+      </div>
+      <div className="log">
+        {log.length === 0 && <div className="line dsys">Sem eventos ainda.</div>}
+        {log.map((l) => (
+          <div key={l.id} className={`line d${l.dir === '>' ? 'out' : l.dir === '<' ? 'in' : l.dir === '!' ? 'err' : 'sys'}`}>
+            <span className="t">{l.time}</span> {l.dir} {l.text}
+          </div>
+        ))}
+        <div ref={endRef} />
+      </div>
+      <p className="note">“&gt;” enviado pelo OPTIC · “&lt;” recebido da TV · protobuf decodificado sem schema.</p>
+    </div>
+  )
+}
+
+function About() {
+  return (
+    <div className="about">
+      <p>
+        <b>OPTIC</b> — Open PC-to-TV Interface Controller. Controla Android TV / Google TV pela rede local usando o Android TV
+        Remote protocol v2.
+      </p>
+      <p className="note">Projeto open source. Sem nuvem: tudo acontece entre o seu PC e a TV.</p>
+    </div>
+  )
+}
