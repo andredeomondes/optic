@@ -1,0 +1,16 @@
+# build output
+build/bin/
+frontend/dist/
+frontend/package.json.md5
+*.exe
+*.exe~
+
+# dependencies
+node_modules/
+
+# local tooling
+.claude/
+.idea/
+.vscode/
+*.log
+.DS_Store
