@@ -23,7 +23,7 @@ Ambas usam TLS com **certificado de cliente** autoassinado, criado na primeira e
 - Após o TLS, a TV manda `RemoteConfigure` (modelo, fabricante, versão). Respondemos com o nosso e com `SetActive`.
 - `Ping` periódico mantém a sessão viva.
 - Teclas: `KeyInject` com código Android (`KEYCODE_*`) e direção (`SHORT`, `START_LONG`, `END_LONG`). Nomes em [`keys.go`](../pkg/atvremote/keys.go).
-- Apps: `AppLink` com URI (`market://launch?id=<pacote>` ou deep link).
+- Apps: `AppLink` (campo 90) com um link. **A TV só aceita links `http(s)` ou esquemas com app instalado**: `market://launch?id=…`, `intent:`, `android-app://` ou um esquema sem dono voltam como `RemoteError` (campo 3, `{1: 7}`) e a TV **encerra a sessão**. Por isso o adapter (`internal/adapter/atv/applinks.go`) traduz pacotes para links validados e recusa o resto antes de enviar. Testado numa TCL (Android 9): abrem YouTube (`https://www.youtube.com`), Netflix (`https://www.netflix.com/browse`), Prime Video (`https://app.primevideo.com`), Disney+ (`https://www.disneyplus.com`) e Spotify (`spotify://`); Globoplay ainda sem link que abra o app.
 - Volume: a TV **informa** o nível, mas não aceita "defina para N"; o caso de uso envia N vezes `VOLUME_UP/DOWN`.
 
 ## Teclado (IME) — observado numa TCL Google TV (Android 9)
