@@ -1,0 +1,92 @@
+name: Release
+
+# Push a tag like v1.0.0 to build installers for Windows, macOS and Linux
+# and attach them to a GitHub Release.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  WAILS_VERSION: v2.12.0
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+      - name: Install NSIS
+        run: choco install nsis -y --no-progress
+      - name: Build installer
+        shell: bash
+        run: |
+          export PATH="$PATH:/c/Program Files (x86)/NSIS"
+          wails build -skipbindings -nsis -trimpath -platform windows/amd64
+          mv build/bin/optic-desktop.exe build/bin/OPTIC-windows-amd64-portable.exe
+          mv build/bin/OPTIC-amd64-installer.exe build/bin/OPTIC-windows-amd64-setup.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: build/bin/OPTIC-windows-*
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+      - name: Build universal app
+        run: wails build -skipbindings -trimpath -platform darwin/universal
+      - name: Package DMG
+        run: |
+          mkdir -p dmg && cp -R build/bin/OPTIC.app dmg/
+          ln -s /Applications dmg/Applications
+          hdiutil create -volname OPTIC -srcfolder dmg -ov -format UDZO build/bin/OPTIC-macos-universal.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: build/bin/OPTIC-macos-universal.dmg
+
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+      - run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+      - name: Build
+        run: |
+          wails build -skipbindings -trimpath -platform linux/amd64
+          mkdir -p pkg/OPTIC && cp build/bin/optic-desktop pkg/OPTIC/ && cp build/appicon.png pkg/OPTIC/optic.png
+          cp packaging/linux/optic.desktop pkg/OPTIC/ && cp packaging/linux/install.sh pkg/OPTIC/
+          tar -C pkg -czf build/bin/OPTIC-linux-amd64.tar.gz OPTIC
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: build/bin/OPTIC-linux-amd64.tar.gz
+
+  publish:
+    needs: [windows, macos, linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: dist, merge-multiple: true }
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
