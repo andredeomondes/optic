@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- OPTIC symbol: optical aperture/lens + screen + connection.
+       Vector recreation of the official artwork; replace with the original file when available. -->
+  <defs>
+    <linearGradient id="o-frame" x1="20" y1="40" x2="236" y2="216" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#C084FC"/>
+      <stop offset="0.38" stop-color="#5B5CF6"/>
+      <stop offset="0.7" stop-color="#2F8CF6"/>
+      <stop offset="1" stop-color="#22F0F5"/>
+    </linearGradient>
+    <linearGradient id="o-lens" x1="16" y1="128" x2="240" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7C3AED"/>
+      <stop offset="0.5" stop-color="#4F46E5" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#22D3EE" stop-opacity="0.85"/>
+    </linearGradient>
+    <radialGradient id="o-screen" cx="128" cy="128" r="96" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0A3A7A"/>
+      <stop offset="0.6" stop-color="#14205A"/>
+      <stop offset="1" stop-color="#1B1452"/>
+    </radialGradient>
+    <linearGradient id="o-dot" x1="106" y1="104" x2="150" y2="150" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#C084FC"/>
+      <stop offset="0.5" stop-color="#60A5FA"/>
+      <stop offset="1" stop-color="#22F0F5"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="36" width="224" height="176" rx="48" fill="url(#o-frame)"/>
+  <path d="M16 120 L60 74 C 120 60 190 66 236 108 L 236 150 C 196 186 120 196 60 176 C 36 160 24 146 16 132 Z" fill="url(#o-lens)" opacity="0.55"/>
+  <path d="M74 68 L188 80 Q 204 82 204 98 L 204 168 Q 204 186 186 184 L 72 172 Q 54 170 54 152 L 54 86 Q 54 66 74 68 Z" fill="url(#o-screen)"/>
+  <circle cx="128" cy="127" r="25" fill="url(#o-dot)"/>
+</svg>
