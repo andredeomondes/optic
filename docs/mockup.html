@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OPTIC — conceito</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #07060f;
+    --glass: rgba(255,255,255,0.07);
+    --glass-strong: rgba(255,255,255,0.12);
+    --stroke: rgba(255,255,255,0.14);
+    --stroke-hi: rgba(255,255,255,0.32);
+    --text: #f4f3ff;
+    --muted: rgba(244,243,255,0.55);
+    --accent: #7c5cff;
+    --accent-2: #22d3ee;
+    --ok: #34d399;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh; background: var(--bg); color: var(--text);
+    font-family: Inter, system-ui, sans-serif; overflow-x: hidden;
+    display: flex; align-items: center; justify-content: center; padding: 32px 16px;
+  }
+  .blob { position: fixed; border-radius: 50%; filter: blur(90px); opacity: .55; z-index: 0; animation: float 18s ease-in-out infinite; }
+  .b1 { width: 460px; height: 460px; background: #7c5cff; top: -120px; left: -80px; }
+  .b2 { width: 380px; height: 380px; background: #22d3ee; bottom: -120px; right: -60px; animation-delay: -6s; }
+  .b3 { width: 300px; height: 300px; background: #f472b6; top: 40%; left: 55%; opacity: .35; animation-delay: -12s; }
+  @keyframes float { 50% { transform: translate(40px, -30px) scale(1.08); } }
+
+  .app { position: relative; z-index: 1; display: grid; grid-template-columns: 260px 360px; gap: 20px; max-width: 100%; }
+  .glass {
+    background: var(--glass); border: 1px solid var(--stroke); border-radius: 28px;
+    backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.15), 0 30px 60px -20px rgba(0,0,0,.6);
+  }
+
+  .side { padding: 22px; display: flex; flex-direction: column; gap: 18px; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .logo { width: 34px; height: 34px; border-radius: 11px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); display: grid; place-items: center; font-weight: 600; }
+  .brand h1 { font-size: 18px; font-weight: 600; letter-spacing: -.02em; }
+  .brand small { display: block; font-size: 11px; color: var(--muted); font-weight: 400; }
+  .label { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+  .device { padding: 12px 14px; border-radius: 16px; border: 1px solid var(--stroke); background: rgba(255,255,255,.04); display: flex; align-items: center; gap: 12px; cursor: pointer; transition: .2s; }
+  .device:hover { background: rgba(255,255,255,.08); }
+  .device.active { border-color: rgba(124,92,255,.7); background: rgba(124,92,255,.14); }
+  .device .ic { width: 32px; height: 32px; border-radius: 10px; background: rgba(255,255,255,.08); display: grid; place-items: center; font-size: 15px; }
+  .device b { font-size: 13px; font-weight: 500; display: block; }
+  .device span { font-size: 11px; color: var(--muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 10px var(--ok); margin-left: auto; }
+  .dot.off { background: rgba(255,255,255,.25); box-shadow: none; }
+  .log { margin-top: auto; font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--muted); background: rgba(0,0,0,.25); border-radius: 14px; padding: 12px; height: 130px; overflow: hidden; border: 1px solid var(--stroke); }
+  .log div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .log .k { color: var(--accent-2); }
+
+  .remote { padding: 26px; display: flex; flex-direction: column; gap: 22px; }
+  .top { display: flex; justify-content: space-between; align-items: center; }
+  .tv-name { font-size: 14px; font-weight: 500; }
+  .tv-name small { display: block; font-size: 11px; color: var(--muted); font-weight: 400; }
+  .btn {
+    border: 1px solid var(--stroke); background: var(--glass); color: var(--text);
+    border-radius: 16px; height: 48px; font: inherit; font-size: 13px; cursor: pointer;
+    display: grid; place-items: center; transition: transform .12s, background .2s, border-color .2s;
+    user-select: none;
+  }
+  .btn:hover { background: var(--glass-strong); border-color: var(--stroke-hi); }
+  .btn:active, .btn.press { transform: scale(.94); background: rgba(124,92,255,.3); border-color: rgba(124,92,255,.8); }
+  .power { width: 44px; height: 44px; border-radius: 50%; color: #fb7185; font-size: 18px; }
+
+  .dpad { position: relative; width: 220px; height: 220px; margin: 4px auto; border-radius: 50%; border: 1px solid var(--stroke); background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.12), rgba(255,255,255,.03)); }
+  .dpad .arr { position: absolute; width: 64px; height: 64px; border: none; background: transparent; color: var(--muted); font-size: 22px; border-radius: 50%; }
+  .dpad .arr:hover { color: var(--text); background: rgba(255,255,255,.06); }
+  .up { top: 6px; left: 78px; } .down { bottom: 6px; left: 78px; } .left { left: 6px; top: 78px; } .right { right: 6px; top: 78px; }
+  .ok { position: absolute; inset: 62px; border-radius: 50%; background: linear-gradient(135deg, rgba(124,92,255,.55), rgba(34,211,238,.35)); border: 1px solid rgba(255,255,255,.3); font-weight: 600; letter-spacing: .1em; height: auto; }
+
+  .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .rockers { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .rocker { display: flex; flex-direction: column; border: 1px solid var(--stroke); border-radius: 22px; overflow: hidden; background: var(--glass); }
+  .rocker .btn { border: none; border-radius: 0; background: transparent; height: 46px; font-size: 18px; }
+  .rocker .mid { text-align: center; font-size: 10px; letter-spacing: .14em; color: var(--muted); padding: 2px 0; }
+  .apps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .apps .btn { height: 40px; font-size: 11px; border-radius: 12px; }
+  .type { display: flex; gap: 8px; }
+  .type input { flex: 1; height: 44px; border-radius: 14px; border: 1px solid var(--stroke); background: rgba(0,0,0,.2); color: var(--text); padding: 0 14px; font: inherit; font-size: 13px; outline: none; }
+  .type input:focus { border-color: rgba(124,92,255,.8); }
+  .type .btn { width: 44px; height: 44px; }
+  .hint { text-align: center; font-size: 11px; color: var(--muted); }
+  kbd { font-family: "JetBrains Mono", monospace; font-size: 10px; padding: 2px 5px; border-radius: 5px; border: 1px solid var(--stroke); }
+
+  @media (max-width: 680px) { .app { grid-template-columns: 1fr; } .side { order: 2; } }
+</style>
+</head>
+<body>
+<div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+
+<main class="app">
+  <aside class="glass side">
+    <div class="brand">
+      <div class="logo">O</div>
+      <h1>OPTIC<small>open pc-to-tv interface controller</small></h1>
+    </div>
+    <div class="label">TVs na rede</div>
+    <div class="device active"><div class="ic">▭</div><div><b>TCL 55" Google TV</b><span>192.168.0.50 · pareada</span></div><div class="dot"></div></div>
+    <div class="device"><div class="ic">▭</div><div><b>Quarto</b><span>192.168.0.71 · offline</span></div><div class="dot off"></div></div>
+    <div class="label">Atividade</div>
+    <div class="log" id="log"><div>› mDNS: _androidtvremote2._tcp</div><div>› TLS ok · porta 6466</div></div>
+  </aside>
+
+  <section class="glass remote">
+    <div class="top">
+      <div class="tv-name">TCL 55" Google TV<small>Conectado · protocolo v2</small></div>
+      <button class="btn power" data-k="POWER" aria-label="Ligar/desligar">⏻</button>
+    </div>
+
+    <div class="dpad">
+      <button class="arr up" data-k="DPAD_UP" aria-label="Cima">▲</button>
+      <button class="arr left" data-k="DPAD_LEFT" aria-label="Esquerda">◀</button>
+      <button class="arr right" data-k="DPAD_RIGHT" aria-label="Direita">▶</button>
+      <button class="arr down" data-k="DPAD_DOWN" aria-label="Baixo">▼</button>
+      <button class="btn ok" data-k="DPAD_CENTER">OK</button>
+    </div>
+
+    <div class="row3">
+      <button class="btn" data-k="BACK">↩ Voltar</button>
+      <button class="btn" data-k="HOME">⌂ Início</button>
+      <button class="btn" data-k="MENU">≡ Menu</button>
+    </div>
+
+    <div class="rockers">
+      <div class="rocker"><button class="btn" data-k="VOLUME_UP">+</button><div class="mid">VOL</div><button class="btn" data-k="VOLUME_DOWN">−</button></div>
+      <div class="rocker"><button class="btn" data-k="CHANNEL_UP">⌃</button><div class="mid">CH</div><button class="btn" data-k="CHANNEL_DOWN">⌄</button></div>
+    </div>
+
+    <div class="row3">
+      <button class="btn" data-k="MEDIA_REWIND">⏪</button>
+      <button class="btn" data-k="MEDIA_PLAY_PAUSE">⏯</button>
+      <button class="btn" data-k="MEDIA_FAST_FORWARD">⏩</button>
+    </div>
+
+    <div class="apps">
+      <button class="btn" data-k="APP:youtube">YouTube</button>
+      <button class="btn" data-k="APP:netflix">Netflix</button>
+      <button class="btn" data-k="APP:prime">Prime</button>
+      <button class="btn" data-k="APP:globoplay">Globoplay</button>
+    </div>
+
+    <form class="type" id="typeForm">
+      <input id="typeIn" placeholder="Digitar na TV…" autocomplete="off">
+      <button class="btn" type="submit" aria-label="Enviar texto">➤</button>
+    </form>
+
+    <div class="hint"><kbd>↑↓←→</kbd> navegar · <kbd>Enter</kbd> OK · <kbd>Esc</kbd> voltar · <kbd>H</kbd> início</div>
+  </section>
+</main>
+
+<script>
+  const log = document.getElementById('log');
+  function send(k) {
+    const d = document.createElement('div');
+    const t = new Date().toLocaleTimeString('pt-BR');
+    d.innerHTML = `${t} <span class="k">${k.startsWith('APP:') ? 'launch ' + k.slice(4) : 'KEYCODE_' + k}</span>`;
+    log.appendChild(d);
+    while (log.children.length > 8) log.removeChild(log.firstChild);
+  }
+  document.querySelectorAll('[data-k]').forEach(b => b.addEventListener('click', () => send(b.dataset.k)));
+  document.getElementById('typeForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const v = document.getElementById('typeIn').value.trim();
+    if (v) { send('TEXT "' + v + '"'); document.getElementById('typeIn').value = ''; }
+  });
+  const map = { ArrowUp: 'DPAD_UP', ArrowDown: 'DPAD_DOWN', ArrowLeft: 'DPAD_LEFT', ArrowRight: 'DPAD_RIGHT', Enter: 'DPAD_CENTER', Escape: 'BACK', h: 'HOME', '+': 'VOLUME_UP', '-': 'VOLUME_DOWN', ' ': 'MEDIA_PLAY_PAUSE' };
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    const k = map[e.key]; if (!k) return;
+    e.preventDefault(); send(k);
+    const b = document.querySelector(`[data-k="${k}"]`);
+    if (b) { b.classList.add('press'); setTimeout(() => b.classList.remove('press'), 140); }
+  });
+</script>
+</body>
+</html>
