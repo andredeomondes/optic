@@ -19,6 +19,9 @@ const discoverTimeout = 3 * time.Second
 // volumeStepDelay spaces volume key presses so the TV registers each one.
 const volumeStepDelay = 40 * time.Millisecond
 
+// releaseTimeout bounds the update check so the UI never waits on GitHub.
+const releaseTimeout = 5 * time.Second
+
 // Deps are the ports the service needs.
 type Deps struct {
 	Discoverer domain.Discoverer
@@ -29,6 +32,7 @@ type Deps struct {
 	MACs       domain.MACResolver // optional: without it PowerOn is unavailable
 	Waker      domain.WakeSender  // optional: without it PowerOn is unavailable
 	Events     domain.EventSink
+	Releases   domain.ReleaseSource // optional: without it LatestRelease is unavailable
 	// Sleep is time.Sleep by default; tests replace it.
 	Sleep func(time.Duration)
 }
@@ -149,6 +153,16 @@ func (s *Service) PowerOn(host string) error {
 		return domain.ErrNoMAC
 	}
 	return s.d.Waker.Send(k.MAC, host)
+}
+
+// LatestRelease returns the newest published OPTIC release.
+func (s *Service) LatestRelease(ctx context.Context) (domain.Release, error) {
+	if s.d.Releases == nil {
+		return domain.Release{}, domain.ErrNoReleaseSource
+	}
+	ctx, cancel := context.WithTimeout(ctx, releaseTimeout)
+	defer cancel()
+	return s.d.Releases.Latest(ctx)
 }
 
 // watch clears the session when it ends on its own and tells the UI.

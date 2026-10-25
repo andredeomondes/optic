@@ -110,7 +110,23 @@ var (
 	ErrVolumeUnknown = errors.New("volume atual desconhecido: mude o volume uma vez e tente de novo")
 	// ErrNoMAC means Wake-on-LAN was requested for a TV whose MAC was never learned.
 	ErrNoMAC = errors.New("MAC da TV desconhecido: conecte uma vez com ela ligada")
+	// ErrNoReleaseSource means no release lookup is configured.
+	ErrNoReleaseSource = errors.New("checagem de versão indisponível")
 )
+
+// Release is a published OPTIC version.
+type Release struct {
+	Tag         string    `json:"tag"`
+	Name        string    `json:"name"`
+	URL         string    `json:"url"`
+	Notes       string    `json:"notes"`
+	PublishedAt time.Time `json:"publishedAt"`
+}
+
+// ReleaseSource looks up the latest published release.
+type ReleaseSource interface {
+	Latest(ctx context.Context) (Release, error)
+}
 
 // Discoverer finds TVs on the local network.
 type Discoverer interface {

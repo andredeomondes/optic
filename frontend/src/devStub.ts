@@ -81,6 +81,15 @@ w.go = {
       async LaunchApp(id: string) {
         emit('trace', '>', `90 { 1: "${id}" }`)
       },
+      async LatestRelease() {
+        return {
+          tag: 'v1.0.4',
+          name: 'OPTIC 1.0.4',
+          url: 'https://github.com/andredeomondes/optic/releases/tag/v1.0.4',
+          notes: 'Correções e melhorias.',
+          publishedAt: new Date().toISOString(),
+        }
+      },
       async PowerOn(ip: string) {
         await wait(300)
         emit('trace', '>', `wol ${ip}`)

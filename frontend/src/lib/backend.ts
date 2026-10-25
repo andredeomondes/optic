@@ -7,6 +7,7 @@ export {
   Discover,
   FinishPairing,
   LastHost,
+  LatestRelease,
   LaunchApp,
   PowerOn,
   ResizeWindow,

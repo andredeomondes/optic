@@ -427,3 +427,40 @@ func TestDiscoverSkipsKnownTVWithSameMACAtNewIP(t *testing.T) {
 		t.Errorf("tv = %+v", tvs[0])
 	}
 }
+
+type fakeReleases struct {
+	rel      domain.Release
+	err      error
+	deadline bool
+}
+
+func (f *fakeReleases) Latest(ctx context.Context) (domain.Release, error) {
+	_, f.deadline = ctx.Deadline()
+	return f.rel, f.err
+}
+
+func TestLatestReleaseWithoutSource(t *testing.T) {
+	_, err := New(Deps{}).LatestRelease(context.Background())
+	if !errors.Is(err, domain.ErrNoReleaseSource) {
+		t.Fatalf("err = %v, want ErrNoReleaseSource", err)
+	}
+}
+
+func TestLatestReleaseDelegatesWithTimeout(t *testing.T) {
+	src := &fakeReleases{rel: domain.Release{Tag: "v1.0.3"}}
+	rel, err := New(Deps{Releases: src}).LatestRelease(context.Background())
+	if err != nil || rel.Tag != "v1.0.3" {
+		t.Fatalf("rel=%+v err=%v", rel, err)
+	}
+	if !src.deadline {
+		t.Error("lookup context has no deadline")
+	}
+}
+
+func TestLatestReleasePropagatesError(t *testing.T) {
+	boom := errors.New("boom")
+	_, err := New(Deps{Releases: &fakeReleases{err: boom}}).LatestRelease(context.Background())
+	if !errors.Is(err, boom) {
+		t.Fatalf("err = %v", err)
+	}
+}
