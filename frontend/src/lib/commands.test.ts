@@ -51,5 +51,5 @@ test('pesquisar <q> no youtube builds a search link', () => {
 })
 
 test('colar finds the paste command', () => {
-  assert.ok(suggest('colar', CATALOG).some((c) => c.id === 'paste'))
+  assert.deepEqual(suggest('colar', CATALOG).find((c) => c.id === 'paste')?.action, { type: 'ui', target: 'paste' })
 })

@@ -23,5 +23,5 @@ export function shouldPasteToTV(e: KeyLike, target: TargetLike, connected: boole
 
 /** Single-line, trimmed and capped: what the TV's text field can take. */
 export function cleanPaste(text: string): string {
-  return text.replace(/\r/g, '').replace(/\n/g, ' ').trim().slice(0, MAX_PASTE)
+  return text.replace(/\s+/g, ' ').trim().slice(0, MAX_PASTE)
 }
