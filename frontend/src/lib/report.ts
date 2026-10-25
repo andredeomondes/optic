@@ -28,14 +28,14 @@ function maskMac(mac: string): string {
 
 /**
  * Masks MACs anywhere in free text: separated (colon/dash), dotted (aabb.ccdd.eeff)
- * and unseparated, the latter only as a standalone 12-digit token so longer hex
- * strings in protocol log lines are left alone.
+ * and unseparated. Hex lookarounds (not \b, which misses "TV_AABBCCDDEEFF") mask any
+ * 12-digit run that is not part of a longer hex run, so long protocol tokens survive.
  */
 function maskMacsIn(text: string): string {
   return text
-    .replace(/\b((?:[0-9a-f]{2}[:-]){3})(?:[0-9a-f]{2}[:-]){2}[0-9a-f]{2}\b/gi, (_m, oui: string) => ouiOnly(oui.replace(/[:-]/g, '')))
-    .replace(/\b([0-9a-f]{4})\.([0-9a-f]{4})\.[0-9a-f]{4}\b/gi, (_m, a: string, b: string) => ouiOnly(a + b.slice(0, 2)))
-    .replace(/\b([0-9a-f]{6})[0-9a-f]{6}\b/gi, (_m, oui: string) => ouiOnly(oui))
+    .replace(/(?<![0-9a-f])((?:[0-9a-f]{2}[:-]){3})(?:[0-9a-f]{2}[:-]){2}[0-9a-f]{2}(?![0-9a-f])/gi, (_m, oui: string) => ouiOnly(oui.replace(/[:-]/g, '')))
+    .replace(/(?<![0-9a-f])([0-9a-f]{4})\.([0-9a-f]{4})\.[0-9a-f]{4}(?![0-9a-f])/gi, (_m, a: string, b: string) => ouiOnly(a + b.slice(0, 2)))
+    .replace(/(?<![0-9a-f])([0-9a-f]{6})[0-9a-f]{6}(?![0-9a-f])/gi, (_m, oui: string) => ouiOnly(oui))
 }
 
 /** Table cells: keep the row intact if a value contains a pipe. */

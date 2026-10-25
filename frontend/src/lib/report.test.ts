@@ -61,3 +61,9 @@ test('empty states and pipe escaping', () => {
   assert.ok(r.includes('Nenhuma TV encontrada.') && r.includes('Nenhuma TV conectada.'))
   assert.ok(buildReport({ ...base, tvs: [tv({ name: 'a|b' })] }).includes('| a\\|b |'))
 })
+
+test('masks MACs glued to device names', () => {
+  const r = buildReport({ ...base, tvs: [tv({ name: 'TV_AABBCCDDEEFF' }), tv({ name: 'Samsung_aabbccddeeff' }), tv({ name: 'tvaabbccddeeff' })] })
+  assert.ok(!/ddeeff/i.test(r))
+  assert.ok(r.includes('| TV_aa:bb:cc:**:**:** |') && r.includes('| Samsung_aa:bb:cc:**:**:** |'))
+})
