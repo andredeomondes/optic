@@ -409,3 +409,21 @@ func TestDiscoverAppendsKnownTVsWithMACNotFound(t *testing.T) {
 		t.Errorf("found TV lost its MAC: %+v", byIP["192.168.0.43"])
 	}
 }
+
+func TestDiscoverSkipsKnownTVWithSameMACAtNewIP(t *testing.T) {
+	known := &memKnown{m: map[string]domain.KnownTV{
+		"192.168.0.18": {IP: "192.168.0.18", Name: "Sala", MAC: "aa:bb:cc:dd:ee:ff", Platform: domain.PlatformAndroidTV},
+		"192.168.0.25": {IP: "192.168.0.25", Name: "Sala", MAC: "AA:BB:CC:DD:EE:FF", Platform: domain.PlatformAndroidTV},
+	}}
+	s := New(Deps{
+		Discoverer: fakeDiscoverer{tvs: []domain.TV{{IP: "192.168.0.25", Platform: domain.PlatformAndroidTV}}},
+		Known:      known,
+	})
+	tvs, err := s.Discover(context.Background())
+	if err != nil || len(tvs) != 1 {
+		t.Fatalf("tvs=%+v err=%v", tvs, err)
+	}
+	if tvs[0].IP != "192.168.0.25" || tvs[0].MAC != "AA:BB:CC:DD:EE:FF" {
+		t.Errorf("tv = %+v", tvs[0])
+	}
+}

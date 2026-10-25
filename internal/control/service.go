@@ -60,17 +60,23 @@ func (s *Service) Discover(ctx context.Context) ([]domain.TV, error) {
 		}
 		// Hand the stored MAC to the UI so it can offer "turn on".
 		found := map[string]bool{}
+		foundMACs := map[string]bool{}
 		for i := range tvs {
 			found[tvs[i].IP] = true
 			if k, ok := s.d.Known.Get(tvs[i].IP); ok {
 				tvs[i].MAC = k.MAC
 			}
+			if tvs[i].MAC != "" {
+				foundMACs[strings.ToLower(tvs[i].MAC)] = true
+			}
 		}
 		// A TV in deep standby answers no discovery: list the remembered
 		// ones that were not found, so the UI can still offer "turn on".
+		// A remembered entry whose MAC was found at another IP is the same
+		// TV after its IP changed, so it is skipped rather than shown twice.
 		var absent []domain.TV
 		for _, k := range s.d.Known.List() {
-			if k.MAC == "" || found[k.IP] {
+			if k.MAC == "" || found[k.IP] || foundMACs[strings.ToLower(k.MAC)] {
 				continue
 			}
 			p := k.Platform
