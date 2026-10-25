@@ -19,6 +19,7 @@ const (
 	evDisconnected = "disconnected"
 	evTrayCompact  = "tray:compact"
 	evCloseToTray  = "prefs:closeToTray"
+	evTrayKey      = "tray:key"
 )
 
 // Shell is the desktop side of the app: window, tray and preferences. Its
@@ -53,6 +54,7 @@ func (s *Shell) startup(ctx context.Context) {
 				runtime.EventsEmit(s.ctx, evTrayCompact, on)
 			},
 			ToggleCloseToTray: s.SetCloseToTray,
+			Key:               func(k string) { runtime.EventsEmit(s.ctx, evTrayKey, k) },
 			Quit:              s.QuitApp,
 		},
 	})

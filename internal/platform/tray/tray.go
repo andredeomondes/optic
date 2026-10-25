@@ -13,6 +13,7 @@ type Handlers struct {
 	Open              func() // left click or "Abrir OPTIC"
 	ToggleCompact     func(on bool)
 	ToggleCloseToTray func(on bool)
+	Key               func(name string) // volume submenu: VOLUME_UP, VOLUME_DOWN, MUTE
 	Quit              func()
 }
 

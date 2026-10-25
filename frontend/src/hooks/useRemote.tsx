@@ -10,6 +10,7 @@ import type { DeviceInfo, Feedback, LogLine, Status, Toast, TV, TVState } from '
 const MANUAL_KEY = 'optic.manualHosts.v1'
 const FEEDBACK_MS = 650
 const POWER_ON_RESCAN_MS = 8000
+const TRAY_KEYS = ['VOLUME_UP', 'VOLUME_DOWN', 'MUTE']
 
 let seq = 0
 
@@ -162,6 +163,20 @@ function useRemoteState() {
       return run(`key:${key}`, () => api.SendKey(key))
     },
     [connected, run],
+  )
+
+  // Volume items of the tray menu arrive as key names.
+  useEffect(
+    () =>
+      api.onEvent('tray:key', (key: string) => {
+        if (!TRAY_KEYS.includes(key)) return
+        if (!connected) {
+          notify('info', 'Conecte uma TV primeiro')
+          return
+        }
+        press(key)
+      }),
+    [connected, press, notify],
   )
 
   const launch = useCallback(

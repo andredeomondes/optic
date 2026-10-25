@@ -38,6 +38,18 @@ func (t *winTray) onReady(o Options) {
 
 	systray.AddMenuItem("Abrir OPTIC", "").Click(h.Open)
 
+	volume := systray.AddMenuItem("Volume", "")
+	for _, k := range []struct{ label, key string }{
+		{"Aumentar", "VOLUME_UP"}, {"Diminuir", "VOLUME_DOWN"}, {"Mudo", "MUTE"},
+	} {
+		key := k.key
+		volume.AddSubMenuItem(k.label, "").Click(func() {
+			if h.Key != nil {
+				h.Key(key)
+			}
+		})
+	}
+
 	t.compact = systray.AddMenuItemCheckbox("Modo compacto", "", false)
 	t.compact.Click(func() { h.ToggleCompact(!t.compact.Checked()) })
 
