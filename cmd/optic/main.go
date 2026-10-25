@@ -5,18 +5,23 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"sort"
 	"time"
 
+	"optic/internal/adapter/compose"
+	"optic/internal/adapter/mdns"
+	"optic/internal/adapter/ssdp"
+	"optic/internal/domain"
 	"optic/pkg/discovery"
 )
 
 const usage = `OPTIC — Open PC-to-TV Interface Controller
 
 Usage:
-  optic discover [-t 5s] [-v]   find TVs on the local network
+  optic discover [-t 5s] [-v] [-ssdp=false]  find TVs on the local network
   optic pair [-v] <ip>          pair with a TV (Remote protocol v2)
   optic key [-v] <ip> <KEY>...  send keys (HOME, BACK, VOLUME_UP...)
   optic app <ip> <name|uri>     open an app (youtube, netflix, prime, globoplay)
@@ -59,48 +64,82 @@ func main() {
 
 func runDiscover(ctx context.Context, args []string) int {
 	fs := flag.NewFlagSet("discover", flag.ExitOnError)
-	timeout := fs.Duration("t", 5*time.Second, "how long to listen for mDNS answers")
-	verbose := fs.Bool("v", false, "show all TXT records")
+	timeout := fs.Duration("t", 5*time.Second, "how long to listen for answers")
+	verbose := fs.Bool("v", false, "show mDNS services and TXT records")
+	useSSDP := fs.Bool("ssdp", true, "also search with SSDP (UPnP)")
 	fs.Parse(args)
 
+	sources := []domain.Discoverer{mdns.Discoverer{}}
+	if *useSSDP {
+		sources = append(sources, ssdp.Discoverer{})
+	}
+
+	// The mDNS details for -v run next to the combined scan, so the wait
+	// does not double.
+	var detailsCh chan map[string]*discovery.Device
+	if *verbose {
+		detailsCh = make(chan map[string]*discovery.Device, 1)
+		go func() { detailsCh <- mdnsDetails(ctx, *timeout) }()
+	}
+
 	fmt.Printf("Procurando TVs na rede por %s...\n\n", *timeout)
-	devices, err := discovery.Discover(ctx, *timeout)
+	tvs, err := compose.Discoverer{Sources: sources}.Discover(ctx, *timeout)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "erro:", err)
 		return 1
 	}
-	if len(devices) == 0 {
+	if len(tvs) == 0 {
 		fmt.Println("Nenhuma TV encontrada. A TV está ligada e na mesma rede?")
 		return 1
 	}
 
+	var details map[string]*discovery.Device
+	if detailsCh != nil {
+		details = <-detailsCh
+	}
+	printTVs(os.Stdout, tvs, details)
+	return 0
+}
+
+// mdnsDetails indexes the mDNS devices by IP. Errors are ignored: the details
+// only add to the list that the combined scan already printed.
+func mdnsDetails(ctx context.Context, timeout time.Duration) map[string]*discovery.Device {
+	devices, _ := discovery.Discover(ctx, timeout)
+	out := make(map[string]*discovery.Device, len(devices))
 	for _, d := range devices {
-		fmt.Printf("▸ %s", d.Name)
-		if d.Model != "" {
-			fmt.Printf("  (%s)", d.Model)
-		}
-		fmt.Printf("\n  ip: %s\n", d.Addr())
+		out[d.Addr()] = d
+	}
+	return out
+}
 
-		svcs := make([]string, 0, len(d.Services))
-		for s := range d.Services {
-			svcs = append(svcs, s)
+// printTVs writes one block per TV. details is optional and keyed by IP.
+func printTVs(w io.Writer, tvs []domain.TV, details map[string]*discovery.Device) {
+	for _, tv := range tvs {
+		fmt.Fprintf(w, "▸ %s  [%s]", tv.Name, tv.Platform.Label())
+		if tv.Model != "" {
+			fmt.Fprintf(w, "  (%s)", tv.Model)
 		}
-		sort.Strings(svcs)
-		for _, s := range svcs {
-			fmt.Printf("  %-24s porta %d\n", s, d.Services[s])
-		}
+		fmt.Fprintf(w, "\n  ip: %s\n", tv.IP)
 
-		if *verbose {
+		if d := details[tv.IP]; d != nil {
+			svcs := make([]string, 0, len(d.Services))
+			for s := range d.Services {
+				svcs = append(svcs, s)
+			}
+			sort.Strings(svcs)
+			for _, s := range svcs {
+				fmt.Fprintf(w, "  %-24s porta %d\n", s, d.Services[s])
+			}
+
 			keys := make([]string, 0, len(d.TXT))
 			for k := range d.TXT {
 				keys = append(keys, k)
 			}
 			sort.Strings(keys)
 			for _, k := range keys {
-				fmt.Printf("    txt %s=%s\n", k, d.TXT[k])
+				fmt.Fprintf(w, "    txt %s=%s\n", k, d.TXT[k])
 			}
 		}
-		fmt.Println()
+		fmt.Fprintln(w)
 	}
-	return 0
 }
