@@ -9,6 +9,7 @@ export type Capabilities = {
   toast: boolean
 }
 export type TV = { name: string; model: string; ip: string; remotev2: boolean; platform: Platform; mac?: string; manual?: boolean }
+export type TVApp = { id: string; name: string }
 export type DeviceInfo = { model: string; vendor: string; version: string; appVersion: string; platform: Platform; capabilities: Capabilities }
 export type TVState = {
   on: boolean

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"optic/internal/control"
 	"optic/internal/domain"
@@ -51,6 +52,13 @@ func (a *App) PowerOn(ip string) error { return a.svc.PowerOn(ip) }
 
 // LatestRelease returns the newest published OPTIC release.
 func (a *App) LatestRelease() (domain.Release, error) { return a.svc.LatestRelease(a.ctx) }
+
+// InstalledApps lists the apps installed on the connected TV.
+func (a *App) InstalledApps() ([]domain.App, error) {
+	ctx, cancel := context.WithTimeout(a.ctx, 10*time.Second)
+	defer cancel()
+	return a.svc.InstalledApps(ctx)
+}
 
 // shutdown runs when the app quits for real.
 func (a *App) shutdown(context.Context) {

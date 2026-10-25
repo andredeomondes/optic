@@ -464,3 +464,101 @@ func TestLatestReleasePropagatesError(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+// ── network power and installed apps ────────────────────────────────────
+
+type fakePower struct {
+	err   error
+	calls int
+}
+
+func (p *fakePower) PowerOn(context.Context, string) error { p.calls++; return p.err }
+
+func TestPowerOnPrefersNetworkPower(t *testing.T) {
+	power, waker := &fakePower{}, &fakeWaker{}
+	known := &memKnown{m: map[string]domain.KnownTV{"10.0.0.2": {IP: "10.0.0.2", MAC: "aa:bb:cc:dd:ee:ff"}}}
+	s := New(Deps{Known: known, Waker: waker, Power: power})
+	if err := s.PowerOn("10.0.0.2"); err != nil {
+		t.Fatal(err)
+	}
+	if power.calls != 1 || waker.mac != "" {
+		t.Fatalf("power calls=%d waker mac=%q", power.calls, waker.mac)
+	}
+}
+
+func TestPowerOnFallsBackToWoL(t *testing.T) {
+	for name, err := range map[string]error{
+		"unsupported": domain.ErrUnsupported{Platform: domain.PlatformAndroidTV},
+		"failure":     errors.New("timeout"),
+	} {
+		power, waker := &fakePower{err: err}, &fakeWaker{}
+		known := &memKnown{m: map[string]domain.KnownTV{"10.0.0.2": {IP: "10.0.0.2", MAC: "aa:bb:cc:dd:ee:ff"}}}
+		s := New(Deps{Known: known, Waker: waker, Power: power})
+		if err := s.PowerOn("10.0.0.2"); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if waker.mac != "aa:bb:cc:dd:ee:ff" {
+			t.Fatalf("%s: waker mac=%q", name, waker.mac)
+		}
+	}
+}
+
+func TestPowerOnNoMACAfterNetworkFail(t *testing.T) {
+	power := &fakePower{err: errors.New("timeout")}
+	s := New(Deps{Known: &memKnown{m: map[string]domain.KnownTV{}}, Waker: &fakeWaker{}, Power: power})
+	if err := s.PowerOn("10.0.0.2"); !errors.Is(err, domain.ErrNoMAC) {
+		t.Fatalf("got %v, want ErrNoMAC", err)
+	}
+}
+
+type appSession struct {
+	*fakeSession
+	apps []domain.App
+}
+
+func (a appSession) Apps(context.Context) ([]domain.App, error) { return a.apps, nil }
+
+type connectorFor struct{ sess domain.Session }
+
+func (c connectorFor) Connect(context.Context, string, domain.SessionEvents) (domain.Session, error) {
+	return c.sess, nil
+}
+
+func TestInstalledApps(t *testing.T) {
+	want := []domain.App{{ID: "12", Name: "Netflix"}}
+	s, _, _ := newService(connectorFor{appSession{newSession(domain.State{}), want}}, nil)
+	ctx := context.Background()
+	if _, err := s.InstalledApps(ctx); !errors.Is(err, domain.ErrNotConnected) {
+		t.Fatalf("not connected: got %v", err)
+	}
+	if _, err := s.Connect(ctx, "10.0.0.2"); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.InstalledApps(ctx)
+	if err != nil || !slices.Equal(got, want) {
+		t.Fatalf("got %v, %v", got, err)
+	}
+
+	s, _, _ = newService(fakeConnector{sess: newSession(domain.State{})}, nil)
+	if _, err := s.Connect(ctx, "10.0.0.2"); err != nil {
+		t.Fatal(err)
+	}
+	var u domain.ErrUnsupported
+	if _, err := s.InstalledApps(ctx); !errors.As(err, &u) {
+		t.Fatalf("got %v, want ErrUnsupported", err)
+	}
+}
+
+type powerSession struct{ *fakeSession }
+
+func (powerSession) Info() domain.DeviceInfo {
+	return domain.DeviceInfo{Capabilities: domain.Capabilities{PowerOn: true}}
+}
+
+func TestConnectKeepsAdapterPowerOn(t *testing.T) {
+	s, _, _ := newService(connectorFor{powerSession{newSession(domain.State{})}}, nil)
+	info, err := s.Connect(context.Background(), "10.0.0.2")
+	if err != nil || !info.Capabilities.PowerOn {
+		t.Fatalf("info=%+v err=%v", info, err)
+	}
+}

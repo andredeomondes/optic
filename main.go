@@ -23,6 +23,7 @@ import (
 	"optic/internal/adapter/github"
 	"optic/internal/adapter/mdns"
 	"optic/internal/adapter/registry"
+	rokuadapter "optic/internal/adapter/roku"
 	"optic/internal/adapter/ssdp"
 	"optic/internal/control"
 	"optic/internal/domain"
@@ -49,8 +50,11 @@ func main() {
 	shell := newShell(store, trayIcon)
 	tv := atv.New(cfgDir)
 	router := registry.Registry{
-		Adapters: map[domain.Platform]registry.Adapter{domain.PlatformAndroidTV: tv},
-		Known:    store,
+		Adapters: map[domain.Platform]registry.Adapter{
+			domain.PlatformAndroidTV: tv,
+			domain.PlatformRoku:      rokuadapter.Adapter{},
+		},
+		Known: store,
 	}
 	app := &App{
 		Shell: shell,
@@ -62,6 +66,7 @@ func main() {
 			Known:      store,
 			MACs:       arp.Resolver{},
 			Waker:      wol.Sender{},
+			Power:      router,
 			Events:     uiEvents{shell},
 			Releases:   github.Client{HTTP: &http.Client{Timeout: 5 * time.Second}, Repo: "andredeomondes/optic", UserAgent: "OPTIC"},
 		}),

@@ -82,6 +82,12 @@ w.go = {
       async LaunchApp(id: string) {
         emit('trace', '>', `90 { 1: "${id}" }`)
       },
+      async InstalledApps() {
+        return [
+          { id: '12', name: 'Netflix' },
+          { id: '837', name: 'YouTube' },
+        ]
+      },
       async LatestRelease() {
         return {
           tag: 'v1.0.4',

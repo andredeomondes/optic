@@ -55,3 +55,31 @@ func TestRegistryPairingRoutesByPlatform(t *testing.T) {
 		t.Fatalf("roku without adapter: err=%v", err)
 	}
 }
+
+type powerAdapter struct {
+	fakeAdapter
+	hosts []string
+}
+
+func (p *powerAdapter) PowerOn(_ context.Context, host string) error {
+	p.hosts = append(p.hosts, host)
+	return nil
+}
+
+func TestPowerOnRoutes(t *testing.T) {
+	known := memKnown{"192.168.0.41": {IP: "192.168.0.41", Platform: domain.PlatformRoku}}
+	roku := &powerAdapter{}
+	r := Registry{Adapters: map[domain.Platform]Adapter{
+		domain.PlatformRoku:      roku,
+		domain.PlatformAndroidTV: &fakeAdapter{},
+	}, Known: known}
+
+	if err := r.PowerOn(context.Background(), "192.168.0.41"); err != nil || len(roku.hosts) != 1 {
+		t.Fatalf("roku: err=%v hosts=%v", err, roku.hosts)
+	}
+	err := r.PowerOn(context.Background(), "192.168.0.18")
+	var u domain.ErrUnsupported
+	if !errors.As(err, &u) || u.Platform != domain.PlatformAndroidTV {
+		t.Fatalf("androidtv: err=%v", err)
+	}
+}

@@ -198,6 +198,16 @@ type WakeSender interface {
 	Send(mac, ip string) error
 }
 
+// AppLister is implemented by sessions that can list installed apps.
+type AppLister interface {
+	Apps(ctx context.Context) ([]App, error)
+}
+
+// NetworkPower turns a TV on over the network, without Wake-on-LAN.
+type NetworkPower interface {
+	PowerOn(ctx context.Context, host string) error
+}
+
 // EventSink is how use cases notify the UI.
 type EventSink interface {
 	State(State)
