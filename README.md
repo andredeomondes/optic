@@ -24,6 +24,7 @@ Controle remoto desktop open source para **Android TV e Google TV**, falando dir
 ## Recursos
 
 - **Encontra a TV sozinho** na rede (mDNS) e pareia com o código de 6 caracteres que aparece na tela.
+- **Liga a TV** pela rede (Wake-on-LAN), depois da primeira conexão com ela ligada.
 - **Controle completo:** D-pad, voltar, início, volume (com slider), canais, mídia e power.
 - **Abre apps** com um clique: YouTube, Netflix, Prime Video, Globoplay e qualquer outro pelo nome do pacote.
 - **Digita na TV** pelo teclado do PC, direto no campo de busca.
@@ -33,6 +34,8 @@ Controle remoto desktop open source para **Android TV e Google TV**, falando dir
 - **Bandeja do sistema** (Windows): fechar esconde o app na área de ícones ocultos; abrir de novo traz a mesma janela.
 - **Tela cheia** com `F11` e janela maximizável.
 - **100% local:** nada passa por servidores. O certificado do pareamento fica só no seu PC.
+
+> Para ligar a TV pela rede, a opção **Ligar pela rede** (ou *Network standby*) precisa estar ativa na TV. Samsung, LG e Roku já aparecem na lista de TVs; o suporte a elas chega nas próximas versões.
 
 <table>
   <tr>
