@@ -218,3 +218,194 @@ func TestPairingTypoKeepsSessionOpen(t *testing.T) {
 		t.Fatalf("after finish: %v", err)
 	}
 }
+
+type fakeDiscoverer struct{ tvs []domain.TV }
+
+func (f fakeDiscoverer) Discover(context.Context, time.Duration) ([]domain.TV, error) {
+	return f.tvs, nil
+}
+
+type memKnown struct {
+	m      map[string]domain.KnownTV
+	putErr error
+}
+
+func (k *memKnown) Get(ip string) (domain.KnownTV, bool) { tv, ok := k.m[ip]; return tv, ok }
+func (k *memKnown) List() []domain.KnownTV {
+	out := make([]domain.KnownTV, 0, len(k.m))
+	for _, tv := range k.m {
+		out = append(out, tv)
+	}
+	return out
+}
+func (k *memKnown) Put(tv domain.KnownTV) error {
+	if k.putErr != nil {
+		return k.putErr
+	}
+	// Merge like the real store: empty fields keep what is stored.
+	old := k.m[tv.IP]
+	if tv.Name == "" {
+		tv.Name = old.Name
+	}
+	if tv.Platform == "" {
+		tv.Platform = old.Platform
+	}
+	if tv.MAC == "" {
+		tv.MAC = old.MAC
+	}
+	k.m[tv.IP] = tv
+	return nil
+}
+
+func TestDiscoverRemembersPlatform(t *testing.T) {
+	known := &memKnown{m: map[string]domain.KnownTV{"192.168.0.40": {IP: "192.168.0.40", MAC: "aa:bb:cc:dd:ee:ff"}}}
+	s := New(Deps{
+		Discoverer: fakeDiscoverer{tvs: []domain.TV{{Name: "Sala", IP: "192.168.0.40", Platform: domain.PlatformWebOS}}},
+		Known:      known,
+	})
+	tvs, err := s.Discover(context.Background())
+	if err != nil || len(tvs) != 1 {
+		t.Fatalf("tvs=%v err=%v", tvs, err)
+	}
+	got, ok := known.Get("192.168.0.40")
+	if !ok || got.Platform != domain.PlatformWebOS || got.Name != "Sala" {
+		t.Fatalf("got %+v ok=%v", got, ok)
+	}
+}
+
+func TestDiscoverSurvivesKnownPutError(t *testing.T) {
+	known := &memKnown{m: map[string]domain.KnownTV{}, putErr: errors.New("disk full")}
+	s := New(Deps{
+		Discoverer: fakeDiscoverer{tvs: []domain.TV{{IP: "192.168.0.40", Platform: domain.PlatformWebOS}}},
+		Known:      known,
+	})
+	if tvs, err := s.Discover(context.Background()); err != nil || len(tvs) != 1 {
+		t.Fatalf("tvs=%v err=%v", tvs, err)
+	}
+}
+
+type fakeMACs struct {
+	mac string
+	ok  bool
+}
+
+func (f fakeMACs) LookupMAC(string) (string, bool) { return f.mac, f.ok }
+
+type fakeWaker struct{ mac, ip string }
+
+func (w *fakeWaker) Send(mac, ip string) error { w.mac, w.ip = mac, ip; return nil }
+
+func TestConnectLearnsMACAndPowerOn(t *testing.T) {
+	known := &memKnown{m: map[string]domain.KnownTV{"10.0.0.2": {IP: "10.0.0.2", Name: "Sala"}}}
+	waker := &fakeWaker{}
+	s := New(Deps{
+		Connector: fakeConnector{sess: newSession(domain.State{})},
+		Hosts:     &fakeHosts{},
+		Known:     known,
+		MACs:      fakeMACs{mac: "aa:bb:cc:dd:ee:ff", ok: true},
+		Waker:     waker,
+		Events:    fakeEvents{disconnected: make(chan struct{})},
+	})
+	info, err := s.Connect(context.Background(), "10.0.0.2")
+	if err != nil || !info.Capabilities.PowerOn {
+		t.Fatalf("info=%+v err=%v", info, err)
+	}
+	if got := known.m["10.0.0.2"]; got.MAC != "aa:bb:cc:dd:ee:ff" || got.Name != "Sala" {
+		t.Fatalf("known=%+v", got)
+	}
+	if err := s.PowerOn("10.0.0.2"); err != nil {
+		t.Fatal(err)
+	}
+	if waker.mac != "aa:bb:cc:dd:ee:ff" || waker.ip != "10.0.0.2" {
+		t.Fatalf("waker=%+v", waker)
+	}
+}
+
+func TestPowerOnWithoutMAC(t *testing.T) {
+	s := New(Deps{Known: &memKnown{m: map[string]domain.KnownTV{}}, Waker: &fakeWaker{}})
+	if err := s.PowerOn("10.0.0.2"); !errors.Is(err, domain.ErrNoMAC) {
+		t.Fatalf("got %v", err)
+	}
+	// Unwired adapters mean the feature is unavailable, not a panic.
+	if err := New(Deps{}).PowerOn("10.0.0.2"); !errors.Is(err, domain.ErrNoMAC) {
+		t.Fatalf("nil deps: got %v", err)
+	}
+}
+
+func TestConnectWithoutMACStillConnects(t *testing.T) {
+	s := New(Deps{
+		Connector: fakeConnector{sess: newSession(domain.State{})},
+		Hosts:     &fakeHosts{},
+		Known:     &memKnown{m: map[string]domain.KnownTV{}},
+		MACs:      fakeMACs{},
+		Events:    fakeEvents{disconnected: make(chan struct{})},
+	})
+	info, err := s.Connect(context.Background(), "10.0.0.2")
+	if err != nil || info.Capabilities.PowerOn {
+		t.Fatalf("info=%+v err=%v", info, err)
+	}
+}
+
+func TestConnectUsesStoredMACWhenLookupFails(t *testing.T) {
+	s := New(Deps{
+		Connector: fakeConnector{sess: newSession(domain.State{})},
+		Hosts:     &fakeHosts{},
+		Known:     &memKnown{m: map[string]domain.KnownTV{"10.0.0.2": {IP: "10.0.0.2", MAC: "aa:bb:cc:dd:ee:ff"}}},
+		MACs:      fakeMACs{},
+		Events:    fakeEvents{disconnected: make(chan struct{})},
+	})
+	info, err := s.Connect(context.Background(), "10.0.0.2")
+	if err != nil || !info.Capabilities.PowerOn {
+		t.Fatalf("info=%+v err=%v", info, err)
+	}
+}
+
+func TestDiscoverFillsStoredMAC(t *testing.T) {
+	known := &memKnown{m: map[string]domain.KnownTV{"192.168.0.40": {IP: "192.168.0.40", MAC: "aa:bb:cc:dd:ee:ff"}}}
+	s := New(Deps{
+		Discoverer: fakeDiscoverer{tvs: []domain.TV{{IP: "192.168.0.40"}, {IP: "192.168.0.41"}}},
+		Known:      known,
+	})
+	tvs, err := s.Discover(context.Background())
+	if err != nil || len(tvs) != 2 {
+		t.Fatalf("tvs=%v err=%v", tvs, err)
+	}
+	if tvs[0].MAC != "aa:bb:cc:dd:ee:ff" || tvs[1].MAC != "" {
+		t.Fatalf("macs: %q %q", tvs[0].MAC, tvs[1].MAC)
+	}
+}
+
+func TestDiscoverAppendsKnownTVsWithMACNotFound(t *testing.T) {
+	known := &memKnown{m: map[string]domain.KnownTV{
+		"192.168.0.40": {IP: "192.168.0.40", Name: "Sala", MAC: "aa:bb:cc:dd:ee:ff", Platform: domain.PlatformWebOS},
+		"192.168.0.41": {IP: "192.168.0.41", Name: "Quarto", MAC: "11:22:33:44:55:66"},
+		"192.168.0.42": {IP: "192.168.0.42", Name: "SemMac"},
+		"192.168.0.43": {IP: "192.168.0.43", Name: "Achada", MAC: "99:99:99:99:99:99"},
+	}}
+	s := New(Deps{
+		Discoverer: fakeDiscoverer{tvs: []domain.TV{{Name: "Achada", IP: "192.168.0.43", Platform: domain.PlatformAndroidTV}}},
+		Known:      known,
+	})
+	tvs, err := s.Discover(context.Background())
+	if err != nil || len(tvs) != 3 {
+		t.Fatalf("tvs=%v err=%v", tvs, err)
+	}
+	byIP := map[string]domain.TV{}
+	for _, tv := range tvs {
+		byIP[tv.IP] = tv
+	}
+	sala := byIP["192.168.0.40"]
+	if sala.MAC != "aa:bb:cc:dd:ee:ff" || sala.Name != "Sala" || sala.Platform != domain.PlatformWebOS || sala.Remotev2 {
+		t.Errorf("sala = %+v", sala)
+	}
+	quarto := byIP["192.168.0.41"]
+	if quarto.MAC != "11:22:33:44:55:66" || quarto.Platform != domain.PlatformAndroidTV || !quarto.Remotev2 {
+		t.Errorf("quarto = %+v", quarto)
+	}
+	if _, ok := byIP["192.168.0.42"]; ok {
+		t.Error("known TV without MAC must not be listed")
+	}
+	if byIP["192.168.0.43"].MAC != "99:99:99:99:99:99" {
+		t.Errorf("found TV lost its MAC: %+v", byIP["192.168.0.43"])
+	}
+}

@@ -5,18 +5,23 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"sort"
 	"time"
 
+	"optic/internal/adapter/compose"
+	"optic/internal/adapter/mdns"
+	"optic/internal/adapter/ssdp"
+	"optic/internal/domain"
 	"optic/pkg/discovery"
 )
 
 const usage = `OPTIC — Open PC-to-TV Interface Controller
 
 Usage:
-  optic discover [-t 5s] [-v]   find TVs on the local network
+  optic discover [-t 5s] [-v] [-ssdp=false]  find TVs on the local network
   optic pair [-v] <ip>          pair with a TV (Remote protocol v2)
   optic key [-v] <ip> <KEY>...  send keys (HOME, BACK, VOLUME_UP...)
   optic app <ip> <name|uri>     open an app (youtube, netflix, prime, globoplay)
@@ -59,48 +64,94 @@ func main() {
 
 func runDiscover(ctx context.Context, args []string) int {
 	fs := flag.NewFlagSet("discover", flag.ExitOnError)
-	timeout := fs.Duration("t", 5*time.Second, "how long to listen for mDNS answers")
-	verbose := fs.Bool("v", false, "show all TXT records")
+	timeout := fs.Duration("t", 5*time.Second, "how long to listen for answers")
+	verbose := fs.Bool("v", false, "show mDNS services and TXT records")
+	useSSDP := fs.Bool("ssdp", true, "also search with SSDP (UPnP)")
 	fs.Parse(args)
 
+	// With -v the mDNS source keeps the devices of its single scan, so the
+	// TXT and service details come from the same answers as the list.
+	var mdnsSrc domain.Discoverer = mdns.Discoverer{}
+	var recorder *recordingMDNS
+	if *verbose {
+		recorder = &recordingMDNS{}
+		mdnsSrc = recorder
+	}
+	sources := []domain.Discoverer{mdnsSrc}
+	if *useSSDP {
+		sources = append(sources, ssdp.Discoverer{})
+	}
+
 	fmt.Printf("Procurando TVs na rede por %s...\n\n", *timeout)
-	devices, err := discovery.Discover(ctx, *timeout)
+	tvs, err := compose.Discoverer{Sources: sources}.Discover(ctx, *timeout)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "erro:", err)
 		return 1
 	}
-	if len(devices) == 0 {
+	if len(tvs) == 0 {
 		fmt.Println("Nenhuma TV encontrada. A TV está ligada e na mesma rede?")
 		return 1
 	}
 
-	for _, d := range devices {
-		fmt.Printf("▸ %s", d.Name)
-		if d.Model != "" {
-			fmt.Printf("  (%s)", d.Model)
+	var details map[string]*discovery.Device
+	if recorder != nil {
+		details = make(map[string]*discovery.Device, len(recorder.devices))
+		for _, d := range recorder.devices {
+			details[d.Addr()] = d
 		}
-		fmt.Printf("\n  ip: %s\n", d.Addr())
+	}
+	printTVs(os.Stdout, tvs, details)
+	return 0
+}
 
-		svcs := make([]string, 0, len(d.Services))
-		for s := range d.Services {
-			svcs = append(svcs, s)
-		}
-		sort.Strings(svcs)
-		for _, s := range svcs {
-			fmt.Printf("  %-24s porta %d\n", s, d.Services[s])
-		}
+// recordingMDNS scans like mdns.Discoverer and keeps the raw devices. compose
+// waits for every source before returning, so reading devices afterwards is
+// safe.
+type recordingMDNS struct {
+	devices []*discovery.Device
+}
 
-		if *verbose {
+func (r *recordingMDNS) Discover(ctx context.Context, timeout time.Duration) ([]domain.TV, error) {
+	devices, err := discovery.Discover(ctx, timeout)
+	if err != nil {
+		return nil, err
+	}
+	r.devices = devices
+	return mdns.ToTVs(devices), nil
+}
+
+// printTVs writes one block per TV. details is optional and keyed by IP.
+func printTVs(w io.Writer, tvs []domain.TV, details map[string]*discovery.Device) {
+	for _, tv := range tvs {
+		name := tv.Name
+		if name == "" {
+			name = tv.IP
+		}
+		fmt.Fprintf(w, "▸ %s  [%s]", name, tv.Platform.Label())
+		if tv.Model != "" {
+			fmt.Fprintf(w, "  (%s)", tv.Model)
+		}
+		fmt.Fprintf(w, "\n  ip: %s\n", tv.IP)
+
+		if d := details[tv.IP]; d != nil {
+			svcs := make([]string, 0, len(d.Services))
+			for s := range d.Services {
+				svcs = append(svcs, s)
+			}
+			sort.Strings(svcs)
+			for _, s := range svcs {
+				fmt.Fprintf(w, "  %-24s porta %d\n", s, d.Services[s])
+			}
+
 			keys := make([]string, 0, len(d.TXT))
 			for k := range d.TXT {
 				keys = append(keys, k)
 			}
 			sort.Strings(keys)
 			for _, k := range keys {
-				fmt.Printf("    txt %s=%s\n", k, d.TXT[k])
+				fmt.Fprintf(w, "    txt %s=%s\n", k, d.TXT[k])
 			}
 		}
-		fmt.Println()
+		fmt.Fprintln(w)
 	}
-	return 0
 }

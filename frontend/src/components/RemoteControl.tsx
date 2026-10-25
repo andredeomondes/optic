@@ -1,4 +1,6 @@
 import { Fragment } from 'react'
+import { useRemote } from '../hooks/useRemote'
+import { can } from '../lib/capabilities'
 import { SHORTCUTS } from '../lib/shortcuts'
 import { ConnectionStatus } from './ConnectionStatus'
 import { DPad } from './DPad'
@@ -11,6 +13,7 @@ import { VolumeControl } from './VolumeControl'
  * ready for a future compact window.
  */
 export function RemoteControl({ compact = false }: { compact?: boolean }) {
+  const { info } = useRemote()
   return (
     <section className={`glass remote enter ${compact ? 'compact' : ''}`} style={{ animationDelay: '120ms' }}>
       {!compact && <ConnectionStatus />}
@@ -20,8 +23,12 @@ export function RemoteControl({ compact = false }: { compact?: boolean }) {
       <MediaControls />
       {!compact && (
         <>
-          <div className="section-label">Digitar na TV</div>
-          <TextInput />
+          {can(info, 'text') && (
+            <>
+              <div className="section-label">Digitar na TV</div>
+              <TextInput />
+            </>
+          )}
           <ShortcutHints />
         </>
       )}

@@ -1,6 +1,10 @@
 package filestore
 
 import (
+	"fmt"
+	"sync"
+
+	"optic/internal/domain"
 	"os"
 	"path/filepath"
 	"testing"
@@ -37,5 +41,49 @@ func TestCorruptPrefsFallBackToDefaults(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, prefsFile), []byte("{not json"), 0o600)
 	if got := (Store{Dir: dir}).LoadPrefs(); got != DefaultPrefs {
 		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestKnownTVsMerge(t *testing.T) {
+	s := Store{Dir: t.TempDir()}
+	_ = s.Put(domain.KnownTV{IP: "192.168.0.18", Platform: domain.PlatformAndroidTV, MAC: "aa:bb:cc:dd:ee:ff"})
+	_ = s.Put(domain.KnownTV{IP: "192.168.0.18", Name: "UnionTV"})
+	got, ok := s.Get("192.168.0.18")
+	if !ok || got.MAC != "aa:bb:cc:dd:ee:ff" || got.Name != "UnionTV" || got.Platform != domain.PlatformAndroidTV {
+		t.Fatalf("got %+v", got)
+	}
+	if _, ok := s.Get("10.0.0.1"); ok {
+		t.Fatal("unknown ip reported as known")
+	}
+}
+
+func TestKnownTVsConcurrentPut(t *testing.T) {
+	s := Store{Dir: t.TempDir()}
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_ = s.Put(domain.KnownTV{IP: fmt.Sprintf("10.0.0.%d", i)})
+		}()
+	}
+	wg.Wait()
+	for i := 0; i < 20; i++ {
+		if _, ok := s.Get(fmt.Sprintf("10.0.0.%d", i)); !ok {
+			t.Fatalf("lost write for 10.0.0.%d", i)
+		}
+	}
+}
+
+func TestKnownTVsList(t *testing.T) {
+	s := Store{Dir: t.TempDir()}
+	_ = s.Put(domain.KnownTV{IP: "10.0.0.2", MAC: "aa:bb:cc:dd:ee:ff"})
+	_ = s.Put(domain.KnownTV{IP: "10.0.0.1", Name: "Sala"})
+	got := s.List()
+	if len(got) != 2 || got[0].IP != "10.0.0.1" || got[1].MAC != "aa:bb:cc:dd:ee:ff" {
+		t.Fatalf("got %+v", got)
+	}
+	if entries, _ := os.ReadDir(s.Dir); len(entries) != 1 {
+		t.Fatalf("temp file left behind: %v", entries)
 	}
 }

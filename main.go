@@ -16,10 +16,16 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 
 	"optic/internal/adapter/atv"
+	"optic/internal/adapter/compose"
 	"optic/internal/adapter/filestore"
 	"optic/internal/adapter/mdns"
+	"optic/internal/adapter/registry"
+	"optic/internal/adapter/ssdp"
 	"optic/internal/control"
+	"optic/internal/domain"
+	"optic/internal/platform/arp"
 	"optic/pkg/atvremote"
+	"optic/pkg/wol"
 )
 
 //go:embed all:frontend/dist
@@ -39,13 +45,20 @@ func main() {
 	store := filestore.Store{Dir: cfgDir}
 	shell := newShell(store, trayIcon)
 	tv := atv.New(cfgDir)
+	router := registry.Registry{
+		Adapters: map[domain.Platform]registry.Adapter{domain.PlatformAndroidTV: tv},
+		Known:    store,
+	}
 	app := &App{
 		Shell: shell,
 		svc: control.New(control.Deps{
-			Discoverer: mdns.Discoverer{},
-			Connector:  tv,
-			Pairer:     tv,
+			Discoverer: compose.Discoverer{Sources: []domain.Discoverer{mdns.Discoverer{}, ssdp.Discoverer{}}},
+			Connector:  router,
+			Pairer:     router,
 			Hosts:      store,
+			Known:      store,
+			MACs:       arp.Resolver{},
+			Waker:      wol.Sender{},
 			Events:     uiEvents{shell},
 		}),
 	}

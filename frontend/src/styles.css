@@ -105,6 +105,11 @@ button { font: inherit; color: inherit; }
 .device .state { font-size: 10.5px; color: var(--faint); }
 .device .state.on { color: var(--ok); }
 .device .state.bad { color: var(--danger); }
+.device .chip.platform { align-self: flex-start; margin: 2px 0; padding: 1px 7px; font-size: 10px; }
+.device:disabled { opacity: 0.6; }
+.device-wake { position: absolute; bottom: 8px; right: 10px; display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--stroke); background: var(--glass-strong); color: var(--muted); font-size: 10.5px; font-weight: 500; cursor: pointer; transition: background 0.2s, color 0.2s; }
+.device-wake:hover:not(:disabled) { background: var(--grad); color: #fff; }
+.device-wake:disabled { cursor: default; }
 .device-remove { position: absolute; top: 6px; right: 6px; width: 18px; height: 18px; border-radius: 50%; border: none; background: var(--glass-strong); color: var(--muted); display: grid; place-items: center; cursor: pointer; opacity: 0; transition: opacity 0.2s; }
 .device-wrap:hover .device-remove { opacity: 1; }
 .device-remove:hover { background: var(--danger); color: #fff; }

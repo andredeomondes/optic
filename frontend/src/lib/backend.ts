@@ -8,6 +8,7 @@ export {
   FinishPairing,
   LastHost,
   LaunchApp,
+  PowerOn,
   ResizeWindow,
   SendKey,
   SendText,
@@ -19,6 +20,7 @@ export {
   TrayAvailable,
 } from '../../wailsjs/go/main/App'
 export {
+  BrowserOpenURL,
   Quit,
   WindowGetSize,
   WindowIsFullscreen,

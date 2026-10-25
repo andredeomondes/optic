@@ -10,20 +10,81 @@ import (
 	"time"
 )
 
+// Platform identifies the TV operating system, which decides the protocol
+// adapter used to control it.
+type Platform string
+
+const (
+	PlatformAndroidTV Platform = "androidtv"
+	PlatformTizen     Platform = "tizen"
+	PlatformWebOS     Platform = "webos"
+	PlatformRoku      Platform = "roku"
+	PlatformUnknown   Platform = ""
+)
+
+// Label is the name shown to the user for the platform.
+func (p Platform) Label() string {
+	switch p {
+	case PlatformAndroidTV:
+		return "Android TV"
+	case PlatformTizen:
+		return "Samsung"
+	case PlatformWebOS:
+		return "LG webOS"
+	case PlatformRoku:
+		return "Roku"
+	default:
+		return "Desconhecida"
+	}
+}
+
+// Capabilities says which features a platform supports, so the UI can hide
+// controls the TV cannot handle.
+type Capabilities struct {
+	Text           bool `json:"text"`
+	AppList        bool `json:"appList"`
+	AbsoluteVolume bool `json:"absoluteVolume"`
+	PowerOn        bool `json:"powerOn"`
+	Inputs         bool `json:"inputs"`
+	Pointer        bool `json:"pointer"`
+	Toast          bool `json:"toast"`
+}
+
+// ErrUnsupported means the platform is recognized but not controllable yet.
+type ErrUnsupported struct {
+	Platform Platform
+}
+
+func (e ErrUnsupported) Error() string {
+	return e.Platform.Label() + " ainda não é suportada"
+}
+
 // TV is a device found on the local network.
 type TV struct {
-	Name     string `json:"name"`
-	Model    string `json:"model"`
-	IP       string `json:"ip"`
-	Remotev2 bool   `json:"remotev2"`
+	Name     string   `json:"name"`
+	Model    string   `json:"model"`
+	IP       string   `json:"ip"`
+	Remotev2 bool     `json:"remotev2"` // kept for frontend compatibility
+	Platform Platform `json:"platform"`
+	MAC      string   `json:"mac,omitempty"`
+}
+
+// KnownTV is a TV the user has used before, remembered across launches.
+type KnownTV struct {
+	IP       string   `json:"ip"`
+	Name     string   `json:"name"`
+	Platform Platform `json:"platform"`
+	MAC      string   `json:"mac"`
 }
 
 // DeviceInfo is what a TV reports about itself once connected.
 type DeviceInfo struct {
-	Model      string `json:"model"`
-	Vendor     string `json:"vendor"`
-	Version    string `json:"version"`
-	AppVersion string `json:"appVersion"`
+	Model        string       `json:"model"`
+	Vendor       string       `json:"vendor"`
+	Version      string       `json:"version"`
+	AppVersion   string       `json:"appVersion"`
+	Platform     Platform     `json:"platform"`
+	Capabilities Capabilities `json:"capabilities"`
 }
 
 // State is the live state pushed by the TV.
@@ -47,6 +108,8 @@ var (
 	ErrCodeTypo = errors.New("código não confere (erro de digitação?)")
 	// ErrVolumeUnknown means the TV hasn't reported its volume yet.
 	ErrVolumeUnknown = errors.New("volume atual desconhecido: mude o volume uma vez e tente de novo")
+	// ErrNoMAC means Wake-on-LAN was requested for a TV whose MAC was never learned.
+	ErrNoMAC = errors.New("MAC da TV desconhecido: conecte uma vez com ela ligada")
 )
 
 // Discoverer finds TVs on the local network.
@@ -94,6 +157,23 @@ type Pairer interface {
 type HostStore interface {
 	LastHost() string
 	SaveLastHost(host string) error
+}
+
+// KnownTVs remembers the TVs the user has used before.
+type KnownTVs interface {
+	Get(ip string) (KnownTV, bool)
+	Put(tv KnownTV) error
+	List() []KnownTV
+}
+
+// MACResolver finds a device's MAC from its IP (the OS ARP table).
+type MACResolver interface {
+	LookupMAC(ip string) (string, bool)
+}
+
+// WakeSender powers a device on with Wake-on-LAN.
+type WakeSender interface {
+	Send(mac, ip string) error
 }
 
 // EventSink is how use cases notify the UI.

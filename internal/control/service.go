@@ -5,6 +5,8 @@ package control
 import (
 	"context"
 	"errors"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -23,6 +25,9 @@ type Deps struct {
 	Connector  domain.Connector
 	Pairer     domain.Pairer
 	Hosts      domain.HostStore
+	Known      domain.KnownTVs
+	MACs       domain.MACResolver // optional: without it PowerOn is unavailable
+	Waker      domain.WakeSender  // optional: without it PowerOn is unavailable
 	Events     domain.EventSink
 	// Sleep is time.Sleep by default; tests replace it.
 	Sleep func(time.Duration)
@@ -44,9 +49,43 @@ func New(d Deps) *Service {
 	return &Service{d: d}
 }
 
-// Discover scans the network for TVs.
+// Discover scans the network for TVs and remembers each one found. TVs
+// remembered with a MAC but not found are appended so they can be woken.
 func (s *Service) Discover(ctx context.Context) ([]domain.TV, error) {
-	return s.d.Discoverer.Discover(ctx, discoverTimeout)
+	tvs, err := s.d.Discoverer.Discover(ctx, discoverTimeout)
+	if s.d.Known != nil {
+		for _, tv := range tvs {
+			// Never touches MAC; a failed write must not fail the scan.
+			_ = s.d.Known.Put(domain.KnownTV{IP: tv.IP, Name: tv.Name, Platform: tv.Platform})
+		}
+		// Hand the stored MAC to the UI so it can offer "turn on".
+		found := map[string]bool{}
+		for i := range tvs {
+			found[tvs[i].IP] = true
+			if k, ok := s.d.Known.Get(tvs[i].IP); ok {
+				tvs[i].MAC = k.MAC
+			}
+		}
+		// A TV in deep standby answers no discovery: list the remembered
+		// ones that were not found, so the UI can still offer "turn on".
+		var absent []domain.TV
+		for _, k := range s.d.Known.List() {
+			if k.MAC == "" || found[k.IP] {
+				continue
+			}
+			p := k.Platform
+			if p == domain.PlatformUnknown {
+				p = domain.PlatformAndroidTV
+			}
+			absent = append(absent, domain.TV{
+				Name: k.Name, IP: k.IP, Platform: p, MAC: k.MAC,
+				Remotev2: p == domain.PlatformAndroidTV,
+			})
+		}
+		slices.SortFunc(absent, func(a, b domain.TV) int { return strings.Compare(a.IP, b.IP) })
+		tvs = append(tvs, absent...)
+	}
+	return tvs, err
 }
 
 // LastHost is the TV used last time, for reconnecting on launch.
@@ -68,7 +107,42 @@ func (s *Service) Connect(ctx context.Context, host string) (domain.DeviceInfo, 
 	_ = s.d.Hosts.SaveLastHost(host) // a convenience; never fail the connection over it
 
 	go s.watch(sess)
-	return sess.Info(), nil
+
+	info := sess.Info()
+	info.Capabilities.PowerOn = s.learnMAC(host) != ""
+	return info, nil
+}
+
+// learnMAC reads host's MAC from the ARP table and stores it, falling back to
+// the one stored earlier. Empty when unknown; never fails a connection.
+func (s *Service) learnMAC(host string) string {
+	if s.d.MACs != nil {
+		if mac, ok := s.d.MACs.LookupMAC(host); ok {
+			if s.d.Known != nil {
+				_ = s.d.Known.Put(domain.KnownTV{IP: host, MAC: mac})
+			}
+			return mac
+		}
+	}
+	if s.d.Known != nil {
+		if k, ok := s.d.Known.Get(host); ok {
+			return k.MAC
+		}
+	}
+	return ""
+}
+
+// PowerOn wakes the TV at host with Wake-on-LAN, using the MAC learned the
+// last time it was connected while on. It returns domain.ErrNoMAC if unknown.
+func (s *Service) PowerOn(host string) error {
+	if s.d.Known == nil || s.d.Waker == nil {
+		return domain.ErrNoMAC
+	}
+	k, ok := s.d.Known.Get(host)
+	if !ok || k.MAC == "" {
+		return domain.ErrNoMAC
+	}
+	return s.d.Waker.Send(k.MAC, host)
 }
 
 // watch clears the session when it ends on its own and tells the UI.

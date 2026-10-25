@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { AppWindow, Copy, Eraser, Info, Keyboard, ScrollText, Settings } from 'lucide-react'
+import { AppWindow, ClipboardList, Copy, ExternalLink, Eraser, Info, Keyboard, ScrollText, Settings } from 'lucide-react'
 import { useRemote } from '../hooks/useRemote'
 import * as api from '../lib/backend'
+import { buildReport } from '../lib/report'
 import { SHORTCUTS } from '../lib/shortcuts'
 import { Modal } from './Modal'
+
+// Wails on Windows opens target=_blank links in a bare in-app window, so go through the runtime.
+const ISSUE_URL = 'https://github.com/andredeomondes/optic/issues/new?template=tv-report.yml'
 
 type Tab = 'atalhos' | 'janela' | 'diagnostico' | 'sobre'
 
@@ -93,7 +97,7 @@ function WindowPrefs() {
 }
 
 function Diagnostics() {
-  const { log, clearLog, info, host, status, tvState, notify } = useRemote()
+  const { log, clearLog, info, host, tvs, status, tvState, notify } = useRemote()
   const endRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' })
@@ -107,6 +111,21 @@ function Diagnostics() {
     } catch {
       notify('err', 'Não foi possível copiar')
     }
+  }
+
+  const copyReport = async () => {
+    const text = buildReport({ version: __APP_VERSION__, userAgent: navigator.userAgent, tvs, info, host, log })
+    try {
+      await navigator.clipboard.writeText(text)
+      notify('ok', 'Relatório copiado')
+    } catch {
+      notify('err', 'Não foi possível copiar')
+    }
+  }
+
+  const openIssue = (e: React.MouseEvent) => {
+    e.preventDefault()
+    api.BrowserOpenURL(ISSUE_URL)
   }
 
   const rows: [string, string][] = [
@@ -148,6 +167,17 @@ function Diagnostics() {
           </div>
         ))}
         <div ref={endRef} />
+      </div>
+      <div className="label-row">
+        <span className="label">Testou em outra marca de TV?</span>
+        <span className="log-actions">
+          <button className="link" onClick={copyReport}>
+            <ClipboardList size={12} /> Copiar relatório
+          </button>
+          <a className="link" href={ISSUE_URL} onClick={openIssue}>
+            <ExternalLink size={12} /> Abrir issue de teste
+          </a>
+        </span>
       </div>
       <p className="note">“&gt;” enviado pelo OPTIC · “&lt;” recebido da TV · protobuf decodificado sem schema.</p>
     </div>

@@ -8,6 +8,7 @@ import type { DeviceInfo, Feedback, LogLine, Status, Toast, TV, TVState } from '
 
 const MANUAL_KEY = 'optic.manualHosts.v1'
 const FEEDBACK_MS = 650
+const POWER_ON_RESCAN_MS = 8000
 
 let seq = 0
 
@@ -26,6 +27,8 @@ function useRemoteState() {
   const [pressedKey, setPressedKey] = useState('')
   const [toast, setToast] = useState<Toast | null>(null)
   const toastTimer = useRef<number>()
+  const rescanTimer = useRef<number>()
+  const scanRef = useRef<() => Promise<void>>(async () => {})
 
   const connected = status === 'connected'
 
@@ -72,6 +75,9 @@ function useRemoteState() {
     async (ip: string) => {
       setHost(ip)
       setError('')
+      // Drop the previous TV's capabilities and live state while reconnecting.
+      setInfo(null)
+      setTvState(null)
       setStatus('connecting')
       try {
         const i = await api.Connect(ip)
@@ -109,6 +115,8 @@ function useRemoteState() {
       setScanning(false)
     }
   }, [notify])
+
+  scanRef.current = scan
 
   const addManual = useCallback(
     (ip: string) => {
@@ -166,6 +174,19 @@ function useRemoteState() {
     [run],
   )
 
+  const powerOn = useCallback(
+    async (ip: string) => {
+      const ok = await run(`power:${ip}`, () => api.PowerOn(ip), 'Ligando a TV…')
+      // Rescan once the TV has had time to boot so its card refreshes.
+      if (ok) {
+        window.clearTimeout(rescanTimer.current)
+        rescanTimer.current = window.setTimeout(() => scanRef.current(), POWER_ON_RESCAN_MS)
+      }
+      return ok
+    },
+    [run],
+  )
+
   const setVolume = useCallback(
     (level: number) => run('volume', () => api.SetVolume(level), `Volume ${level}`),
     [run],
@@ -188,14 +209,17 @@ function useRemoteState() {
         if (h) connect(h)
       })
     }
-    return () => offs.forEach((off) => off())
+    return () => {
+      offs.forEach((off) => off())
+      window.clearTimeout(rescanTimer.current)
+    }
   }, [scan, connect, addLog])
 
   // Discovered TVs first, then manually added IPs not seen on the network.
   const tvs = useMemo<TV[]>(() => {
     const extra = manual
       .filter((ip) => !devices.some((d) => d.ip === ip))
-      .map((ip) => ({ name: ip, model: '', ip, remotev2: true, manual: true }))
+      .map((ip) => ({ name: ip, model: '', ip, remotev2: true, platform: '' as const, manual: true }))
     return [...devices, ...extra]
   }, [devices, manual])
 
@@ -203,7 +227,7 @@ function useRemoteState() {
     tvs, scanning, scan, addManual, removeManual,
     status, connected, host, info, tvState, error, connectedAt,
     connect, finishPairing, cancelPairing,
-    press, pressedKey, launch, sendText, setVolume, run,
+    press, pressedKey, launch, sendText, setVolume, powerOn, run,
     feedback, toast, dismissToast: () => setToast(null), notify,
     log, clearLog: () => setLog([]),
   }
