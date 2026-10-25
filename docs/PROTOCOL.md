@@ -1,6 +1,6 @@
 # Android TV Remote protocol v2 — notas
 
-Implementação em [`pkg/atvremote`](../pkg/atvremote). Mensagens protobuf codificadas à mão com `protowire` (ver [ADR 0002](adr/0002-protocolo-implementado-a-mao.md)).
+Implementação em [`pkg/atvremote`](../pkg/atvremote). Mensagens protobuf codificadas à mão com `protowire`.
 
 ## Portas
 

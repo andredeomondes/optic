@@ -85,7 +85,7 @@ frontend (React) ──► App (bindings Wails) ──► control.Service (casos
                                                     └─► pkg/atvremote · pkg/discovery
 ```
 
-Os casos de uso dependem só de interfaces (`internal/domain`). Protocolo, rede, disco e bandeja são adapters injetados em `main.go`. Leia [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) e as decisões em [docs/adr](docs/adr).
+Os casos de uso dependem só de interfaces (`internal/domain`). Protocolo, rede, disco e bandeja são adapters injetados em `main.go`. Mais em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ```
 main.go · app.go · shell.go   composição + entrega via Wails

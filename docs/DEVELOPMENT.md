@@ -34,7 +34,7 @@ go run ./cmd/optic discover -v
 
 1. Regra de negócio nova → `internal/control` com teste usando fakes.
 2. Integração nova (protocolo, disco, SO) → adapter em `internal/adapter` ou `internal/platform`, implementando uma porta de `internal/domain`.
-3. Exposta ao frontend → método em `App`/`Shell` e atualização manual dos bindings ([ADR 0004](adr/0004-bindings-mantidos-a-mao.md)): `frontend/wailsjs/go/main/App.{js,d.ts}`, `frontend/src/lib/backend.ts`, `frontend/src/devStub.ts`.
+3. Exposta ao frontend → método em `App`/`Shell` e atualização manual dos bindings: `frontend/wailsjs/go/main/App.{js,d.ts}`, `frontend/src/lib/backend.ts`, `frontend/src/devStub.ts`.
 4. UI → componente em `frontend/src/components`, estado em `frontend/src/hooks`.
 
 ## Commits

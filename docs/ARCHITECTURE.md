@@ -122,18 +122,6 @@ frontend/src
 
 Componentes nunca importam `wailsjs/` direto: tudo passa por `lib/backend.ts`, o que permite o `devStub` e facilita trocar a ponte.
 
-## Decisões registradas
-
-Decisões de arquitetura ficam em [`docs/adr/`](adr/). Resumo:
-
-| ADR | Decisão |
-|---|---|
-| [0001](adr/0001-go-wails-react.md) | Go + Wails v2 + React (e não Tauri/Electron) |
-| [0002](adr/0002-protocolo-implementado-a-mao.md) | Protocolo Remote v2 implementado à mão com `protowire` |
-| [0003](adr/0003-clean-architecture.md) | Núcleo em camadas com portas e adapters |
-| [0004](adr/0004-bindings-mantidos-a-mao.md) | Bindings Wails mantidos à mão (`-skipbindings`) |
-| [0005](adr/0005-bandeja-e-instancia-unica.md) | Bandeja com `energye/systray` e instância única |
-
 ## Onde mexer
 
 | Quero… | Arquivo(s) |
