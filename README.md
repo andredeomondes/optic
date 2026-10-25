@@ -30,9 +30,9 @@ Controle remoto desktop open source para **Android TV e Google TV**, falando dir
 - **Digita na TV** pelo teclado do PC, direto no campo de busca. `Ctrl+V` cola o texto copiado na TV.
 - **Comandos rápidos** (`Ctrl+K`): "netflix", "volume 20", "digitar …" e outros.
 - **Atalhos de teclado:** setas navegam, `Enter` OK, `Esc` voltar, `H` início, `M` mudo, `+`/`-` volume, espaço play/pause, `Ctrl+T` digitar.
-- **Volume pela roda do mouse** sobre o controle e pelo menu da bandeja.
+- **Volume pela roda do mouse** sobre o controle (com a TV conectada) e pelo menu da bandeja.
 - **Timer para desligar** a TV em 15, 30, 60 ou 90 minutos (ou "desligar em 45 min" no `Ctrl+K`).
-- **Aviso de nova versão:** o app avisa quando sai uma release nova (dá para desligar em Configurações). A checagem só consulta a página pública de releases no GitHub; nada sobre você ou sua TV é enviado.
+- **Aviso de nova versão:** o app avisa quando sai uma release nova (dá para desligar em Configurações). A checagem só consulta a página pública de releases no GitHub; nenhum dado seu ou da TV é enviado.
 - **Modo compacto** 360×520 que pode ficar sempre no topo, ao lado do que você estiver fazendo.
 - **Bandeja do sistema** (Windows): fechar esconde o app na área de ícones ocultos; abrir de novo traz a mesma janela.
 - **Tela cheia** com `F11` e janela maximizável.
