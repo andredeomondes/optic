@@ -163,6 +163,7 @@ type HostStore interface {
 type KnownTVs interface {
 	Get(ip string) (KnownTV, bool)
 	Put(tv KnownTV) error
+	List() []KnownTV
 }
 
 // MACResolver finds a device's MAC from its IP (the OS ARP table).

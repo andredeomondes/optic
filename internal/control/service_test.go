@@ -231,6 +231,13 @@ type memKnown struct {
 }
 
 func (k *memKnown) Get(ip string) (domain.KnownTV, bool) { tv, ok := k.m[ip]; return tv, ok }
+func (k *memKnown) List() []domain.KnownTV {
+	out := make([]domain.KnownTV, 0, len(k.m))
+	for _, tv := range k.m {
+		out = append(out, tv)
+	}
+	return out
+}
 func (k *memKnown) Put(tv domain.KnownTV) error {
 	if k.putErr != nil {
 		return k.putErr
@@ -365,5 +372,40 @@ func TestDiscoverFillsStoredMAC(t *testing.T) {
 	}
 	if tvs[0].MAC != "aa:bb:cc:dd:ee:ff" || tvs[1].MAC != "" {
 		t.Fatalf("macs: %q %q", tvs[0].MAC, tvs[1].MAC)
+	}
+}
+
+func TestDiscoverAppendsKnownTVsWithMACNotFound(t *testing.T) {
+	known := &memKnown{m: map[string]domain.KnownTV{
+		"192.168.0.40": {IP: "192.168.0.40", Name: "Sala", MAC: "aa:bb:cc:dd:ee:ff", Platform: domain.PlatformWebOS},
+		"192.168.0.41": {IP: "192.168.0.41", Name: "Quarto", MAC: "11:22:33:44:55:66"},
+		"192.168.0.42": {IP: "192.168.0.42", Name: "SemMac"},
+		"192.168.0.43": {IP: "192.168.0.43", Name: "Achada", MAC: "99:99:99:99:99:99"},
+	}}
+	s := New(Deps{
+		Discoverer: fakeDiscoverer{tvs: []domain.TV{{Name: "Achada", IP: "192.168.0.43", Platform: domain.PlatformAndroidTV}}},
+		Known:      known,
+	})
+	tvs, err := s.Discover(context.Background())
+	if err != nil || len(tvs) != 3 {
+		t.Fatalf("tvs=%v err=%v", tvs, err)
+	}
+	byIP := map[string]domain.TV{}
+	for _, tv := range tvs {
+		byIP[tv.IP] = tv
+	}
+	sala := byIP["192.168.0.40"]
+	if sala.MAC != "aa:bb:cc:dd:ee:ff" || sala.Name != "Sala" || sala.Platform != domain.PlatformWebOS || sala.Remotev2 {
+		t.Errorf("sala = %+v", sala)
+	}
+	quarto := byIP["192.168.0.41"]
+	if quarto.MAC != "11:22:33:44:55:66" || quarto.Platform != domain.PlatformAndroidTV || !quarto.Remotev2 {
+		t.Errorf("quarto = %+v", quarto)
+	}
+	if _, ok := byIP["192.168.0.42"]; ok {
+		t.Error("known TV without MAC must not be listed")
+	}
+	if byIP["192.168.0.43"].MAC != "99:99:99:99:99:99" {
+		t.Errorf("found TV lost its MAC: %+v", byIP["192.168.0.43"])
 	}
 }

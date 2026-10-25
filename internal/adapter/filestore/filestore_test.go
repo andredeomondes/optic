@@ -74,3 +74,16 @@ func TestKnownTVsConcurrentPut(t *testing.T) {
 		}
 	}
 }
+
+func TestKnownTVsList(t *testing.T) {
+	s := Store{Dir: t.TempDir()}
+	_ = s.Put(domain.KnownTV{IP: "10.0.0.2", MAC: "aa:bb:cc:dd:ee:ff"})
+	_ = s.Put(domain.KnownTV{IP: "10.0.0.1", Name: "Sala"})
+	got := s.List()
+	if len(got) != 2 || got[0].IP != "10.0.0.1" || got[1].MAC != "aa:bb:cc:dd:ee:ff" {
+		t.Fatalf("got %+v", got)
+	}
+	if entries, _ := os.ReadDir(s.Dir); len(entries) != 1 {
+		t.Fatalf("temp file left behind: %v", entries)
+	}
+}

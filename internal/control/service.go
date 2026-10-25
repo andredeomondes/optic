@@ -5,6 +5,8 @@ package control
 import (
 	"context"
 	"errors"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -47,7 +49,8 @@ func New(d Deps) *Service {
 	return &Service{d: d}
 }
 
-// Discover scans the network for TVs and remembers each one found.
+// Discover scans the network for TVs and remembers each one found. TVs
+// remembered with a MAC but not found are appended so they can be woken.
 func (s *Service) Discover(ctx context.Context) ([]domain.TV, error) {
 	tvs, err := s.d.Discoverer.Discover(ctx, discoverTimeout)
 	if s.d.Known != nil {
@@ -55,13 +58,32 @@ func (s *Service) Discover(ctx context.Context) ([]domain.TV, error) {
 			// Never touches MAC; a failed write must not fail the scan.
 			_ = s.d.Known.Put(domain.KnownTV{IP: tv.IP, Name: tv.Name, Platform: tv.Platform})
 		}
-		// Hand the stored MAC to the UI so it can offer "turn on" for a TV
-		// that is off and so answers no discovery.
+		// Hand the stored MAC to the UI so it can offer "turn on".
+		found := map[string]bool{}
 		for i := range tvs {
+			found[tvs[i].IP] = true
 			if k, ok := s.d.Known.Get(tvs[i].IP); ok {
 				tvs[i].MAC = k.MAC
 			}
 		}
+		// A TV in deep standby answers no discovery: list the remembered
+		// ones that were not found, so the UI can still offer "turn on".
+		var absent []domain.TV
+		for _, k := range s.d.Known.List() {
+			if k.MAC == "" || found[k.IP] {
+				continue
+			}
+			p := k.Platform
+			if p == domain.PlatformUnknown {
+				p = domain.PlatformAndroidTV
+			}
+			absent = append(absent, domain.TV{
+				Name: k.Name, IP: k.IP, Platform: p, MAC: k.MAC,
+				Remotev2: p == domain.PlatformAndroidTV,
+			})
+		}
+		slices.SortFunc(absent, func(a, b domain.TV) int { return strings.Compare(a.IP, b.IP) })
+		tvs = append(tvs, absent...)
 	}
 	return tvs, err
 }

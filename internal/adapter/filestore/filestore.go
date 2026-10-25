@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 
@@ -99,5 +100,32 @@ func (s Store) Put(tv domain.KnownTV) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.path(knownFile), b, 0o600)
+	return writeAtomic(s.path(knownFile), b)
+}
+
+// List returns every remembered TV, ordered by IP.
+func (s Store) List() []domain.KnownTV {
+	knownMu.Lock()
+	defer knownMu.Unlock()
+	m := s.readKnown()
+	out := make([]domain.KnownTV, 0, len(m))
+	for _, tv := range m {
+		out = append(out, tv)
+	}
+	slices.SortFunc(out, func(a, b domain.KnownTV) int { return strings.Compare(a.IP, b.IP) })
+	return out
+}
+
+// writeAtomic writes via a temp file and rename so a crash never leaves a
+// half-written file behind.
+func writeAtomic(path string, b []byte) error {
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, b, 0o600); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	return nil
 }

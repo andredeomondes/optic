@@ -12,6 +12,7 @@ type memKnown map[string]domain.KnownTV
 
 func (m memKnown) Get(ip string) (domain.KnownTV, bool) { tv, ok := m[ip]; return tv, ok }
 func (m memKnown) Put(tv domain.KnownTV) error          { m[tv.IP] = tv; return nil }
+func (m memKnown) List() []domain.KnownTV                { return nil }
 
 type fakeAdapter struct{ connects, pairs int }
 
