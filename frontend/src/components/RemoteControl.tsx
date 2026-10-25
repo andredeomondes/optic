@@ -1,8 +1,8 @@
-import { Fragment, useMemo, WheelEvent } from 'react'
+import { Fragment, useEffect, useMemo, useRef } from 'react'
 import { useRemote } from '../hooks/useRemote'
 import { can } from '../lib/capabilities'
 import { SHORTCUTS } from '../lib/shortcuts'
-import { createThrottle, wheelStep } from '../lib/throttle'
+import { createThrottle, wheelVolumeStep } from '../lib/throttle'
 import { ConnectionStatus } from './ConnectionStatus'
 import { DPad } from './DPad'
 import { MediaControls, NavButtons } from './MediaControls'
@@ -20,19 +20,34 @@ export function RemoteControl({ compact = false }: { compact?: boolean }) {
   // One gate per panel, so its window survives re-renders.
   const wheelGate = useMemo(() => createThrottle(WHEEL_THROTTLE_MS), [])
 
-  // Wheel over the panel changes the TV volume. React attaches wheel listeners
-  // as passive, so preventDefault would be ignored; the panel still scrolls.
-  function onWheel(e: WheelEvent<HTMLElement>) {
-    const step = wheelStep(e.deltaY)
-    if (!step || !connected || !wheelGate()) return
-    press(step)
-  }
+  // Read by the native wheel listener, which is registered once per panel.
+  const latest = useRef({ connected, press })
+  latest.current = { connected, press }
+  const sectionRef = useRef<HTMLElement>(null)
+
+  // While connected, wheel over the panel changes the TV volume and does not
+  // scroll the panel. A native listener is needed: React's onWheel is passive,
+  // so preventDefault would be ignored.
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      const { connected, press } = latest.current
+      if (!connected) return
+      const step = wheelVolumeStep(e)
+      if (!step) return
+      e.preventDefault()
+      if (wheelGate()) press(step)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [wheelGate])
 
   return (
     <section
       className={`glass remote enter ${compact ? 'compact' : ''}`}
       style={{ animationDelay: '120ms' }}
-      onWheel={onWheel}
+      ref={sectionRef}
     >
       {!compact && <ConnectionStatus />}
       <VolumeControl />
