@@ -20,6 +20,7 @@ export {
   TrayAvailable,
 } from '../../wailsjs/go/main/App'
 export {
+  BrowserOpenURL,
   Quit,
   WindowGetSize,
   WindowIsFullscreen,

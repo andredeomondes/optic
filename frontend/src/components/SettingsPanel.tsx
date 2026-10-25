@@ -6,6 +6,9 @@ import { buildReport } from '../lib/report'
 import { SHORTCUTS } from '../lib/shortcuts'
 import { Modal } from './Modal'
 
+// Wails on Windows opens target=_blank links in a bare in-app window, so go through the runtime.
+const ISSUE_URL = 'https://github.com/andredeomondes/optic/issues/new?template=tv-report.yml'
+
 type Tab = 'atalhos' | 'janela' | 'diagnostico' | 'sobre'
 
 /** Configurações: shortcuts, diagnostics (device info + protocol logs), about. */
@@ -120,6 +123,11 @@ function Diagnostics() {
     }
   }
 
+  const openIssue = (e: React.MouseEvent) => {
+    e.preventDefault()
+    api.BrowserOpenURL(ISSUE_URL)
+  }
+
   const rows: [string, string][] = [
     ['Status', status],
     ['IP', host || '—'],
@@ -166,7 +174,7 @@ function Diagnostics() {
           <button className="link" onClick={copyReport}>
             <ClipboardList size={12} /> Copiar relatório
           </button>
-          <a className="link" href="https://github.com/andredeomondes/optic/issues/new?template=tv-report.yml" target="_blank" rel="noreferrer">
+          <a className="link" href={ISSUE_URL} onClick={openIssue}>
             <ExternalLink size={12} /> Abrir issue de teste
           </a>
         </span>
