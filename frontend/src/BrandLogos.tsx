@@ -1,9 +1,7 @@
 import { SIMPLE_ICON_PATHS } from './logosData'
 
-// Streaming app logos, drawn as inline SVG so the app works offline.
-// YouTube and Netflix marks come from Simple Icons (CC0); Prime Video and
-// Globoplay have no Simple Icons entry, so they're simplified recreations.
-// All marks are trademarks of their owners, used only to label app shortcuts.
+// App logos as inline SVG, so the launcher works offline.
+// YouTube, Netflix and the other marks come from Simple Icons (CC0).
 
 type LogoProps = { size?: number }
 
@@ -67,8 +65,7 @@ export function GloboplayLogo({ size = 22 }: LogoProps) {
   )
 }
 
-// Disney+ isn't in Simple Icons (removed at the owner's request): simplified
-// recreation of its app tile — wordmark under the signature arc.
+// Disney+ isn't in Simple Icons, so its tile is drawn here.
 export function DisneyPlusLogo({ size = 22 }: LogoProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
