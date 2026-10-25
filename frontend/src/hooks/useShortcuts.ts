@@ -31,6 +31,8 @@ export function useShortcuts({ connected, press, togglePalette, paste }: Opts) {
       }
       // Dialogs own the keyboard while open.
       if (document.querySelector('.overlay')) return
+      // An open menu (sleep timer) owns the keyboard too: nothing leaks to the TV.
+      if (document.querySelector('[role="menu"]')) return
       if (shouldPasteToTV(e, e.target as HTMLElement | null, connected)) {
         e.preventDefault()
         paste()

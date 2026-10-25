@@ -12,13 +12,28 @@ export function SleepTimer() {
   useNow(60_000) // re-render each minute; the value itself is read fresh below
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
+  const moon = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!open) return
     const onDown = (e: MouseEvent) => {
       if (!root.current?.contains(e.target as Node)) setOpen(false)
     }
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    root.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false)
+        moon.current?.focus()
+        return
+      }
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+      const items = Array.from(root.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])
+      if (!items.length) return
+      e.preventDefault()
+      const i = items.indexOf(document.activeElement as HTMLElement)
+      const step = e.key === 'ArrowDown' ? 1 : -1
+      items[(i + step + items.length) % items.length].focus()
+    }
     window.addEventListener('mousedown', onDown)
     window.addEventListener('keydown', onKey)
     return () => {
@@ -36,6 +51,7 @@ export function SleepTimer() {
     <div className="sleep" ref={root}>
       {deadline !== null && <span className="chip sleep-chip">Desliga em {remaining(deadline, Date.now())} min</span>}
       <button
+        ref={moon}
         className={`btn sm ghost ${deadline !== null ? 'active' : ''}`}
         onClick={() => setOpen((o) => !o)}
         aria-label="Timer para desligar"
