@@ -1,7 +1,9 @@
 // Types for the Go App struct (app.go). Keep in sync when changing exported methods.
 
-export type TV = { name: string; model: string; ip: string; remotev2: boolean };
-export type DeviceInfo = { model: string; vendor: string; version: string; appVersion: string };
+export type Platform = 'androidtv' | 'tizen' | 'webos' | 'roku' | '';
+export type Capabilities = { text: boolean; appList: boolean; absoluteVolume: boolean; powerOn: boolean; inputs: boolean; pointer: boolean; toast: boolean };
+export type TV = { name: string; model: string; ip: string; remotev2: boolean; platform: Platform; mac?: string };
+export type DeviceInfo = { model: string; vendor: string; version: string; appVersion: string; platform: Platform; capabilities: Capabilities };
 
 export function CancelPairing(): Promise<void>;
 export function Connect(arg1: string): Promise<DeviceInfo>;

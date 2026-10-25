@@ -41,8 +41,9 @@ w.go = {
       async Discover() {
         await wait(900)
         return [
-          { name: 'UnionTV', model: 'UnionTV', ip: '192.168.0.18', remotev2: true },
-          { name: 'Quarto', model: 'Chromecast', ip: '192.168.0.71', remotev2: true },
+          { name: 'UnionTV', model: 'UnionTV', ip: '192.168.0.18', remotev2: true, platform: 'androidtv', mac: 'AA:BB:CC:DD:EE:FF' },
+          { name: 'Quarto', model: 'Chromecast', ip: '192.168.0.71', remotev2: true, platform: 'androidtv' },
+          { name: 'LG Sala', model: 'OLED55C3', ip: '192.168.0.40', remotev2: false, platform: 'webos' },
         ]
       },
       async LastHost() {
@@ -53,7 +54,10 @@ w.go = {
         emit('trace', '<', `1 { 1: 639 2 { 1: "UnionTV" 2: "TCL" } }`)
         emit('trace', '>', `1 { 1: 622 2 { 1: "OPTIC" } }`)
         setTimeout(pushState, 300)
-        return { model: 'UnionTV', vendor: 'TCL', version: '9', appVersion: '7.00' }
+        return {
+          model: 'UnionTV', vendor: 'TCL', version: '9', appVersion: '7.00', platform: 'androidtv',
+          capabilities: { text: true, appList: false, absoluteVolume: false, powerOn: true, inputs: false, pointer: false, toast: false },
+        }
       },
       async SendKey(key: string) {
         emit('trace', '>', `10 { 1: ${key} 2: 3 }`)

@@ -1,5 +1,15 @@
-export type TV = { name: string; model: string; ip: string; remotev2: boolean; manual?: boolean }
-export type DeviceInfo = { model: string; vendor: string; version: string; appVersion: string }
+export type Platform = 'androidtv' | 'tizen' | 'webos' | 'roku' | ''
+export type Capabilities = {
+  text: boolean
+  appList: boolean
+  absoluteVolume: boolean
+  powerOn: boolean
+  inputs: boolean
+  pointer: boolean
+  toast: boolean
+}
+export type TV = { name: string; model: string; ip: string; remotev2: boolean; platform: Platform; mac?: string; manual?: boolean }
+export type DeviceInfo = { model: string; vendor: string; version: string; appVersion: string; platform: Platform; capabilities: Capabilities }
 export type TVState = {
   on: boolean
   volume: number

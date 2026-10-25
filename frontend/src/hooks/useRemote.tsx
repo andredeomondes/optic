@@ -166,6 +166,11 @@ function useRemoteState() {
     [run],
   )
 
+  const powerOn = useCallback(
+    (ip: string) => run(`power:${ip}`, () => api.PowerOn(ip), 'Ligando a TV…'),
+    [run],
+  )
+
   const setVolume = useCallback(
     (level: number) => run('volume', () => api.SetVolume(level), `Volume ${level}`),
     [run],
@@ -195,7 +200,7 @@ function useRemoteState() {
   const tvs = useMemo<TV[]>(() => {
     const extra = manual
       .filter((ip) => !devices.some((d) => d.ip === ip))
-      .map((ip) => ({ name: ip, model: '', ip, remotev2: true, manual: true }))
+      .map((ip) => ({ name: ip, model: '', ip, remotev2: true, platform: '' as const, manual: true }))
     return [...devices, ...extra]
   }, [devices, manual])
 
@@ -203,7 +208,7 @@ function useRemoteState() {
     tvs, scanning, scan, addManual, removeManual,
     status, connected, host, info, tvState, error, connectedAt,
     connect, finishPairing, cancelPairing,
-    press, pressedKey, launch, sendText, setVolume, run,
+    press, pressedKey, launch, sendText, setVolume, powerOn, run,
     feedback, toast, dismissToast: () => setToast(null), notify,
     log, clearLog: () => setLog([]),
   }
