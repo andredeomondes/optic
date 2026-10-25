@@ -16,9 +16,12 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 
 	"optic/internal/adapter/atv"
+	"optic/internal/adapter/compose"
 	"optic/internal/adapter/filestore"
 	"optic/internal/adapter/mdns"
+	"optic/internal/adapter/ssdp"
 	"optic/internal/control"
+	"optic/internal/domain"
 	"optic/pkg/atvremote"
 )
 
@@ -42,7 +45,7 @@ func main() {
 	app := &App{
 		Shell: shell,
 		svc: control.New(control.Deps{
-			Discoverer: mdns.Discoverer{},
+			Discoverer: compose.Discoverer{Sources: []domain.Discoverer{mdns.Discoverer{}, ssdp.Discoverer{}}},
 			Connector:  tv,
 			Pairer:     tv,
 			Hosts:      store,
