@@ -8,11 +8,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+
+	"optic/internal/domain"
 )
 
 const (
 	lastHostFile = "last_host"
 	prefsFile    = "prefs.json"
+	knownFile    = "known_tvs.json"
 )
 
 // Prefs are user preferences owned by the desktop shell.
@@ -53,4 +57,47 @@ func (s Store) SavePrefs(p Prefs) error {
 		return err
 	}
 	return os.WriteFile(s.path(prefsFile), b, 0o600)
+}
+
+// knownMu serializes read-modify-write of known_tvs.json across Store copies.
+var knownMu sync.Mutex
+
+func (s Store) readKnown() map[string]domain.KnownTV {
+	m := map[string]domain.KnownTV{}
+	if b, err := os.ReadFile(s.path(knownFile)); err == nil {
+		_ = json.Unmarshal(b, &m)
+	}
+	return m
+}
+
+// Get returns the TV remembered for ip.
+func (s Store) Get(ip string) (domain.KnownTV, bool) {
+	knownMu.Lock()
+	defer knownMu.Unlock()
+	tv, ok := s.readKnown()[ip]
+	return tv, ok
+}
+
+// Put remembers tv by IP. Empty fields in tv keep what was stored before.
+func (s Store) Put(tv domain.KnownTV) error {
+	knownMu.Lock()
+	defer knownMu.Unlock()
+	m := s.readKnown()
+	cur := m[tv.IP]
+	cur.IP = tv.IP
+	if tv.Name != "" {
+		cur.Name = tv.Name
+	}
+	if tv.Platform != domain.PlatformUnknown {
+		cur.Platform = tv.Platform
+	}
+	if tv.MAC != "" {
+		cur.MAC = tv.MAC
+	}
+	m[tv.IP] = cur
+	b, err := json.Marshal(m)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(s.path(knownFile), b, 0o600)
 }

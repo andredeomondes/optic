@@ -218,3 +218,50 @@ func TestPairingTypoKeepsSessionOpen(t *testing.T) {
 		t.Fatalf("after finish: %v", err)
 	}
 }
+
+type fakeDiscoverer struct{ tvs []domain.TV }
+
+func (f fakeDiscoverer) Discover(context.Context, time.Duration) ([]domain.TV, error) {
+	return f.tvs, nil
+}
+
+type memKnown struct {
+	m      map[string]domain.KnownTV
+	putErr error
+}
+
+func (k *memKnown) Get(ip string) (domain.KnownTV, bool) { tv, ok := k.m[ip]; return tv, ok }
+func (k *memKnown) Put(tv domain.KnownTV) error {
+	if k.putErr != nil {
+		return k.putErr
+	}
+	k.m[tv.IP] = tv
+	return nil
+}
+
+func TestDiscoverRemembersPlatform(t *testing.T) {
+	known := &memKnown{m: map[string]domain.KnownTV{"192.168.0.40": {IP: "192.168.0.40", MAC: "aa:bb:cc:dd:ee:ff"}}}
+	s := New(Deps{
+		Discoverer: fakeDiscoverer{tvs: []domain.TV{{Name: "Sala", IP: "192.168.0.40", Platform: domain.PlatformWebOS}}},
+		Known:      known,
+	})
+	tvs, err := s.Discover(context.Background())
+	if err != nil || len(tvs) != 1 {
+		t.Fatalf("tvs=%v err=%v", tvs, err)
+	}
+	got, ok := known.Get("192.168.0.40")
+	if !ok || got.Platform != domain.PlatformWebOS || got.Name != "Sala" {
+		t.Fatalf("got %+v ok=%v", got, ok)
+	}
+}
+
+func TestDiscoverSurvivesKnownPutError(t *testing.T) {
+	known := &memKnown{m: map[string]domain.KnownTV{}, putErr: errors.New("disk full")}
+	s := New(Deps{
+		Discoverer: fakeDiscoverer{tvs: []domain.TV{{IP: "192.168.0.40", Platform: domain.PlatformWebOS}}},
+		Known:      known,
+	})
+	if tvs, err := s.Discover(context.Background()); err != nil || len(tvs) != 1 {
+		t.Fatalf("tvs=%v err=%v", tvs, err)
+	}
+}

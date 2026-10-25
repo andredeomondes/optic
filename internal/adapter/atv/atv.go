@@ -74,7 +74,11 @@ type session struct{ r *atvremote.Remote }
 
 func (s session) Info() domain.DeviceInfo {
 	i := s.r.Info()
-	return domain.DeviceInfo{Model: i.Model, Vendor: i.Vendor, Version: i.Version, AppVersion: i.AppVersion}
+	return domain.DeviceInfo{
+		Model: i.Model, Vendor: i.Vendor, Version: i.Version, AppVersion: i.AppVersion,
+		Platform:     domain.PlatformAndroidTV,
+		Capabilities: domain.Capabilities{Text: true},
+	}
 }
 
 func (s session) State() domain.State     { return toState(s.r.State()) }

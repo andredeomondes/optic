@@ -19,6 +19,7 @@ import (
 	"optic/internal/adapter/compose"
 	"optic/internal/adapter/filestore"
 	"optic/internal/adapter/mdns"
+	"optic/internal/adapter/registry"
 	"optic/internal/adapter/ssdp"
 	"optic/internal/control"
 	"optic/internal/domain"
@@ -42,13 +43,18 @@ func main() {
 	store := filestore.Store{Dir: cfgDir}
 	shell := newShell(store, trayIcon)
 	tv := atv.New(cfgDir)
+	router := registry.Registry{
+		Adapters: map[domain.Platform]registry.Adapter{domain.PlatformAndroidTV: tv},
+		Known:    store,
+	}
 	app := &App{
 		Shell: shell,
 		svc: control.New(control.Deps{
 			Discoverer: compose.Discoverer{Sources: []domain.Discoverer{mdns.Discoverer{}, ssdp.Discoverer{}}},
-			Connector:  tv,
-			Pairer:     tv,
+			Connector:  router,
+			Pairer:     router,
 			Hosts:      store,
+			Known:      store,
 			Events:     uiEvents{shell},
 		}),
 	}

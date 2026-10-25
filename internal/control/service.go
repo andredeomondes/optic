@@ -23,6 +23,7 @@ type Deps struct {
 	Connector  domain.Connector
 	Pairer     domain.Pairer
 	Hosts      domain.HostStore
+	Known      domain.KnownTVs
 	Events     domain.EventSink
 	// Sleep is time.Sleep by default; tests replace it.
 	Sleep func(time.Duration)
@@ -44,9 +45,16 @@ func New(d Deps) *Service {
 	return &Service{d: d}
 }
 
-// Discover scans the network for TVs.
+// Discover scans the network for TVs and remembers each one found.
 func (s *Service) Discover(ctx context.Context) ([]domain.TV, error) {
-	return s.d.Discoverer.Discover(ctx, discoverTimeout)
+	tvs, err := s.d.Discoverer.Discover(ctx, discoverTimeout)
+	if s.d.Known != nil {
+		for _, tv := range tvs {
+			// Never touches MAC; a failed write must not fail the scan.
+			_ = s.d.Known.Put(domain.KnownTV{IP: tv.IP, Name: tv.Name, Platform: tv.Platform})
+		}
+	}
+	return tvs, err
 }
 
 // LastHost is the TV used last time, for reconnecting on launch.
