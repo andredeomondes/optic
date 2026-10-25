@@ -43,9 +43,19 @@ func (d Discoverer) Discover(ctx context.Context, timeout time.Duration) ([]doma
 	byIP := map[string]domain.TV{}
 	for _, tvs := range results {
 		for _, tv := range tvs {
-			if cur, ok := byIP[tv.IP]; !ok || prefer(tv, cur) {
+			cur, ok := byIP[tv.IP]
+			if !ok {
 				byIP[tv.IP] = tv
+				continue
 			}
+			win, lose := cur, tv
+			if prefer(tv, cur) {
+				win, lose = tv, cur
+			}
+			if win.Name == "" {
+				win.Name = lose.Name // keep a name only the losing source had
+			}
+			byIP[tv.IP] = win
 		}
 	}
 	out := make([]domain.TV, 0, len(byIP))
@@ -57,13 +67,20 @@ func (d Discoverer) Discover(ctx context.Context, timeout time.Duration) ([]doma
 }
 
 // prefer reports whether candidate should replace cur for the same IP:
-// Android TV wins, otherwise the first entry with a name.
+// Android TV wins, then any known platform, otherwise the first named entry.
 func prefer(candidate, cur domain.TV) bool {
 	if cur.Platform == domain.PlatformAndroidTV {
 		return false
 	}
 	if candidate.Platform == domain.PlatformAndroidTV {
 		return true
+	}
+	// A known platform beats an unknown one, then the first entry with a name.
+	if cur.Platform == domain.PlatformUnknown && candidate.Platform != domain.PlatformUnknown {
+		return true
+	}
+	if candidate.Platform == domain.PlatformUnknown && cur.Platform != domain.PlatformUnknown {
+		return false
 	}
 	return cur.Name == "" && candidate.Name != ""
 }

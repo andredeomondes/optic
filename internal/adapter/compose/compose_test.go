@@ -51,3 +51,17 @@ func TestComposeFirstNamedWinsWithoutAndroid(t *testing.T) {
 		t.Errorf("got %+v", got)
 	}
 }
+
+func TestComposeKnownPlatformBeatsUnknown(t *testing.T) {
+	castOnly := fakeSrc{tvs: []domain.TV{{Name: "Sala", IP: "192.168.0.40"}}}
+	classified := fakeSrc{tvs: []domain.TV{{IP: "192.168.0.40", Platform: domain.PlatformWebOS}}}
+	for name, srcs := range map[string][]domain.Discoverer{
+		"unknown first": {castOnly, classified},
+		"known first":   {classified, castOnly},
+	} {
+		got, _ := Discoverer{Sources: srcs}.Discover(context.Background(), time.Second)
+		if len(got) != 1 || got[0].Platform != domain.PlatformWebOS || got[0].Name != "Sala" {
+			t.Errorf("%s: got %+v", name, got)
+		}
+	}
+}
