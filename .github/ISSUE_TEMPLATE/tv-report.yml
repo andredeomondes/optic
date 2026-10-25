@@ -1,0 +1,60 @@
+name: Relatório de teste em TV
+description: Conte como o OPTIC se comportou na sua TV (qualquer marca).
+title: "[TV] "
+labels: ["tv-report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por testar! No OPTIC, abra Configurações › Diagnóstico e use "Copiar relatório" para colar abaixo.
+  - type: input
+    id: brand
+    attributes:
+      label: Marca
+      placeholder: Samsung, LG, TCL, Philips...
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Modelo
+      placeholder: Ex.: UN50TU8000
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Sistema da TV
+      options:
+        - Android TV / Google TV
+        - Samsung (Tizen)
+        - LG webOS
+        - Roku
+        - Outro
+    validations:
+      required: true
+  - type: checkboxes
+    id: worked
+    attributes:
+      label: O que funcionou
+      options:
+        - label: A TV aparece na lista
+        - label: Consegui parear
+        - label: Teclas de navegação
+        - label: Volume
+        - label: Digitar texto
+        - label: Abrir apps
+        - label: Ligar a TV
+  - type: textarea
+    id: report
+    attributes:
+      label: Relatório do OPTIC
+      description: Cole aqui o relatório copiado em Configurações › Diagnóstico.
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Observações
+      description: Algo que não funcionou ou que você notou de diferente.
