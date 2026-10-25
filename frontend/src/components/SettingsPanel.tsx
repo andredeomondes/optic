@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { AppWindow, ClipboardList, Copy, ExternalLink, Eraser, Info, Keyboard, ScrollText, Settings } from 'lucide-react'
+import { AppWindow, ClipboardList, Copy, ExternalLink, Eraser, Info, Keyboard, RefreshCw, ScrollText, Settings } from 'lucide-react'
 import { useRemote } from '../hooks/useRemote'
+import type { Updates } from '../hooks/useUpdates'
 import * as api from '../lib/backend'
 import { buildReport } from '../lib/report'
 import { SHORTCUTS } from '../lib/shortcuts'
@@ -9,10 +10,10 @@ import { Modal } from './Modal'
 // Wails on Windows opens target=_blank links in a bare in-app window, so go through the runtime.
 const ISSUE_URL = 'https://github.com/andredeomondes/optic/issues/new?template=tv-report.yml'
 
-type Tab = 'atalhos' | 'janela' | 'diagnostico' | 'sobre'
+type Tab = 'atalhos' | 'janela' | 'diagnostico' | 'atualizacoes' | 'sobre'
 
 /** Configurações: shortcuts, diagnostics (device info + protocol logs), about. */
-export function SettingsPanel({ onClose, initialTab = 'atalhos' }: { onClose: () => void; initialTab?: Tab }) {
+export function SettingsPanel({ updates, onClose, initialTab = 'atalhos' }: { updates: Updates; onClose: () => void; initialTab?: Tab }) {
   const [tab, setTab] = useState<Tab>(initialTab)
 
   return (
@@ -21,12 +22,14 @@ export function SettingsPanel({ onClose, initialTab = 'atalhos' }: { onClose: ()
         <TabBtn id="atalhos" tab={tab} setTab={setTab} icon={<Keyboard size={14} />} label="Atalhos" />
         <TabBtn id="janela" tab={tab} setTab={setTab} icon={<AppWindow size={14} />} label="Janela" />
         <TabBtn id="diagnostico" tab={tab} setTab={setTab} icon={<ScrollText size={14} />} label="Diagnóstico" />
+        <TabBtn id="atualizacoes" tab={tab} setTab={setTab} icon={<RefreshCw size={14} />} label="Atualizações" />
         <TabBtn id="sobre" tab={tab} setTab={setTab} icon={<Info size={14} />} label="Sobre" />
       </nav>
       <div className="tab-body" key={tab}>
         {tab === 'atalhos' && <Shortcuts />}
         {tab === 'janela' && <WindowPrefs />}
         {tab === 'diagnostico' && <Diagnostics />}
+        {tab === 'atualizacoes' && <UpdatesTab updates={updates} />}
         {tab === 'sobre' && <About />}
       </div>
     </Modal>
@@ -181,6 +184,43 @@ function Diagnostics() {
       </div>
       <p className="note">“&gt;” enviado pelo OPTIC · “&lt;” recebido da TV · protobuf decodificado sem schema.</p>
     </div>
+  )
+}
+
+function UpdatesTab({ updates }: { updates: Updates }) {
+  const { release, available, checking, auto, lastChecked, checkNow, setAuto } = updates
+  const when = lastChecked ? new Date(lastChecked).toLocaleString('pt-BR') : 'nunca'
+  return (
+    <ul className="shortcut-list">
+      <li>
+        <span>Versão instalada</span>
+        <span>{__APP_VERSION__}</span>
+      </li>
+      <li>
+        <span>Última versão publicada</span>
+        <span>{release ? (available ? `${release.tag} (nova)` : `${release.tag} (em dia)`) : '—'}</span>
+      </li>
+      <li>
+        <label className="pref" htmlFor="auto-update">
+          <span>Verificar automaticamente</span>
+          <input id="auto-update" type="checkbox" className="switch" checked={auto} onChange={(e) => setAuto(e.target.checked)} />
+        </label>
+      </li>
+      <li>
+        <span>Última verificação: {when}</span>
+        <span className="log-actions">
+          {available && release && (
+            <button className="link" onClick={() => api.BrowserOpenURL(release.url)}>
+              <ExternalLink size={12} /> Ver novidades
+            </button>
+          )}
+          <button className="link" onClick={checkNow} disabled={checking}>
+            <RefreshCw size={12} /> {checking ? 'Verificando…' : 'Verificar agora'}
+          </button>
+        </span>
+      </li>
+      <li className="note">O OPTIC só consulta a página de versões no GitHub; nada é instalado sem você baixar.</li>
+    </ul>
   )
 }
 

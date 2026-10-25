@@ -8,9 +8,11 @@ import { SettingsPanel } from './components/SettingsPanel'
 import { TEXT_INPUT_ID } from './components/TextInput'
 import { TitleBar } from './components/TitleBar'
 import { ToastHost } from './components/Toast'
+import { UpdateBanner } from './components/UpdateBanner'
 import { useApps } from './hooks/useApps'
 import { RemoteProvider, useRemote } from './hooks/useRemote'
 import { useShortcuts } from './hooks/useShortcuts'
+import { useUpdates } from './hooks/useUpdates'
 import { useWindowMode } from './hooks/useWindowMode'
 import { launchLink } from './lib/apps'
 import type { Command } from './lib/commands'
@@ -27,6 +29,7 @@ function Shell() {
   const remote = useRemote()
   const apps = useApps()
   const win = useWindowMode()
+  const updates = useUpdates()
   const [palette, setPalette] = useState(false)
   const [settings, setSettings] = useState(false)
 
@@ -69,6 +72,8 @@ function Shell() {
         onToggleFullscreen={win.toggleFullscreen}
       />
 
+      {!win.compact && <UpdateBanner updates={updates} />}
+
       {win.compact ? (
         <main className="app compact" key="compact">
           <RemoteControl compact />
@@ -87,7 +92,7 @@ function Shell() {
       <ToastHost />
 
       {palette && <QuickCommand apps={apps.catalog} onRun={runCommand} onClose={() => setPalette(false)} />}
-      {settings && <SettingsPanel onClose={() => setSettings(false)} />}
+      {settings && <SettingsPanel updates={updates} onClose={() => setSettings(false)} />}
       {remote.status === 'pairing' && <PairDialog onSubmit={remote.finishPairing} onCancel={remote.cancelPairing} />}
     </div>
   )
