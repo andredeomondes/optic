@@ -6,6 +6,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"log"
 	"net/http"
@@ -29,6 +30,7 @@ import (
 	"optic/internal/domain"
 	"optic/internal/platform/arp"
 	"optic/pkg/atvremote"
+	"optic/pkg/roku"
 	"optic/pkg/wol"
 )
 
@@ -40,6 +42,11 @@ var trayIcon []byte
 
 // singleInstanceID identifies OPTIC so a second launch focuses the first.
 const singleInstanceID = "optic-desktop-8b5cf6"
+
+// rokuInfo reads a Roku's name and model during discovery.
+func rokuInfo(ctx context.Context, host string) (roku.DeviceInfo, error) {
+	return (&roku.Client{Host: host, Timeout: 1500 * time.Millisecond}).DeviceInfo(ctx)
+}
 
 func main() {
 	cfgDir, err := atvremote.DefaultConfigDir()
@@ -59,7 +66,7 @@ func main() {
 	app := &App{
 		Shell: shell,
 		svc: control.New(control.Deps{
-			Discoverer: compose.Discoverer{Sources: []domain.Discoverer{mdns.Discoverer{}, ssdp.Discoverer{}}},
+			Discoverer: compose.Discoverer{Sources: []domain.Discoverer{mdns.Discoverer{}, ssdp.Discoverer{RokuInfo: rokuInfo}}},
 			Connector:  router,
 			Pairer:     router,
 			Hosts:      store,
