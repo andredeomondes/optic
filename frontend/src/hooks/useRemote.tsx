@@ -3,12 +3,14 @@
 // so buttons can animate the result.
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import * as api from '../lib/backend'
+import { cleanPaste } from '../lib/paste'
 import { load, save } from '../lib/storage'
 import type { DeviceInfo, Feedback, LogLine, Status, Toast, TV, TVState } from '../lib/types'
 
 const MANUAL_KEY = 'optic.manualHosts.v1'
 const FEEDBACK_MS = 650
 const POWER_ON_RESCAN_MS = 8000
+const TRAY_KEYS = ['VOLUME_UP', 'VOLUME_DOWN', 'MUTE']
 
 let seq = 0
 
@@ -163,6 +165,20 @@ function useRemoteState() {
     [connected, run],
   )
 
+  // Volume items of the tray menu arrive as key names.
+  useEffect(
+    () =>
+      api.onEvent('tray:key', (key: string) => {
+        if (!TRAY_KEYS.includes(key)) return
+        if (!connected) {
+          notify('info', 'Conecte uma TV primeiro')
+          return
+        }
+        press(key)
+      }),
+    [connected, press, notify],
+  )
+
   const launch = useCallback(
     (id: string, link: string, name: string) =>
       run(`app:${id}`, () => api.LaunchApp(link), `Abrindo ${name} na TV…`),
@@ -173,6 +189,22 @@ function useRemoteState() {
     (text: string) => run('text', () => api.SendText(text), 'Texto enviado para a TV'),
     [run],
   )
+
+  // Shared by Ctrl+V and the "colar" command: PC clipboard → TV text field.
+  const pasteToTV = useCallback(async () => {
+    let text = ''
+    try {
+      text = cleanPaste(await api.ClipboardGetText())
+    } catch (e) {
+      notify('err', api.errText(e))
+      return false
+    }
+    if (!text) {
+      notify('info', 'Área de transferência vazia')
+      return false
+    }
+    return sendText(text)
+  }, [notify, sendText])
 
   const powerOn = useCallback(
     async (ip: string) => {
@@ -227,7 +259,7 @@ function useRemoteState() {
     tvs, scanning, scan, addManual, removeManual,
     status, connected, host, info, tvState, error, connectedAt,
     connect, finishPairing, cancelPairing,
-    press, pressedKey, launch, sendText, setVolume, powerOn, run,
+    press, pressedKey, launch, sendText, pasteToTV, setVolume, powerOn, run,
     feedback, toast, dismissToast: () => setToast(null), notify,
     log, clearLog: () => setLog([]),
   }

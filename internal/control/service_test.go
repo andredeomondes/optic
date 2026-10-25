@@ -409,3 +409,58 @@ func TestDiscoverAppendsKnownTVsWithMACNotFound(t *testing.T) {
 		t.Errorf("found TV lost its MAC: %+v", byIP["192.168.0.43"])
 	}
 }
+
+func TestDiscoverSkipsKnownTVWithSameMACAtNewIP(t *testing.T) {
+	known := &memKnown{m: map[string]domain.KnownTV{
+		"192.168.0.18": {IP: "192.168.0.18", Name: "Sala", MAC: "aa:bb:cc:dd:ee:ff", Platform: domain.PlatformAndroidTV},
+		"192.168.0.25": {IP: "192.168.0.25", Name: "Sala", MAC: "AA:BB:CC:DD:EE:FF", Platform: domain.PlatformAndroidTV},
+	}}
+	s := New(Deps{
+		Discoverer: fakeDiscoverer{tvs: []domain.TV{{IP: "192.168.0.25", Platform: domain.PlatformAndroidTV}}},
+		Known:      known,
+	})
+	tvs, err := s.Discover(context.Background())
+	if err != nil || len(tvs) != 1 {
+		t.Fatalf("tvs=%+v err=%v", tvs, err)
+	}
+	if tvs[0].IP != "192.168.0.25" || tvs[0].MAC != "AA:BB:CC:DD:EE:FF" {
+		t.Errorf("tv = %+v", tvs[0])
+	}
+}
+
+type fakeReleases struct {
+	rel      domain.Release
+	err      error
+	deadline bool
+}
+
+func (f *fakeReleases) Latest(ctx context.Context) (domain.Release, error) {
+	_, f.deadline = ctx.Deadline()
+	return f.rel, f.err
+}
+
+func TestLatestReleaseWithoutSource(t *testing.T) {
+	_, err := New(Deps{}).LatestRelease(context.Background())
+	if !errors.Is(err, domain.ErrNoReleaseSource) {
+		t.Fatalf("err = %v, want ErrNoReleaseSource", err)
+	}
+}
+
+func TestLatestReleaseDelegatesWithTimeout(t *testing.T) {
+	src := &fakeReleases{rel: domain.Release{Tag: "v1.0.3"}}
+	rel, err := New(Deps{Releases: src}).LatestRelease(context.Background())
+	if err != nil || rel.Tag != "v1.0.3" {
+		t.Fatalf("rel=%+v err=%v", rel, err)
+	}
+	if !src.deadline {
+		t.Error("lookup context has no deadline")
+	}
+}
+
+func TestLatestReleasePropagatesError(t *testing.T) {
+	boom := errors.New("boom")
+	_, err := New(Deps{Releases: &fakeReleases{err: boom}}).LatestRelease(context.Background())
+	if !errors.Is(err, boom) {
+		t.Fatalf("err = %v", err)
+	}
+}

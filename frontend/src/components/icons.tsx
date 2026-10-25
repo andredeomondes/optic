@@ -8,6 +8,7 @@ import {
   House,
   Keyboard,
   ListVideo,
+  Moon,
   Play,
   Power,
   Search,
@@ -38,6 +39,7 @@ const MAP: Record<IconName, typeof Power> = {
   channel: ListVideo,
   text: Keyboard,
   search: Search,
+  moon: Moon,
 }
 
 export function CommandIcon({ name, size = 16 }: { name: IconName; size?: number }) {

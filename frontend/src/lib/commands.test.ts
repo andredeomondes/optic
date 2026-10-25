@@ -49,3 +49,20 @@ test('pesquisar <q> no youtube builds a search link', () => {
   assert.equal(first.action.type, 'link')
   assert.ok(first.action.type === 'link' && first.action.url.endsWith('search_query=Cimatec'))
 })
+
+test('colar finds the paste command', () => {
+  assert.deepEqual(suggest('colar', CATALOG).find((c) => c.id === 'paste')?.action, { type: 'ui', target: 'paste' })
+})
+
+test('desligar em N min', () => {
+  assert.deepEqual(suggest('desligar em 30 min', CATALOG)[0].action, { type: 'sleep', minutes: 30 })
+  assert.deepEqual(suggest('desligar em 1 minuto', CATALOG)[0].action, { type: 'sleep', minutes: 1 })
+  assert.deepEqual(suggest('timer 45', CATALOG)[0].action, { type: 'sleep', minutes: 45 })
+  assert.ok(suggest('cancelar timer', CATALOG).some((c) => c.action.type === 'sleep' && c.action.minutes === 0))
+})
+
+test('sleep timer rejects minutes outside 1-240', () => {
+  for (const q of ['timer 0', 'timer 241', 'desligar em 500 min']) {
+    assert.ok(!suggest(q, CATALOG).some((c) => c.action.type === 'sleep' && c.action.minutes > 0), q)
+  }
+})

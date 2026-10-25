@@ -96,3 +96,15 @@ test('redacts a string cut off right after a backslash', () => {
   const r = buildReport({ ...base, log: [{ id: 1, dir: '<', text: '3: "segredo\\', time: '00:00' }] })
   assert.ok(!r.includes('segredo'))
 })
+
+test('raw hex lines are omitted', () => {
+  const r = buildReport({ ...base, log: [{ id: 1, dir: '<', text: '<raw 68690a0b0c0d0e0f>', time: '00:00' }] })
+  assert.ok(!r.includes('68690a0b'))
+  assert.ok(r.includes('<raw omitido>'))
+})
+
+test('truncated raw line is omitted', () => {
+  const r = buildReport({ ...base, log: [{ id: 1, dir: '<', text: '<raw 68690a0b', time: '00:00' }] })
+  assert.ok(!r.includes('68690a0b'))
+  assert.ok(r.includes('<raw omitido>'))
+})

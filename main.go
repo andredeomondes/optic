@@ -8,6 +8,8 @@ package main
 import (
 	"embed"
 	"log"
+	"net/http"
+	"time"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -18,6 +20,7 @@ import (
 	"optic/internal/adapter/atv"
 	"optic/internal/adapter/compose"
 	"optic/internal/adapter/filestore"
+	"optic/internal/adapter/github"
 	"optic/internal/adapter/mdns"
 	"optic/internal/adapter/registry"
 	"optic/internal/adapter/ssdp"
@@ -60,6 +63,7 @@ func main() {
 			MACs:       arp.Resolver{},
 			Waker:      wol.Sender{},
 			Events:     uiEvents{shell},
+			Releases:   github.Client{HTTP: &http.Client{Timeout: 5 * time.Second}, Repo: "andredeomondes/optic", UserAgent: "OPTIC"},
 		}),
 	}
 

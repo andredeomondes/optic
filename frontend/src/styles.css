@@ -560,3 +560,25 @@ body {
 .device:hover:not(:disabled) { transform: none; }
 .app-tile:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 18px -10px var(--brand); }
 .app-tile:hover:not(:disabled)::before { opacity: 0.25; }
+
+/* ── update banner ─────────────────────────────────────── */
+.update-banner {
+  position: relative; z-index: 1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 0 16px 10px; padding: 7px 12px; border-radius: 12px; font-size: 12px;
+  background: rgba(139, 92, 246, 0.16); border: 1px solid rgba(139, 92, 246, 0.45);
+}
+.update-banner .msg { flex: 1; min-width: 0; }
+.update-banner .link.muted { color: var(--muted); }
+
+/* sleep timer */
+.top-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.sleep { position: relative; display: flex; align-items: center; gap: 6px; }
+.sleep .btn.active { color: var(--accent-2); }
+.sleep-menu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; min-width: 130px; padding: 4px;
+  display: flex; flex-direction: column; border-radius: 12px; border: 1px solid var(--stroke-hi);
+  background: rgba(30, 26, 52, 0.97); backdrop-filter: blur(18px); animation: fade 0.2s var(--ease);
+}
+.sleep-menu button { border: 0; background: transparent; color: var(--text); font-size: 12.5px; text-align: left; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.sleep-menu button:hover, .sleep-menu button:focus-visible { background: rgba(255, 255, 255, 0.08); outline: none; }
+.sleep-menu button.danger { color: var(--danger); }

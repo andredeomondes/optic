@@ -97,6 +97,38 @@ func (r *Remote) handleIme(f fields) {
 	}
 }
 
+// IsTextFrame reports whether a control frame carries text the user typed or a
+// text field's content: ImeBatchEdit (21), ImeShow (22), or ImeKeyInject (20)
+// with a text_field_status. Tracers must not log these.
+func IsTextFrame(msg []byte) bool {
+	f, err := parseFields(msg)
+	if err != nil {
+		// DumpRaw would print the whole frame as hex; fail closed.
+		return true
+	}
+	if _, ok := f[rmImeBatchEdit]; ok {
+		return true
+	}
+	if _, ok := f[rmImeShow]; ok {
+		return true
+	}
+	// Field 20 may repeat; any occurrence with a text field (or unparseable) counts.
+	for _, v := range f[rmImeKeyInject] {
+		b, ok := v.([]byte)
+		if !ok {
+			continue
+		}
+		kf, err := parseFields(b)
+		if err != nil {
+			return true
+		}
+		if _, field := kf[2]; field {
+			return true
+		}
+	}
+	return false
+}
+
 // SendText types text into the focused field on the TV.
 // With the keyboard open, the field's content is replaced by text.
 func (r *Remote) SendText(text string) error {

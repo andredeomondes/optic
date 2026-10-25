@@ -25,9 +25,11 @@ export const SHORTCUTS: { keys: string[]; label: string }[] = [
   { keys: ['H'], label: 'Início' },
   { keys: ['M'], label: 'Mudo' },
   { keys: ['+', '−'], label: 'Volume' },
+  { keys: ['Roda do mouse'], label: 'Volume pela roda' },
   { keys: ['Espaço'], label: 'Play / pause' },
   { keys: ['Ctrl', 'K'], label: 'Comandos rápidos' },
   { keys: ['Ctrl', 'T'], label: 'Digitar na TV' },
+  { keys: ['Ctrl', 'V'], label: 'Colar na TV' },
 ]
 
 /** Reverse lookup for button tooltips: TV key → physical shortcut. */

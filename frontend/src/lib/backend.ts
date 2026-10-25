@@ -7,6 +7,7 @@ export {
   Discover,
   FinishPairing,
   LastHost,
+  LatestRelease,
   LaunchApp,
   PowerOn,
   ResizeWindow,
@@ -21,6 +22,7 @@ export {
 } from '../../wailsjs/go/main/App'
 export {
   BrowserOpenURL,
+  ClipboardGetText,
   Quit,
   WindowGetSize,
   WindowIsFullscreen,

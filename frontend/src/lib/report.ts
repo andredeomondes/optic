@@ -46,7 +46,8 @@ const PACKAGE_NAME = /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/
  * Fails closed: an unterminated string is redacted up to the end of the line.
  */
 function redactStrings(text: string): string {
-  return text.replace(/"((?:[^"\\]|\\.|\\$)*)(?:"|$)/g, (_m, body: string) =>
+  // Undecodable frames are dumped as hex, which can spell out typed text.
+  return text.replace(/<raw[^>]*>?/g, '<raw omitido>').replace(/"((?:[^"\\]|\\.|\\$)*)(?:"|$)/g, (_m, body: string) =>
     PACKAGE_NAME.test(body) && _m.endsWith('"') ? `"${body}"` : '"[redacted]"',
   )
 }

@@ -49,6 +49,9 @@ func (a *App) LaunchApp(name string) error { return a.svc.LaunchApp(name) }
 // message when the TV's MAC was never learned.
 func (a *App) PowerOn(ip string) error { return a.svc.PowerOn(ip) }
 
+// LatestRelease returns the newest published OPTIC release.
+func (a *App) LatestRelease() (domain.Release, error) { return a.svc.LatestRelease(a.ctx) }
+
 // shutdown runs when the app quits for real.
 func (a *App) shutdown(context.Context) {
 	a.svc.Disconnect()
