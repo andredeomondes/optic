@@ -19,13 +19,14 @@ type fakeSession struct {
 	keys   []string
 	done   chan struct{}
 	closed bool
+	plat   domain.Platform
 }
 
 func newSession(st domain.State) *fakeSession {
 	return &fakeSession{state: st, done: make(chan struct{})}
 }
 
-func (f *fakeSession) Info() domain.DeviceInfo { return domain.DeviceInfo{Model: "Fake"} }
+func (f *fakeSession) Info() domain.DeviceInfo { return domain.DeviceInfo{Model: "Fake", Platform: f.plat} }
 func (f *fakeSession) State() domain.State     { return f.state }
 func (f *fakeSession) Done() <-chan struct{}   { return f.done }
 func (f *fakeSession) SendText(string) error   { return nil }
@@ -164,6 +165,19 @@ func TestSessionEndEmitsDisconnected(t *testing.T) {
 	}
 	if err := s.SendKey("HOME"); !errors.Is(err, domain.ErrNotConnected) {
 		t.Fatalf("session not cleared: %v", err)
+	}
+}
+
+func TestSetVolumeRokuNotReported(t *testing.T) {
+	sess := newSession(domain.State{Volume: 10, VolumeMax: 100})
+	sess.plat = domain.PlatformRoku
+	s, _, _ := newService(fakeConnector{sess: sess}, nil)
+	s.Connect(context.Background(), "x")
+	if err := s.SetVolume(20); !errors.Is(err, domain.ErrVolumeNotReported) {
+		t.Fatalf("err = %v", err)
+	}
+	if len(sess.keys) != 0 {
+		t.Fatalf("sent %v", sess.keys)
 	}
 }
 

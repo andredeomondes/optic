@@ -99,7 +99,7 @@ type State struct {
 	Volume    int    `json:"volume"`
 	VolumeMax int    `json:"volumeMax"`
 	Muted     bool   `json:"muted"`
-	App       string `json:"app"`      // foreground package, e.g. "com.netflix.ninja"
+	App       string `json:"app"`      // foreground app: Android package (com.netflix.ninja) or Roku channel name (Netflix)
 	Keyboard  bool   `json:"keyboard"` // Android on-screen keyboard is open
 }
 
@@ -114,6 +114,8 @@ var (
 	ErrCodeTypo = errors.New("código não confere (erro de digitação?)")
 	// ErrVolumeUnknown means the TV hasn't reported its volume yet.
 	ErrVolumeUnknown = errors.New("volume atual desconhecido: mude o volume uma vez e tente de novo")
+	// ErrVolumeNotReported means the platform never reports its volume level.
+	ErrVolumeNotReported = errors.New("Esta TV não informa o volume: use Volume + e −.")
 	// ErrNoMAC means Wake-on-LAN was requested for a TV whose MAC was never learned.
 	ErrNoMAC = errors.New("MAC da TV desconhecido: conecte uma vez com ela ligada")
 	// ErrNoReleaseSource means no release lookup is configured.

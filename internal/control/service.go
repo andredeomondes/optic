@@ -290,6 +290,9 @@ func (s *Service) SetVolume(level int) error {
 	if err != nil {
 		return err
 	}
+	if sess.Info().Platform == domain.PlatformRoku {
+		return domain.ErrVolumeNotReported
+	}
 	st := sess.State()
 	if st.VolumeMax == 0 {
 		return domain.ErrVolumeUnknown
