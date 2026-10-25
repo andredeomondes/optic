@@ -48,7 +48,7 @@ HTTP simples na porta **8060**, sem pareamento nem criptografia. Endpoints usado
 
 | Método | Caminho | Uso |
 |---|---|---|
-| POST | `/keypress/<Tecla>` | `Home`, `Back`, `Select`, `Up`… `VolumeUp`, `PowerOff`, `PowerOn` |
+| POST | `/keypress/<Tecla>` | `Home`, `Back`, `Select`, `Up`… `VolumeUp`, `Power` (liga/desliga), `PowerOn` |
 | POST | `/keypress/Lit_<caractere>` | texto, um caractere por requisição (URL-encoded) |
 | POST | `/launch/<id>` | abre o app pelo id do canal (Netflix = 12, YouTube = 837) |
 | GET | `/query/apps` | apps instalados |

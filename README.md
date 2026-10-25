@@ -24,10 +24,10 @@ Controle remoto desktop open source para **Android TV, Google TV e Roku**, falan
 ## Recursos
 
 - **Encontra a TV sozinho** na rede (mDNS e SSDP) e pareia com o código de 6 caracteres que aparece na tela.
-- **TVs Roku** (Philco, AOC, TCL Roku…): sem pareamento; teclas, texto, apps instalados e ligar/desligar.
+- **TVs Roku** (Philco, AOC, TCL Roku…): sem pareamento; teclas, texto, apps do catálogo e ligar/desligar.
 - **Liga a TV** pela rede (Wake-on-LAN), depois da primeira conexão com ela ligada.
 - **Controle completo:** D-pad, voltar, início, volume (com slider), canais, mídia e power.
-- **Abre apps** com um clique: YouTube, Netflix, Prime Video, Globoplay e qualquer outro pelo nome do pacote.
+- **Abre apps** com um clique: YouTube, Netflix, Prime Video, Globoplay e qualquer outro pelo nome do pacote (na Roku, os apps do catálogo).
 - **Digita na TV** pelo teclado do PC, direto no campo de busca. `Ctrl+V` cola o texto copiado na TV.
 - **Comandos rápidos** (`Ctrl+K`): "netflix", "volume 20", "digitar …" e outros.
 - **Atalhos de teclado:** setas navegam, `Enter` OK, `Esc` voltar, `H` início, `M` mudo, `+`/`-` volume, espaço play/pause, `Ctrl+T` digitar.
