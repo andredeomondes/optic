@@ -48,17 +48,17 @@ func TestKeypressPostsKey(t *testing.T) {
 
 func TestTextSendsEachRuneEscaped(t *testing.T) {
 	c, rec := newServer(t, "")
-	if err := c.Text(context.Background(), "ç &"); err != nil {
+	if err := c.Text(context.Background(), "ç &+"); err != nil {
 		t.Fatal(err)
 	}
 	var want []string
-	for _, r := range "ç &" {
-		want = append(want, "POST /keypress/Lit_"+url.PathEscape(string(r)))
+	for _, r := range "ç &+" {
+		want = append(want, "POST /keypress/Lit_"+strings.ReplaceAll(url.PathEscape(string(r)), "+", "%2B"))
 	}
 	if !reflect.DeepEqual(rec.calls, want) {
 		t.Fatalf("calls = %v, want %v", rec.calls, want)
 	}
-	if rec.calls[0] != "POST /keypress/Lit_%C3%A7" || rec.calls[1] != "POST /keypress/Lit_%20" {
+	if rec.calls[0] != "POST /keypress/Lit_%C3%A7" || rec.calls[1] != "POST /keypress/Lit_%20" || rec.calls[3] != "POST /keypress/Lit_%2B" {
 		t.Fatalf("unexpected escaping: %v", rec.calls)
 	}
 }
@@ -237,6 +237,16 @@ func TestErrorsDoNotLeakPath(t *testing.T) {
 		if s := err.Error(); strings.Contains(s, "Lit_") || strings.Contains(s, "/keypress") {
 			t.Fatalf("error leaks path: %q", s)
 		}
+	}
+}
+
+func TestInvalidRequestErrorDoesNotLeakPath(t *testing.T) {
+	err := (&Client{Host: "bad host"}).Text(context.Background(), "x")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if s := err.Error(); strings.Contains(s, "Lit_") || strings.Contains(s, "/keypress") {
+		t.Fatalf("error leaks path: %q", s)
 	}
 }
 

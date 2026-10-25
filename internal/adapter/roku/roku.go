@@ -98,7 +98,9 @@ type session struct {
 	state domain.State
 	apps  []roku.App
 
-	emitMu sync.Mutex // serializes OnState with Close
+	// emitMu serializes OnState with Close. OnState runs with it held, so it
+	// must not call Close.
+	emitMu sync.Mutex
 	closed bool
 
 	done     chan struct{}
@@ -148,6 +150,7 @@ func (s *session) poll(every time.Duration, maxFails int) {
 			}
 			fails++
 			if fails >= maxFails {
+				s.cancel()
 				s.finish()
 				return
 			}

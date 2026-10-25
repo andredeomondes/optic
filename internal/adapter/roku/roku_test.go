@@ -206,6 +206,26 @@ func TestLaunchResolves(t *testing.T) {
 	}
 }
 
+func TestLaunchYouTubeLink(t *testing.T) {
+	f := newFake(t)
+	s, _ := connect(t, f)
+	before := f.count("/launch/837")
+	if err := s.LaunchApp("https://www.youtube.com/watch?v=abc"); err != nil {
+		t.Fatal(err)
+	}
+	if f.count("/launch/837") != before+1 {
+		t.Fatal("youtube link did not launch 837")
+	}
+}
+
+func TestLaunchOtherLinkUnsupported(t *testing.T) {
+	f := newFake(t)
+	s, _ := connect(t, f)
+	if err := s.LaunchApp("https://example.com/x"); !errors.Is(err, ErrLinkUnsupported) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
 func TestLaunchNotInstalled(t *testing.T) {
 	f := newFake(t)
 	s, _ := connect(t, f)

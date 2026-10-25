@@ -88,7 +88,7 @@ func (c Client) Keypress(ctx context.Context, key string) error {
 // Text types s one character at a time, stopping at the first error.
 func (c Client) Text(ctx context.Context, s string) error {
 	for _, r := range s {
-		if err := c.post(ctx, "/keypress/Lit_"+url.PathEscape(string(r))); err != nil {
+		if err := c.post(ctx, "/keypress/Lit_"+strings.ReplaceAll(url.PathEscape(string(r)), "+", "%2B")); err != nil {
 			return err
 		}
 	}
@@ -157,7 +157,7 @@ func (c Client) do(ctx context.Context, method, path string) (*http.Response, co
 	req, err := http.NewRequestWithContext(ctx, method, c.base()+path, nil)
 	if err != nil {
 		cancel()
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("roku: %s: requisição inválida", method)
 	}
 	if method == http.MethodPost {
 		req.ContentLength = 0

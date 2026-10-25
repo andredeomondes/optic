@@ -11,6 +11,9 @@ import (
 // ErrAppNotInstalled means the requested app is not on the Roku.
 var ErrAppNotInstalled = errors.New("Este app não está instalado na TV Roku.")
 
+// ErrLinkUnsupported means a web link was given to a Roku, which cannot open them.
+var ErrLinkUnsupported = errors.New("A Roku não abre links; abra o app pela lista.")
+
 type knownApp struct{ ID, Name string }
 
 // knownApps maps the Android packages OPTIC's catalog uses to their Roku
@@ -46,6 +49,12 @@ func resolveApp(target string, installed []roku.App) (string, error) {
 	}
 	if strings.HasPrefix(strings.ToLower(target), "market://") {
 		return resolveMarket(target, installed)
+	}
+	if lt := strings.ToLower(target); strings.HasPrefix(lt, "http://") || strings.HasPrefix(lt, "https://") {
+		if u, err := url.Parse(target); err == nil && strings.Contains(strings.ToLower(u.Hostname()), "youtube") {
+			return resolveApp("YouTube", installed)
+		}
+		return "", ErrLinkUnsupported
 	}
 	if target == "" {
 		return "", ErrAppNotInstalled
