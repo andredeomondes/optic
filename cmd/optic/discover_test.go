@@ -29,6 +29,15 @@ func TestPrintTVsShowsPlatform(t *testing.T) {
 	}
 }
 
+func TestPrintTVsFallsBackToIPWhenNameEmpty(t *testing.T) {
+	var buf bytes.Buffer
+	printTVs(&buf, []domain.TV{{IP: "192.168.0.30", Platform: domain.PlatformRoku}}, nil)
+
+	if want := "▸ 192.168.0.30  [Roku]"; !strings.Contains(buf.String(), want) {
+		t.Errorf("output missing %q:\n%s", want, buf.String())
+	}
+}
+
 func TestPrintTVsVerboseAddsMDNSDetails(t *testing.T) {
 	var buf bytes.Buffer
 	details := map[string]*discovery.Device{

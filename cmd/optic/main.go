@@ -69,17 +69,17 @@ func runDiscover(ctx context.Context, args []string) int {
 	useSSDP := fs.Bool("ssdp", true, "also search with SSDP (UPnP)")
 	fs.Parse(args)
 
-	sources := []domain.Discoverer{mdns.Discoverer{}}
+	// With -v the mDNS source keeps the devices of its single scan, so the
+	// TXT and service details come from the same answers as the list.
+	var mdnsSrc domain.Discoverer = mdns.Discoverer{}
+	var recorder *recordingMDNS
+	if *verbose {
+		recorder = &recordingMDNS{}
+		mdnsSrc = recorder
+	}
+	sources := []domain.Discoverer{mdnsSrc}
 	if *useSSDP {
 		sources = append(sources, ssdp.Discoverer{})
-	}
-
-	// The mDNS details for -v run next to the combined scan, so the wait
-	// does not double.
-	var detailsCh chan map[string]*discovery.Device
-	if *verbose {
-		detailsCh = make(chan map[string]*discovery.Device, 1)
-		go func() { detailsCh <- mdnsDetails(ctx, *timeout) }()
 	}
 
 	fmt.Printf("Procurando TVs na rede por %s...\n\n", *timeout)
@@ -94,28 +94,40 @@ func runDiscover(ctx context.Context, args []string) int {
 	}
 
 	var details map[string]*discovery.Device
-	if detailsCh != nil {
-		details = <-detailsCh
+	if recorder != nil {
+		details = make(map[string]*discovery.Device, len(recorder.devices))
+		for _, d := range recorder.devices {
+			details[d.Addr()] = d
+		}
 	}
 	printTVs(os.Stdout, tvs, details)
 	return 0
 }
 
-// mdnsDetails indexes the mDNS devices by IP. Errors are ignored: the details
-// only add to the list that the combined scan already printed.
-func mdnsDetails(ctx context.Context, timeout time.Duration) map[string]*discovery.Device {
-	devices, _ := discovery.Discover(ctx, timeout)
-	out := make(map[string]*discovery.Device, len(devices))
-	for _, d := range devices {
-		out[d.Addr()] = d
+// recordingMDNS scans like mdns.Discoverer and keeps the raw devices. compose
+// waits for every source before returning, so reading devices afterwards is
+// safe.
+type recordingMDNS struct {
+	devices []*discovery.Device
+}
+
+func (r *recordingMDNS) Discover(ctx context.Context, timeout time.Duration) ([]domain.TV, error) {
+	devices, err := discovery.Discover(ctx, timeout)
+	if err != nil {
+		return nil, err
 	}
-	return out
+	r.devices = devices
+	return mdns.ToTVs(devices), nil
 }
 
 // printTVs writes one block per TV. details is optional and keyed by IP.
 func printTVs(w io.Writer, tvs []domain.TV, details map[string]*discovery.Device) {
 	for _, tv := range tvs {
-		fmt.Fprintf(w, "▸ %s  [%s]", tv.Name, tv.Platform.Label())
+		name := tv.Name
+		if name == "" {
+			name = tv.IP
+		}
+		fmt.Fprintf(w, "▸ %s  [%s]", name, tv.Platform.Label())
 		if tv.Model != "" {
 			fmt.Fprintf(w, "  (%s)", tv.Model)
 		}
