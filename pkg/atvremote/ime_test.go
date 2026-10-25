@@ -92,3 +92,22 @@ func TestHandleImeCapturedFlow(t *testing.T) {
 		t.Fatalf("after close: state=%+v ime=%+v", r.state, r.ime)
 	}
 }
+
+func TestIsTextFrame(t *testing.T) {
+	batch := appendMsg(nil, rmImeBatchEdit, imeBatchEdit(imeState{known: true, imeCounter: 1, fieldCounter: 3}, "hi"))
+	appOnly := appendMsg(nil, rmImeKeyInject, appendMsg(nil, 1, appendString(nil, 12, "com.netflix.ninja")))
+	withField := appendMsg(nil, rmImeKeyInject, appendMsg(appendMsg(nil, 1, nil), 2, appendString(nil, 2, "senha")))
+	show := appendMsg(nil, rmImeShow, appendMsg(nil, 2, appendString(nil, 2, "senha")))
+	key := appendMsg(nil, rmKeyInject, appendUint(appendUint(nil, 1, 3), 2, 3))
+	for name, c := range map[string]struct {
+		msg  []byte
+		want bool
+	}{
+		"batch": {batch, true}, "show": {show, true}, "app only": {appOnly, false},
+		"field status": {withField, true}, "key": {key, false}, "garbage": {[]byte{0xff, 0xff}, false},
+	} {
+		if got := IsTextFrame(c.msg); got != c.want {
+			t.Errorf("%s: IsTextFrame = %v, want %v", name, got, c.want)
+		}
+	}
+}

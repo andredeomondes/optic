@@ -11,6 +11,8 @@ import (
 
 	"optic/internal/domain"
 	"optic/pkg/atvremote"
+
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 // clientName is how OPTIC shows up in the TV's list of paired remotes.
@@ -62,12 +64,27 @@ func (c *Client) StartPairing(ctx context.Context, host string) (domain.PairingS
 // tracer turns raw frames into one-line summaries for the activity log.
 func tracer(ev domain.SessionEvents) atvremote.Tracer {
 	return func(dir string, msg []byte) {
+		// Typed text never reaches the log: DumpRaw can render short strings as
+		// nested numeric fields, which no later redaction could recognise.
+		if atvremote.IsTextFrame(msg) {
+			ev.OnTrace(dir, textOmitted(msg))
+			return
+		}
 		line := strings.Join(strings.Fields(atvremote.DumpRaw(msg)), " ")
 		if len(line) > traceMax {
 			line = line[:traceMax] + "…"
 		}
 		ev.OnTrace(dir, line)
 	}
+}
+
+// textOmitted names only the top-level field of a frame that carries text.
+func textOmitted(msg []byte) string {
+	num, _, n := protowire.ConsumeTag(msg)
+	if n < 0 {
+		return "{ [texto omitido] }"
+	}
+	return fmt.Sprintf("%d { [texto omitido] }", num)
 }
 
 type session struct{ r *atvremote.Remote }
