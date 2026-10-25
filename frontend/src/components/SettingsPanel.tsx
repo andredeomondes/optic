@@ -210,7 +210,7 @@ function UpdatesTab({ updates }: { updates: Updates }) {
         <span>Última verificação: {when}</span>
         <span className="log-actions">
           {available && release && (
-            <button className="link" onClick={() => api.BrowserOpenURL(release.url)}>
+            <button className="link" onClick={() => release.url && api.BrowserOpenURL(release.url)}>
               <ExternalLink size={12} /> Ver novidades
             </button>
           )}

@@ -43,17 +43,28 @@ export function useUpdates(): Updates {
     setPrefs(next)
   }, [])
 
+  // One lookup at a time: StrictMode double effects and overlapping manual/auto checks share a request.
+  const inflight = useRef<Promise<boolean> | null>(null)
+
   const check = useCallback(
     async (manual: boolean) => {
-      setChecking(true)
-      try {
-        setRelease(await api.LatestRelease())
-        update({ lastChecked: Date.now() })
-      } catch {
-        if (manual) notify('err', 'Não foi possível verificar atualizações.')
-      } finally {
-        setChecking(false)
+      if (!inflight.current) {
+        setChecking(true)
+        inflight.current = api
+          .LatestRelease()
+          .then((r) => {
+            setRelease(r)
+            update({ lastChecked: Date.now() })
+            return true
+          })
+          .catch(() => false)
+          .finally(() => {
+            inflight.current = null
+            setChecking(false)
+          })
       }
+      const ok = await inflight.current
+      if (!ok && manual) notify('err', 'Não foi possível verificar atualizações.')
     },
     [notify, update],
   )
