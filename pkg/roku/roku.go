@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -21,6 +22,12 @@ const (
 	defaultTimeout = 3 * time.Second
 	maxBody        = 1 << 20
 )
+
+// noRedirect is the default client: ECP never redirects, and following one
+// could send commands to another host.
+var noRedirect = &http.Client{
+	CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+}
 
 // ErrForbidden means the Roku refused network control (HTTP 403).
 var ErrForbidden = errors.New("A Roku bloqueou o controle pela rede. Na TV: Configurações › Sistema › Configurações avançadas do sistema › Controle por apps móveis › Acesso à rede: Padrão.")
@@ -132,7 +139,7 @@ type appXML struct {
 	Name string `xml:",chardata"`
 }
 
-func (a appXML) app() App { return App{ID: a.ID, Name: a.Name, Type: a.Type} }
+func (a appXML) app() App { return App{ID: a.ID, Name: strings.TrimSpace(a.Name), Type: a.Type} }
 
 func (c Client) base() string {
 	if c.BaseURL != "" {
@@ -158,11 +165,16 @@ func (c Client) do(ctx context.Context, method, path string) (*http.Response, co
 	}
 	hc := c.HTTP
 	if hc == nil {
-		hc = http.DefaultClient
+		hc = noRedirect
 	}
 	resp, err := hc.Do(req)
 	if err != nil {
 		cancel()
+		// url.Error embeds the full URL, which would leak typed characters.
+		var ue *url.Error
+		if errors.As(err, &ue) {
+			err = fmt.Errorf("roku: %s: %w", method, ue.Err)
+		}
 		return nil, nil, err
 	}
 	if resp.StatusCode == http.StatusForbidden {

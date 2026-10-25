@@ -3,6 +3,7 @@ package roku
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -219,5 +220,63 @@ func TestBodyCapped(t *testing.T) {
 	defer srv.Close()
 	if _, err := (&Client{BaseURL: srv.URL}).Apps(context.Background()); err == nil {
 		t.Fatal("expected error for oversized body")
+	}
+}
+
+func TestErrorsDoNotLeakPath(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(200 * time.Millisecond)
+	}))
+	timeoutErr := (&Client{BaseURL: srv.URL, Timeout: 30 * time.Millisecond}).Text(context.Background(), "x")
+	srv.Close()
+	closedErr := (&Client{BaseURL: srv.URL}).Text(context.Background(), "x")
+	for _, err := range []error{timeoutErr, closedErr} {
+		if err == nil {
+			t.Fatal("expected error")
+		}
+		if s := err.Error(); strings.Contains(s, "Lit_") || strings.Contains(s, "/keypress") {
+			t.Fatalf("error leaks path: %q", s)
+		}
+	}
+}
+
+func TestRedirectNotFollowed(t *testing.T) {
+	var hits int
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { hits++ }))
+	defer other.Close()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, other.URL+"/x", http.StatusFound)
+	}))
+	defer srv.Close()
+	err := (&Client{BaseURL: srv.URL}).Keypress(context.Background(), "Home")
+	if err == nil || err.Error() != "roku: HTTP 302" {
+		t.Fatalf("err = %v", err)
+	}
+	if hits != 0 {
+		t.Fatalf("redirect target got %d requests", hits)
+	}
+}
+
+func TestAppNameTrimmed(t *testing.T) {
+	c, _ := newServer(t, "<active-app><app id=\"1\">\n  Netflix \n</app></active-app>")
+	a, err := c.ActiveApp(context.Background())
+	if err != nil || a.Name != "Netflix" {
+		t.Fatalf("app = %+v, err = %v", a, err)
+	}
+}
+
+func TestPostHasEmptyBody(t *testing.T) {
+	var cl int64
+	var body []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cl = r.ContentLength
+		body, _ = io.ReadAll(r.Body)
+	}))
+	defer srv.Close()
+	if err := (&Client{BaseURL: srv.URL}).Keypress(context.Background(), "Home"); err != nil {
+		t.Fatal(err)
+	}
+	if cl != 0 || len(body) != 0 {
+		t.Fatalf("content-length %d, body %q", cl, body)
 	}
 }
