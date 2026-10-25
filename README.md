@@ -76,16 +76,7 @@ cd frontend && npm install && npm run dev  # só a interface, com backend falso
 
 Testes: `go test ./...` e, no frontend, `npx tsc --noEmit && npm test`. Detalhes em [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
-### Arquitetura em 30 segundos
-
-```
-frontend (React) ──► App (bindings Wails) ──► control.Service (casos de uso) ──► domain (tipos + portas)
-                         │                                                          ▲
-                   Shell (janela, bandeja)          adapters: atv · mdns · filestore ┘
-                                                    └─► pkg/atvremote · pkg/discovery
-```
-
-Os casos de uso dependem só de interfaces (`internal/domain`). Protocolo, rede, disco e bandeja são adapters injetados em `main.go`. Mais em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+### Estrutura
 
 ```
 main.go · app.go · shell.go   composição + entrega via Wails
@@ -99,6 +90,8 @@ cmd/optic                     CLI de diagnóstico (discover, pair, key, type, wa
 frontend/src                  lib · hooks · components
 site/                         guia de instalação e uso (GitHub Pages)
 ```
+
+Mais detalhes em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ### CLI
 
