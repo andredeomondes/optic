@@ -41,3 +41,18 @@ go run ./cmd/optic key -v 192.168.0.18 HOME     # -v mostra cada frame
 ```
 
 Campos ainda não decifrados: bitmask de features (`639`) em `RemoteConfigure`.
+
+## Roku (ECP)
+
+HTTP simples na porta **8060**, sem pareamento nem criptografia. Endpoints usados:
+
+| Método | Caminho | Uso |
+|---|---|---|
+| POST | `/keypress/<Tecla>` | `Home`, `Back`, `Select`, `Up`… `VolumeUp`, `Power` (liga/desliga), `PowerOn` |
+| POST | `/keypress/Lit_<caractere>` | texto, um caractere por requisição (URL-encoded) |
+| POST | `/launch/<id>` | abre o app pelo id do canal (Netflix = 12, YouTube = 837) |
+| GET | `/query/apps` | apps instalados |
+| GET | `/query/active-app` | app em primeiro plano |
+| GET | `/query/device-info` | nome, modelo, `power-mode`, MACs |
+
+A TV não envia eventos: o OPTIC consulta `device-info` e `active-app` a cada 3 s. **HTTP 403** significa que "Controle por apps móveis" está limitado ou desativado na TV.

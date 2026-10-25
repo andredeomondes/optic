@@ -1,7 +1,7 @@
 import { LoaderCircle, Power, Tv, X } from 'lucide-react'
 import { since, useNow } from '../hooks/useNow'
 import { useRemote } from '../hooks/useRemote'
-import { PLATFORM_LABEL, isSupported } from '../lib/capabilities'
+import { PLATFORM_LABEL, canConnect, canPowerOn, isSupported } from '../lib/capabilities'
 import type { TV } from '../lib/types'
 
 /** One TV in the sidebar. The selected TV expands with live details. */
@@ -13,7 +13,8 @@ export function DeviceCard({ tv, index }: { tv: TV; index: number }) {
   const busy = selected && (status === 'connecting' || status === 'pairing')
 
   const supported = isSupported(tv.platform)
-  const canWake = !!tv.mac && supported && !live && !busy
+  const connectable = canConnect(tv)
+  const canWake = canPowerOn(tv) && !live && !busy
   const waking = feedback[`power:${tv.ip}`] === 'pending'
 
   const state = !supported
@@ -31,8 +32,8 @@ export function DeviceCard({ tv, index }: { tv: TV; index: number }) {
       <button
         className={`device ${selected ? 'active' : ''} ${live ? 'live' : ''}`}
         onClick={() => connect(tv.ip)}
-        disabled={!supported || !tv.remotev2 || busy}
-        title={!supported ? 'Suporte em breve' : tv.remotev2 ? `Conectar em ${tv.name}` : 'Sem suporte ao Remote v2'}
+        disabled={!connectable || busy}
+        title={!supported ? 'Suporte em breve' : !connectable ? 'Sem suporte ao Remote v2' : `Conectar em ${tv.name}`}
       >
         <div className="ic">
           <Tv size={16} strokeWidth={1.8} />
@@ -41,7 +42,7 @@ export function DeviceCard({ tv, index }: { tv: TV; index: number }) {
           <b>{live && info ? `${info.vendor} ${info.model}` : tv.name}</b>
           <span>
             {tv.ip}
-            {live && info?.version ? ` · Android ${info.version}` : ''}
+            {live && info?.version && info.platform !== 'roku' ? ` · Android ${info.version}` : ''}
           </span>
           <span className="chip platform">{PLATFORM_LABEL[tv.platform]}</span>
           <span className={`state ${live ? 'on' : selected && status === 'error' ? 'bad' : ''}`}>{state}</span>
@@ -53,7 +54,7 @@ export function DeviceCard({ tv, index }: { tv: TV; index: number }) {
         )}
       </button>
       {canWake && (
-        <button className="device-wake" onClick={() => powerOn(tv.ip)} disabled={waking} title="Ligar a TV (Wake-on-LAN)">
+        <button className="device-wake" onClick={() => powerOn(tv.ip)} disabled={waking} title={tv.platform === 'roku' ? 'Ligar a TV pela rede' : 'Ligar a TV (Wake-on-LAN)'}>
           {waking ? <LoaderCircle size={12} className="spin" /> : <Power size={12} />}
           Ligar
         </button>

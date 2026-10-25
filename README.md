@@ -6,7 +6,7 @@
 
 **Controle sua TV pelo computador.** Sem hardware extra, sem nuvem, sem conta.
 
-Controle remoto desktop open source para **Android TV e Google TV**, falando direto com a TV pela rede local com o Android TV Remote protocol v2, implementado do zero em Go.
+Controle remoto desktop open source para **Android TV, Google TV e Roku**, falando direto com a TV pela rede local: Android TV Remote protocol v2, implementado do zero em Go, e o protocolo oficial da Roku (ECP).
 
 [**Baixar**](https://github.com/andredeomondes/optic/releases/latest) ·
 [**Guia de instalação e uso**](https://andredeomondes.github.io/optic/) ·
@@ -23,10 +23,11 @@ Controle remoto desktop open source para **Android TV e Google TV**, falando dir
 
 ## Recursos
 
-- **Encontra a TV sozinho** na rede (mDNS) e pareia com o código de 6 caracteres que aparece na tela.
+- **Encontra a TV sozinho** na rede (mDNS e SSDP) e pareia com o código de 6 caracteres que aparece na tela.
+- **TVs Roku** (Philco, AOC, TCL Roku…): sem pareamento; teclas, texto, apps do catálogo e ligar/desligar.
 - **Liga a TV** pela rede (Wake-on-LAN), depois da primeira conexão com ela ligada.
 - **Controle completo:** D-pad, voltar, início, volume (com slider), canais, mídia e power.
-- **Abre apps** com um clique: YouTube, Netflix, Prime Video, Globoplay e qualquer outro pelo nome do pacote.
+- **Abre apps** com um clique: YouTube, Netflix, Prime Video, Globoplay e qualquer outro pelo nome do pacote (na Roku, os apps do catálogo).
 - **Digita na TV** pelo teclado do PC, direto no campo de busca. `Ctrl+V` cola o texto copiado na TV.
 - **Comandos rápidos** (`Ctrl+K`): "netflix", "volume 20", "digitar …" e outros.
 - **Atalhos de teclado:** setas navegam, `Enter` OK, `Esc` voltar, `H` início, `M` mudo, `+`/`-` volume, espaço play/pause, `Ctrl+T` digitar.
@@ -38,7 +39,7 @@ Controle remoto desktop open source para **Android TV e Google TV**, falando dir
 - **Tela cheia** com `F11` e janela maximizável.
 - **100% local:** o controle não passa por servidores. O certificado do pareamento fica só no seu PC.
 
-> Para ligar a TV pela rede, a opção **Ligar pela rede** (ou *Network standby*) precisa estar ativa na TV. Samsung, LG e Roku já aparecem na lista de TVs; o suporte a elas chega nas próximas versões.
+> Para ligar a TV pela rede, a opção **Ligar pela rede** (ou *Network standby*) precisa estar ativa na TV. Samsung e LG já aparecem na lista de TVs; o suporte a elas chega nas próximas versões.
 
 <table>
   <tr>
@@ -68,6 +69,8 @@ O passo a passo, incluindo os avisos do SmartScreen e do Gatekeeper (os binário
 2. Abra o OPTIC: a TV aparece em **TVs na rede** (ou use **Adicionar TV** com o IP).
 3. Clique nela. A TV mostra um **código de 6 caracteres**: digite no OPTIC.
 4. Pronto. Das próximas vezes o OPTIC reconecta sozinho.
+
+> Roku não responde? Na TV: Configurações › Sistema › Configurações avançadas do sistema › Controle por apps móveis › Acesso à rede: **Padrão**.
 
 > Netflix e Prime Video usam teclado próprio, que não recebe texto pelo protocolo. Use as setas e o OK, ou a busca global da TV.
 

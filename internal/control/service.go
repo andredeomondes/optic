@@ -22,6 +22,10 @@ const volumeStepDelay = 40 * time.Millisecond
 // releaseTimeout bounds the update check so the UI never waits on GitHub.
 const releaseTimeout = 5 * time.Second
 
+// networkPowerTimeout bounds the network power-on attempt before falling
+// back to Wake-on-LAN.
+const networkPowerTimeout = 3 * time.Second
+
 // Deps are the ports the service needs.
 type Deps struct {
 	Discoverer domain.Discoverer
@@ -29,8 +33,9 @@ type Deps struct {
 	Pairer     domain.Pairer
 	Hosts      domain.HostStore
 	Known      domain.KnownTVs
-	MACs       domain.MACResolver // optional: without it PowerOn is unavailable
-	Waker      domain.WakeSender  // optional: without it PowerOn is unavailable
+	MACs       domain.MACResolver  // optional: without it PowerOn is unavailable
+	Waker      domain.WakeSender   // optional: without it PowerOn is unavailable
+	Power      domain.NetworkPower // optional: tried before Wake-on-LAN
 	Events     domain.EventSink
 	Releases   domain.ReleaseSource // optional: without it LatestRelease is unavailable
 	// Sleep is time.Sleep by default; tests replace it.
@@ -119,7 +124,7 @@ func (s *Service) Connect(ctx context.Context, host string) (domain.DeviceInfo, 
 	go s.watch(sess)
 
 	info := sess.Info()
-	info.Capabilities.PowerOn = s.learnMAC(host) != ""
+	info.Capabilities.PowerOn = info.Capabilities.PowerOn || s.learnMAC(host) != ""
 	return info, nil
 }
 
@@ -142,9 +147,17 @@ func (s *Service) learnMAC(host string) string {
 	return ""
 }
 
-// PowerOn wakes the TV at host with Wake-on-LAN, using the MAC learned the
-// last time it was connected while on. It returns domain.ErrNoMAC if unknown.
+// PowerOn turns the TV at host on: over the network when the platform
+// supports it, otherwise (or if that fails) with Wake-on-LAN using the MAC
+// learned the last time it was connected. It returns domain.ErrNoMAC if unknown.
 func (s *Service) PowerOn(host string) error {
+	if s.d.Power != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), networkPowerTimeout)
+		defer cancel()
+		if s.d.Power.PowerOn(ctx, host) == nil {
+			return nil
+		}
+	}
 	if s.d.Known == nil || s.d.Waker == nil {
 		return domain.ErrNoMAC
 	}
@@ -153,6 +166,19 @@ func (s *Service) PowerOn(host string) error {
 		return domain.ErrNoMAC
 	}
 	return s.d.Waker.Send(k.MAC, host)
+}
+
+// InstalledApps lists the apps installed on the connected TV.
+func (s *Service) InstalledApps(ctx context.Context) ([]domain.App, error) {
+	sess, err := s.current()
+	if err != nil {
+		return nil, err
+	}
+	l, ok := sess.(domain.AppLister)
+	if !ok {
+		return nil, domain.ErrUnsupported{Platform: sess.Info().Platform}
+	}
+	return l.Apps(ctx)
 }
 
 // LatestRelease returns the newest published OPTIC release.
@@ -263,6 +289,9 @@ func (s *Service) SetVolume(level int) error {
 	sess, err := s.current()
 	if err != nil {
 		return err
+	}
+	if sess.Info().Platform == domain.PlatformRoku {
+		return domain.ErrVolumeNotReported
 	}
 	st := sess.State()
 	if st.VolumeMax == 0 {

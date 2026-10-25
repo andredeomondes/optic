@@ -21,10 +21,8 @@ type Registry struct {
 	Known    domain.KnownTVs
 }
 
-// adapterFor picks the adapter for host. A host never discovered (typed by
-// hand, or from an older version) is assumed to be Android TV, the only
-// platform that existed before platforms were recorded.
-func (r Registry) adapterFor(host string) (Adapter, error) {
+// platformOf is the platform remembered for host, Android TV if none.
+func (r Registry) platformOf(host string) domain.Platform {
 	p := domain.PlatformUnknown
 	if r.Known != nil {
 		if tv, ok := r.Known.Get(host); ok {
@@ -34,6 +32,14 @@ func (r Registry) adapterFor(host string) (Adapter, error) {
 	if p == domain.PlatformUnknown {
 		p = domain.PlatformAndroidTV
 	}
+	return p
+}
+
+// adapterFor picks the adapter for host. A host never discovered (typed by
+// hand, or from an older version) is assumed to be Android TV, the only
+// platform that existed before platforms were recorded.
+func (r Registry) adapterFor(host string) (Adapter, error) {
+	p := r.platformOf(host)
 	a, ok := r.Adapters[p]
 	if !ok {
 		return nil, domain.ErrUnsupported{Platform: p}
@@ -47,6 +53,19 @@ func (r Registry) Connect(ctx context.Context, host string, events domain.Sessio
 		return nil, err
 	}
 	return a.Connect(ctx, host, events)
+}
+
+// PowerOn turns the TV at host on over the network when its adapter supports it.
+func (r Registry) PowerOn(ctx context.Context, host string) error {
+	a, err := r.adapterFor(host)
+	if err != nil {
+		return err
+	}
+	p, ok := a.(domain.NetworkPower)
+	if !ok {
+		return domain.ErrUnsupported{Platform: r.platformOf(host)}
+	}
+	return p.PowerOn(ctx, host)
 }
 
 func (r Registry) StartPairing(ctx context.Context, host string) (domain.PairingSession, error) {

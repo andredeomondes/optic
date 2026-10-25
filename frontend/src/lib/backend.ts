@@ -6,6 +6,7 @@ export {
   Connect,
   Discover,
   FinishPairing,
+  InstalledApps,
   LastHost,
   LatestRelease,
   LaunchApp,

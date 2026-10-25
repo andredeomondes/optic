@@ -6,6 +6,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"log"
 	"net/http"
@@ -23,11 +24,13 @@ import (
 	"optic/internal/adapter/github"
 	"optic/internal/adapter/mdns"
 	"optic/internal/adapter/registry"
+	rokuadapter "optic/internal/adapter/roku"
 	"optic/internal/adapter/ssdp"
 	"optic/internal/control"
 	"optic/internal/domain"
 	"optic/internal/platform/arp"
 	"optic/pkg/atvremote"
+	"optic/pkg/roku"
 	"optic/pkg/wol"
 )
 
@@ -40,6 +43,11 @@ var trayIcon []byte
 // singleInstanceID identifies OPTIC so a second launch focuses the first.
 const singleInstanceID = "optic-desktop-8b5cf6"
 
+// rokuInfo reads a Roku's name and model during discovery.
+func rokuInfo(ctx context.Context, host string) (roku.DeviceInfo, error) {
+	return (&roku.Client{Host: host, Timeout: 1500 * time.Millisecond}).DeviceInfo(ctx)
+}
+
 func main() {
 	cfgDir, err := atvremote.DefaultConfigDir()
 	if err != nil {
@@ -49,19 +57,23 @@ func main() {
 	shell := newShell(store, trayIcon)
 	tv := atv.New(cfgDir)
 	router := registry.Registry{
-		Adapters: map[domain.Platform]registry.Adapter{domain.PlatformAndroidTV: tv},
-		Known:    store,
+		Adapters: map[domain.Platform]registry.Adapter{
+			domain.PlatformAndroidTV: tv,
+			domain.PlatformRoku:      rokuadapter.Adapter{},
+		},
+		Known: store,
 	}
 	app := &App{
 		Shell: shell,
 		svc: control.New(control.Deps{
-			Discoverer: compose.Discoverer{Sources: []domain.Discoverer{mdns.Discoverer{}, ssdp.Discoverer{}}},
+			Discoverer: compose.Discoverer{Sources: []domain.Discoverer{mdns.Discoverer{}, ssdp.Discoverer{RokuInfo: rokuInfo}}},
 			Connector:  router,
 			Pairer:     router,
 			Hosts:      store,
 			Known:      store,
 			MACs:       arp.Resolver{},
 			Waker:      wol.Sender{},
+			Power:      router,
 			Events:     uiEvents{shell},
 			Releases:   github.Client{HTTP: &http.Client{Timeout: 5 * time.Second}, Repo: "andredeomondes/optic", UserAgent: "OPTIC"},
 		}),

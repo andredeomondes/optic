@@ -11,7 +11,10 @@ let closeToTray = true
 let size = { w: 820, h: 880 }
 let maximised = false
 let muted = false
-const pushState = () => emit('state', { on: true, volume, volumeMax: 100, muted })
+const ROKU_HOST = '192.168.0.50'
+let host = ''
+const pushState = () =>
+  emit('state', host === ROKU_HOST ? { on: true, volume: 0, volumeMax: 0, muted: false } : { on: true, volume, volumeMax: 100, muted })
 
 const w = window as any
 
@@ -47,6 +50,7 @@ w.go = {
         return [
           { name: 'UnionTV', model: 'UnionTV', ip: '192.168.0.18', remotev2: true, platform: 'androidtv', mac: 'AA:BB:CC:DD:EE:FF' },
           { name: 'Quarto', model: 'Chromecast', ip: '192.168.0.71', remotev2: true, platform: 'androidtv' },
+          { name: 'Sala Roku', model: 'TCL 43S5', ip: ROKU_HOST, remotev2: false, platform: 'roku' },
           { name: 'LG Sala', model: 'OLED55C3', ip: '192.168.0.40', remotev2: false, platform: 'webos' },
         ]
       },
@@ -55,6 +59,15 @@ w.go = {
       },
       async Connect(ip: string) {
         await wait(700)
+        host = ip
+        if (ip === ROKU_HOST) {
+          emit('trace', '>', 'GET /query/device-info')
+          setTimeout(pushState, 300)
+          return {
+            model: 'TCL 43S5', vendor: 'TCL', version: '12.5', appVersion: '', platform: 'roku',
+            capabilities: { text: true, appList: true, absoluteVolume: false, powerOn: true, inputs: false, pointer: false, toast: false },
+          }
+        }
         emit('trace', '<', `1 { 1: 639 2 { 1: "UnionTV" 2: "TCL" } }`)
         emit('trace', '>', `1 { 1: 622 2 { 1: "OPTIC" } }`)
         setTimeout(pushState, 300)
@@ -81,6 +94,12 @@ w.go = {
       },
       async LaunchApp(id: string) {
         emit('trace', '>', `90 { 1: "${id}" }`)
+      },
+      async InstalledApps() {
+        return [
+          { id: '12', name: 'Netflix' },
+          { id: '837', name: 'YouTube' },
+        ]
       },
       async LatestRelease() {
         return {
