@@ -74,6 +74,10 @@ w.go = {
       async LaunchApp(id: string) {
         emit('trace', '>', `90 { 1: "${id}" }`)
       },
+      async PowerOn(ip: string) {
+        await wait(300)
+        emit('trace', '>', `wol ${ip}`)
+      },
       async StartPairing() {
         return 'UnionTV'
       },

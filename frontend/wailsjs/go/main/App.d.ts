@@ -10,6 +10,7 @@ export function Discover(): Promise<Array<TV>>;
 export function FinishPairing(arg1: string): Promise<void>;
 export function LastHost(): Promise<string>;
 export function LaunchApp(arg1: string): Promise<void>;
+export function PowerOn(arg1: string): Promise<void>;
 export function SendKey(arg1: string): Promise<void>;
 export function SendText(arg1: string): Promise<void>;
 export function SetVolume(arg1: number): Promise<void>;

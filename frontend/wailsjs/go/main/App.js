@@ -9,6 +9,7 @@ export function Discover() { return window['go']['main']['App']['Discover'](); }
 export function FinishPairing(arg1) { return window['go']['main']['App']['FinishPairing'](arg1); }
 export function LastHost() { return window['go']['main']['App']['LastHost'](); }
 export function LaunchApp(arg1) { return window['go']['main']['App']['LaunchApp'](arg1); }
+export function PowerOn(arg1) { return window['go']['main']['App']['PowerOn'](arg1); }
 export function SendText(arg1) { return window['go']['main']['App']['SendText'](arg1); }
 export function SetVolume(arg1) { return window['go']['main']['App']['SetVolume'](arg1); }
 export function SendKey(arg1) { return window['go']['main']['App']['SendKey'](arg1); }

@@ -108,6 +108,8 @@ var (
 	ErrCodeTypo = errors.New("código não confere (erro de digitação?)")
 	// ErrVolumeUnknown means the TV hasn't reported its volume yet.
 	ErrVolumeUnknown = errors.New("volume atual desconhecido: mude o volume uma vez e tente de novo")
+	// ErrNoMAC means Wake-on-LAN was requested for a TV whose MAC was never learned.
+	ErrNoMAC = errors.New("MAC da TV desconhecido: conecte uma vez com ela ligada")
 )
 
 // Discoverer finds TVs on the local network.
@@ -161,6 +163,16 @@ type HostStore interface {
 type KnownTVs interface {
 	Get(ip string) (KnownTV, bool)
 	Put(tv KnownTV) error
+}
+
+// MACResolver finds a device's MAC from its IP (the OS ARP table).
+type MACResolver interface {
+	LookupMAC(ip string) (string, bool)
+}
+
+// WakeSender powers a device on with Wake-on-LAN.
+type WakeSender interface {
+	Send(mac, ip string) error
 }
 
 // EventSink is how use cases notify the UI.

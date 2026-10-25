@@ -23,7 +23,9 @@ import (
 	"optic/internal/adapter/ssdp"
 	"optic/internal/control"
 	"optic/internal/domain"
+	"optic/internal/platform/arp"
 	"optic/pkg/atvremote"
+	"optic/pkg/wol"
 )
 
 //go:embed all:frontend/dist
@@ -55,6 +57,8 @@ func main() {
 			Pairer:     router,
 			Hosts:      store,
 			Known:      store,
+			MACs:       arp.Resolver{},
+			Waker:      wol.Sender{},
 			Events:     uiEvents{shell},
 		}),
 	}

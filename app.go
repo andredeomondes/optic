@@ -45,6 +45,10 @@ func (a *App) SetVolume(level int) error { return a.svc.SetVolume(level) }
 
 func (a *App) LaunchApp(name string) error { return a.svc.LaunchApp(name) }
 
+// PowerOn wakes the TV at ip with Wake-on-LAN. It fails with a Portuguese
+// message when the TV's MAC was never learned.
+func (a *App) PowerOn(ip string) error { return a.svc.PowerOn(ip) }
+
 // shutdown runs when the app quits for real.
 func (a *App) shutdown(context.Context) {
 	a.svc.Disconnect()

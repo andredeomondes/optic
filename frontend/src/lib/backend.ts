@@ -8,6 +8,7 @@ export {
   FinishPairing,
   LastHost,
   LaunchApp,
+  PowerOn,
   ResizeWindow,
   SendKey,
   SendText,
