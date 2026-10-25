@@ -67,3 +67,32 @@ test('masks MACs glued to device names', () => {
   assert.ok(!/ddeeff/i.test(r))
   assert.ok(r.includes('| TV_aa:bb:cc:**:**:** |') && r.includes('| Samsung_aa:bb:cc:**:**:** |'))
 })
+
+test('redacts typed text from protocol trace lines', () => {
+  const line = '> 21 { 1: 1 2: 3 3 { 1: 1 2 { 3: "minhasenha123" } } }'
+  const r = buildReport({ ...base, log: [{ id: 1, dir: '>', text: line.slice(2), time: '00:00' }] })
+  assert.ok(!r.includes('minhasenha123'))
+  assert.ok(r.includes('3: "[redacted]"'))
+})
+
+test('redacts unterminated and escaped-quote strings (fails closed)', () => {
+  const r = buildReport({
+    ...base,
+    log: [
+      { id: 1, dir: '<', text: '3: "segredo1 \\" ainda segredo2" 4: 1', time: '00:00' },
+      { id: 2, dir: '<', text: '3: "cortada sem fim', time: '00:00' },
+    ],
+  })
+  assert.ok(!/segredo|cortada/.test(r))
+})
+
+test('keeps android package names in log lines', () => {
+  const r = buildReport({ ...base, log: [{ id: 1, dir: '<', text: '1 { 12: "com.netflix.ninja" 13: "Nome Livre" }', time: '00:00' }] })
+  assert.ok(r.includes('"com.netflix.ninja"'))
+  assert.ok(!r.includes('Nome Livre'))
+})
+
+test('redacts a string cut off right after a backslash', () => {
+  const r = buildReport({ ...base, log: [{ id: 1, dir: '<', text: '3: "segredo\\', time: '00:00' }] })
+  assert.ok(!r.includes('segredo'))
+})

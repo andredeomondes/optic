@@ -38,6 +38,19 @@ function maskMacsIn(text: string): string {
     .replace(/(?<![0-9a-f])([0-9a-f]{6})[0-9a-f]{6}(?![0-9a-f])/gi, (_m, oui: string) => ouiOnly(oui))
 }
 
+const PACKAGE_NAME = /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/
+
+/**
+ * Protocol traces carry typed text (IME frames) and the TV echoes field content, so
+ * every quoted string is replaced, except Android package names, which help diagnosis.
+ * Fails closed: an unterminated string is redacted up to the end of the line.
+ */
+function redactStrings(text: string): string {
+  return text.replace(/"((?:[^"\\]|\\.|\\$)*)(?:"|$)/g, (_m, body: string) =>
+    PACKAGE_NAME.test(body) && _m.endsWith('"') ? `"${body}"` : '"[redacted]"',
+  )
+}
+
 /** Table cells: keep the row intact if a value contains a pipe. */
 const cell = (v: string) => v.replace(/\|/g, '\\|')
 
@@ -75,7 +88,7 @@ export function buildReport({ version, userAgent, tvs, info, host, log }: Report
   out.push('')
 
   out.push('### Log', '', '```')
-  out.push(...log.slice(-MAX_LOG_LINES).map((l) => `${l.time} ${l.dir} ${l.text}`))
+  out.push(...log.slice(-MAX_LOG_LINES).map((l) => `${l.time} ${l.dir} ${redactStrings(l.text)}`))
   out.push('```', '')
   // One pass over everything: names, models, user agent and log may all embed a MAC.
   return maskMacsIn(out.join('\n'))
