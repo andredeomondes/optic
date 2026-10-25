@@ -5,6 +5,7 @@ import type { Updates } from '../hooks/useUpdates'
 import * as api from '../lib/backend'
 import { buildReport } from '../lib/report'
 import { SHORTCUTS } from '../lib/shortcuts'
+import { safeReleaseURL } from '../lib/version'
 import { Modal } from './Modal'
 
 // Wails on Windows opens target=_blank links in a bare in-app window, so go through the runtime.
@@ -210,7 +211,7 @@ function UpdatesTab({ updates }: { updates: Updates }) {
         <span>Última verificação: {when}</span>
         <span className="log-actions">
           {available && release && (
-            <button className="link" onClick={() => release.url && api.BrowserOpenURL(release.url)}>
+            <button className="link" onClick={() => api.BrowserOpenURL(safeReleaseURL(release.url))}>
               <ExternalLink size={12} /> Ver novidades
             </button>
           )}

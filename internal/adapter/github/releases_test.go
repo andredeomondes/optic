@@ -60,3 +60,35 @@ func TestLatestErrorsWhenServerDown(t *testing.T) {
 		t.Fatal("expected an error")
 	}
 }
+
+func TestLatestDropsForeignReleaseURL(t *testing.T) {
+	for _, bad := range []string{"file:///C:/x", "https://evil.com/", "https://github.com/other/repo/releases/1", "http://github.com/andredeomondes/optic/x"} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte(`{"tag_name":"v1.0.3","html_url":"` + bad + `"}`))
+		}))
+		c := Client{HTTP: srv.Client(), BaseURL: srv.URL, Repo: "andredeomondes/optic", UserAgent: "OPTIC"}
+		rel, err := c.Latest(context.Background())
+		srv.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rel.URL != "" {
+			t.Fatalf("url %q kept as %q, want empty", bad, rel.URL)
+		}
+	}
+}
+
+func TestLatestRefusesCrossHostRedirect(t *testing.T) {
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"tag_name":"v9"}`))
+	}))
+	defer other.Close()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, other.URL, http.StatusFound)
+	}))
+	defer srv.Close()
+	c := Client{BaseURL: srv.URL, Repo: "a/b", UserAgent: "OPTIC"}
+	if _, err := c.Latest(context.Background()); err == nil {
+		t.Fatal("expected redirect to be refused")
+	}
+}

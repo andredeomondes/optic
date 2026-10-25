@@ -4,9 +4,12 @@ package github
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"optic/internal/domain"
@@ -50,6 +53,20 @@ func (c Client) Latest(ctx context.Context) (domain.Release, error) {
 	if hc == nil {
 		hc = http.DefaultClient
 	}
+	// Refuse redirects that leave the API host.
+	if bu, err := url.Parse(base); err == nil {
+		clone := *hc
+		clone.CheckRedirect = func(r *http.Request, via []*http.Request) error {
+			if r.URL.Host != bu.Host {
+				return fmt.Errorf("github: redirect to %s refused", r.URL.Host)
+			}
+			if len(via) >= 10 {
+				return errors.New("github: too many redirects")
+			}
+			return nil
+		}
+		hc = &clone
+	}
 	resp, err := hc.Do(req)
 	if err != nil {
 		return domain.Release{}, err
@@ -62,5 +79,10 @@ func (c Client) Latest(ctx context.Context) (domain.Release, error) {
 	if err := json.NewDecoder(io.LimitReader(resp.Body, maxBody)).Decode(&r); err != nil {
 		return domain.Release{}, fmt.Errorf("github: %w", err)
 	}
-	return domain.Release{Tag: r.Tag, Name: r.Name, URL: r.URL, Notes: r.Body, PublishedAt: r.PublishedAt}, nil
+	// Only links into the project's own repository are ever handed to the UI.
+	link := r.URL
+	if !strings.HasPrefix(link, "https://github.com/"+c.Repo+"/") {
+		link = ""
+	}
+	return domain.Release{Tag: r.Tag, Name: r.Name, URL: link, Notes: r.Body, PublishedAt: r.PublishedAt}, nil
 }

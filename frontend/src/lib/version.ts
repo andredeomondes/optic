@@ -23,3 +23,15 @@ export function isNewer(current: string, latest: string): boolean {
   if (l.minor !== c.minor) return l.minor > c.minor
   return l.patch > c.patch
 }
+
+export const RELEASES_URL = 'https://github.com/andredeomondes/optic/releases'
+
+/** True when `url` points at GitHub over https, the only place release links may open. */
+export function isReleaseURL(url: string): boolean {
+  return url.startsWith('https://github.com/')
+}
+
+/** The release link when safe, otherwise the releases page. */
+export function safeReleaseURL(url: string): string {
+  return isReleaseURL(url) ? url : RELEASES_URL
+}

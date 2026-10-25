@@ -1,7 +1,7 @@
 // Run with: npm test (Node's built-in test runner + type stripping).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { isNewer, parseVersion } from './version.ts'
+import { isNewer, isReleaseURL, parseVersion, RELEASES_URL, safeReleaseURL } from './version.ts'
 
 test('parseVersion', () => {
   assert.deepEqual(parseVersion('v1.2.3'), { major: 1, minor: 2, patch: 3, pre: '' })
@@ -19,4 +19,17 @@ test('isNewer', () => {
   assert.equal(isNewer('dev', 'v1.0.3'), false)
   assert.equal(isNewer('1.0.2', 'garbage'), false)
   assert.equal(isNewer('1.0.2', ''), false)
+})
+
+test('isReleaseURL only accepts https github links', () => {
+  assert.equal(isReleaseURL('https://github.com/andredeomondes/optic/releases/tag/v1.0.4'), true)
+  assert.equal(isReleaseURL('file:///C:/x'), false)
+  assert.equal(isReleaseURL('http://github.com/a/b'), false)
+  assert.equal(isReleaseURL('https://github.com.evil.com/a'), false)
+  assert.equal(isReleaseURL(''), false)
+})
+
+test('safeReleaseURL falls back to the releases page', () => {
+  assert.equal(safeReleaseURL('https://github.com/a/b'), 'https://github.com/a/b')
+  assert.equal(safeReleaseURL('https://evil.com/'), RELEASES_URL)
 })

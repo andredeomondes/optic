@@ -1,6 +1,7 @@
 import { Sparkles } from 'lucide-react'
 import type { Updates } from '../hooks/useUpdates'
 import * as api from '../lib/backend'
+import { safeReleaseURL } from '../lib/version'
 
 /** Discreet strip above the remote when a newer release is published. */
 export function UpdateBanner({ updates }: { updates: Updates }) {
@@ -10,7 +11,7 @@ export function UpdateBanner({ updates }: { updates: Updates }) {
     <div className="update-banner" role="status">
       <Sparkles size={14} />
       <span className="msg">Nova versão {release.tag} disponível</span>
-      <button className="link" onClick={() => release.url && api.BrowserOpenURL(release.url)}>
+      <button className="link" onClick={() => api.BrowserOpenURL(safeReleaseURL(release.url))}>
         Ver novidades
       </button>
       <button className="link muted" onClick={() => skip(release.tag)}>
