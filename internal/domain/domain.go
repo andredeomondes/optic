@@ -87,6 +87,12 @@ type DeviceInfo struct {
 	Capabilities Capabilities `json:"capabilities"`
 }
 
+// App is an installed app a TV can launch.
+type App struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // State is the live state pushed by the TV.
 type State struct {
 	On        bool   `json:"on"`
