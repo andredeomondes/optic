@@ -34,7 +34,7 @@ function Shell() {
   const [settings, setSettings] = useState(false)
 
   const togglePalette = useCallback(() => setPalette((p) => !p), [])
-  useShortcuts({ connected: remote.connected, press: remote.press, togglePalette })
+  useShortcuts({ connected: remote.connected, press: remote.press, togglePalette, paste: remote.pasteToTV })
 
   const runCommand = (c: Command) => {
     const a = c.action
@@ -42,6 +42,10 @@ function Shell() {
       if (a.target === 'settings') setSettings(true)
       if (a.target === 'scan') remote.scan()
       if (a.target === 'focus-text') setTimeout(() => document.getElementById(TEXT_INPUT_ID)?.focus(), 50)
+      if (a.target === 'paste') {
+        if (remote.connected) remote.pasteToTV()
+        else remote.notify('err', 'Conecte uma TV primeiro.')
+      }
       return
     }
     if (!remote.connected) {

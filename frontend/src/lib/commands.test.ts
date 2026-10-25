@@ -49,3 +49,7 @@ test('pesquisar <q> no youtube builds a search link', () => {
   assert.equal(first.action.type, 'link')
   assert.ok(first.action.type === 'link' && first.action.url.endsWith('search_query=Cimatec'))
 })
+
+test('colar finds the paste command', () => {
+  assert.ok(suggest('colar', CATALOG).some((c) => c.id === 'paste'))
+})

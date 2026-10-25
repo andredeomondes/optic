@@ -33,6 +33,7 @@ w.runtime = {
   WindowIsMaximised: async () => maximised,
   WindowIsFullscreen: async () => Boolean(document.fullscreenElement),
   Quit() {},
+  ClipboardGetText: async () => 'texto de teste',
   BrowserOpenURL(url: string) {
     window.open(url, '_blank')
   },

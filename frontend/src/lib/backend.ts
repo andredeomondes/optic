@@ -22,6 +22,7 @@ export {
 } from '../../wailsjs/go/main/App'
 export {
   BrowserOpenURL,
+  ClipboardGetText,
   Quit,
   WindowGetSize,
   WindowIsFullscreen,

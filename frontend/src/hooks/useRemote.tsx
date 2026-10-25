@@ -3,6 +3,7 @@
 // so buttons can animate the result.
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import * as api from '../lib/backend'
+import { cleanPaste } from '../lib/paste'
 import { load, save } from '../lib/storage'
 import type { DeviceInfo, Feedback, LogLine, Status, Toast, TV, TVState } from '../lib/types'
 
@@ -174,6 +175,22 @@ function useRemoteState() {
     [run],
   )
 
+  // Shared by Ctrl+V and the "colar" command: PC clipboard → TV text field.
+  const pasteToTV = useCallback(async () => {
+    let text = ''
+    try {
+      text = cleanPaste(await api.ClipboardGetText())
+    } catch (e) {
+      notify('err', api.errText(e))
+      return false
+    }
+    if (!text) {
+      notify('info', 'Área de transferência vazia')
+      return false
+    }
+    return sendText(text)
+  }, [notify, sendText])
+
   const powerOn = useCallback(
     async (ip: string) => {
       const ok = await run(`power:${ip}`, () => api.PowerOn(ip), 'Ligando a TV…')
@@ -227,7 +244,7 @@ function useRemoteState() {
     tvs, scanning, scan, addManual, removeManual,
     status, connected, host, info, tvState, error, connectedAt,
     connect, finishPairing, cancelPairing,
-    press, pressedKey, launch, sendText, setVolume, powerOn, run,
+    press, pressedKey, launch, sendText, pasteToTV, setVolume, powerOn, run,
     feedback, toast, dismissToast: () => setToast(null), notify,
     log, clearLog: () => setLog([]),
   }

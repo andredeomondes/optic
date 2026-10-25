@@ -9,7 +9,7 @@ export type Action =
   | { type: 'volume'; level: number }
   | { type: 'text'; text: string }
   | { type: 'link'; url: string; label: string }
-  | { type: 'ui'; target: 'settings' | 'scan' | 'focus-text' }
+  | { type: 'ui'; target: 'settings' | 'scan' | 'focus-text' | 'paste' }
 
 export type IconName =
   | 'app' | 'volume' | 'volume-up' | 'volume-down' | 'mute' | 'power' | 'home' | 'back'
@@ -47,6 +47,7 @@ export const STATIC: Command[] = [
   key('ch-down', 'Canal anterior', 'channel', 'CHANNEL_DOWN', ['canal -', 'canal abaixo']),
   key('input', 'Entrada / source', 'channel', 'TV_INPUT', ['hdmi', 'source', 'fonte']),
   { id: 'type', title: 'Digitar na TV', icon: 'text', keywords: ['escrever', 'teclado'], action: { type: 'ui', target: 'focus-text' } },
+  { id: 'paste', title: 'Colar na TV', icon: 'text', keywords: ['colar', 'clipboard', 'área de transferência'], action: { type: 'ui', target: 'paste' } },
   { id: 'scan', title: 'Buscar TVs na rede', icon: 'search', keywords: ['procurar', 'descobrir'], action: { type: 'ui', target: 'scan' } },
   { id: 'settings', title: 'Configurações do OPTIC', icon: 'settings', keywords: ['logs', 'diagnostico', 'preferencias'], action: { type: 'ui', target: 'settings' } },
 ]
