@@ -62,12 +62,16 @@ main (composição) ──► adapters ──► domain ◄── control (casos
 | `internal/domain` | Entidades, erros de negócio e portas: `Discoverer`, `Connector`, `Session`, `Pairer`, `PairingSession`, `HostStore`, `EventSink` | nada |
 | `internal/control` | Casos de uso: descobrir, parear, conectar, enviar tecla/texto/app, ajustar volume | `domain` |
 | `internal/adapter/atv` | `Connector`, `Pairer` e `Session` sobre o protocolo Remote v2 | `domain`, `pkg/atvremote` |
+| `internal/adapter/roku` | `Connector`, `Session` e ligar pela rede sobre o ECP da Roku (estado por polling) | `domain`, `pkg/roku` |
+| `internal/adapter/registry` | Escolhe o adapter pela plataforma de cada TV | `domain` |
 | `internal/adapter/mdns` | `Discoverer` via mDNS | `domain`, `pkg/discovery` |
+| `internal/adapter/ssdp` | `Discoverer` via SSDP (Roku, LG, Samsung); nomes das Roku pelo device-info | `domain`, `pkg/ssdp`, `pkg/roku` |
 | `internal/adapter/filestore` | `HostStore` e preferências em arquivos na pasta de config | `domain` |
 | `internal/platform/tray` | Ícone na bandeja (Windows) ou no-op (outros SOs) | `energye/systray` (só Windows) |
 | `main` (`main.go`, `app.go`, `shell.go`) | Composição + entrega via Wails: bindings, janela, eventos | tudo acima |
 | `pkg/atvremote` | Protocolo: TLS, pairing Polo, mensagens protobuf codificadas à mão | stdlib, `protowire` |
 | `pkg/discovery` | mDNS/zeroconf | `zeroconf` |
+| `pkg/roku` | Cliente ECP (HTTP na porta 8060): teclas, texto, apps, device-info | stdlib |
 | `cmd/optic` | CLI de diagnóstico e engenharia reversa | `pkg/*` |
 
 ## SOLID na prática
