@@ -2,6 +2,7 @@ import { LoaderCircle, Power, RefreshCw } from 'lucide-react'
 import { since, useNow } from '../hooks/useNow'
 import { useRemote } from '../hooks/useRemote'
 import { RemoteButton } from './RemoteButton'
+import { SleepTimer } from './SleepTimer'
 
 /** Remote header: TV name, live status line and the power / reconnect button. */
 export function ConnectionStatus() {
@@ -39,9 +40,12 @@ export function ConnectionStatus() {
           <RefreshCw size={14} /> Reconectar
         </button>
       ) : (
-        <RemoteButton tvKey="POWER" label="Ligar / desligar" className="power">
-          <Power size={18} strokeWidth={1.8} />
-        </RemoteButton>
+        <div className="top-actions">
+          <SleepTimer />
+          <RemoteButton tvKey="POWER" label="Ligar / desligar" className="power">
+            <Power size={18} strokeWidth={1.8} />
+          </RemoteButton>
+        </div>
       )}
     </div>
   )

@@ -11,6 +11,7 @@ import { ToastHost } from './components/Toast'
 import { UpdateBanner } from './components/UpdateBanner'
 import { useApps } from './hooks/useApps'
 import { RemoteProvider, useRemote } from './hooks/useRemote'
+import { SleepTimerProvider, useSleepTimer } from './hooks/useSleepTimer'
 import { useShortcuts } from './hooks/useShortcuts'
 import { useUpdates } from './hooks/useUpdates'
 import { useWindowMode } from './hooks/useWindowMode'
@@ -20,13 +21,16 @@ import type { Command } from './lib/commands'
 export default function App() {
   return (
     <RemoteProvider>
-      <Shell />
+      <SleepTimerProvider>
+        <Shell />
+      </SleepTimerProvider>
     </RemoteProvider>
   )
 }
 
 function Shell() {
   const remote = useRemote()
+  const sleep = useSleepTimer()
   const apps = useApps()
   const win = useWindowMode()
   const updates = useUpdates()
@@ -48,9 +52,18 @@ function Shell() {
       }
       return
     }
+    if (a.type === 'sleep' && a.minutes === 0) {
+      sleep.cancel()
+      remote.notify('ok', 'Timer cancelado')
+      return
+    }
     if (!remote.connected) {
       remote.notify('err', 'Conecte uma TV primeiro.')
       return
+    }
+    if (a.type === 'sleep') {
+      sleep.start(a.minutes)
+      remote.notify('ok', `A TV desliga em ${a.minutes} min`)
     }
     if (a.type === 'key') remote.press(a.key).then((ok) => ok && remote.notify('ok', `Comando enviado: ${c.title}`))
     if (a.type === 'launch') remote.launch(a.app.id, launchLink(a.app), a.app.name)

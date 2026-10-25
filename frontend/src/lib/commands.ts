@@ -8,12 +8,14 @@ export type Action =
   | { type: 'launch'; app: AppDef }
   | { type: 'volume'; level: number }
   | { type: 'text'; text: string }
+  /** minutes 0 cancels the timer. */
+  | { type: 'sleep'; minutes: number }
   | { type: 'link'; url: string; label: string }
   | { type: 'ui'; target: 'settings' | 'scan' | 'focus-text' | 'paste' }
 
 export type IconName =
   | 'app' | 'volume' | 'volume-up' | 'volume-down' | 'mute' | 'power' | 'home' | 'back'
-  | 'ok' | 'up' | 'down' | 'left' | 'right' | 'play' | 'settings' | 'channel' | 'text' | 'search'
+  | 'ok' | 'up' | 'down' | 'left' | 'right' | 'play' | 'settings' | 'channel' | 'text' | 'search' | 'moon'
 
 export type Command = {
   id: string
@@ -48,6 +50,7 @@ export const STATIC: Command[] = [
   key('input', 'Entrada / source', 'channel', 'TV_INPUT', ['hdmi', 'source', 'fonte']),
   { id: 'type', title: 'Digitar na TV', icon: 'text', keywords: ['escrever', 'teclado'], action: { type: 'ui', target: 'focus-text' } },
   { id: 'paste', title: 'Colar na TV', icon: 'text', keywords: ['colar', 'clipboard', 'área de transferência'], action: { type: 'ui', target: 'paste' } },
+  { id: 'sleep-cancel', title: 'Cancelar timer', icon: 'moon', keywords: ['cancelar timer', 'parar timer', 'sem timer'], action: { type: 'sleep', minutes: 0 } },
   { id: 'scan', title: 'Buscar TVs na rede', icon: 'search', keywords: ['procurar', 'descobrir'], action: { type: 'ui', target: 'scan' } },
   { id: 'settings', title: 'Configurações do OPTIC', icon: 'settings', keywords: ['logs', 'diagnostico', 'preferencias'], action: { type: 'ui', target: 'settings' } },
 ]
@@ -66,6 +69,14 @@ const PARSERS: Parser[] = [
     if (!m) return []
     const level = Math.min(100, Number(m[1]))
     return [{ id: `vol-${level}`, title: `Volume ${level}`, icon: 'volume', action: { type: 'volume', level } }]
+  },
+  // "desligar em 30 min", "desligar em 1 minuto", "timer 45" (1-240; anything else is not suggested)
+  (input) => {
+    const m = input.match(/^(?:desligar\s+em|timer)\s+(\d{1,4})(?:\s*min(?:utos?)?)?$/)
+    if (!m) return []
+    const minutes = Number(m[1])
+    if (minutes < 1 || minutes > 240) return []
+    return [{ id: `sleep-${minutes}`, title: `Desligar a TV em ${minutes} min`, icon: 'moon', action: { type: 'sleep', minutes } }]
   },
   // "abrir youtube", "abre net", "open spotify"
   (input, apps) => {
