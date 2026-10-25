@@ -53,8 +53,12 @@ function Shell() {
       return
     }
     if (a.type === 'sleep' && a.minutes === 0) {
-      sleep.cancel()
-      remote.notify('ok', 'Timer cancelado')
+      if (sleep.deadline === null) {
+        remote.notify('info', 'Nenhum timer ativo')
+      } else {
+        sleep.cancel()
+        remote.notify('ok', 'Timer cancelado')
+      }
       return
     }
     if (!remote.connected) {

@@ -9,7 +9,7 @@ import { remaining, SLEEP_PRESETS } from '../lib/sleep'
 export function SleepTimer() {
   const { connected } = useRemote()
   const { deadline, start, cancel } = useSleepTimer()
-  const now = useNow(60_000)
+  useNow(60_000) // re-render each minute; the value itself is read fresh below
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
 
@@ -34,14 +34,14 @@ export function SleepTimer() {
 
   return (
     <div className="sleep" ref={root}>
-      {deadline !== null && <span className="chip sleep-chip">Desliga em {remaining(deadline, now)} min</span>}
+      {deadline !== null && <span className="chip sleep-chip">Desliga em {remaining(deadline, Date.now())} min</span>}
       <button
         className={`btn sm ghost ${deadline !== null ? 'active' : ''}`}
         onClick={() => setOpen((o) => !o)}
         aria-label="Timer para desligar"
         aria-expanded={open}
         title="Desligar a TV depois de um tempo"
-        disabled={!connected}
+        disabled={!connected && deadline === null}
       >
         <Moon size={16} strokeWidth={1.8} />
       </button>

@@ -9,10 +9,16 @@ test('remaining rounds up', () => {
   assert.equal(remaining(0, 5), 0)
 })
 
+const H = { armedHost: '10.0.0.2', host: '10.0.0.2' }
+
 test('decideAtDeadline never powers a tv that is off', () => {
-  assert.equal(decideAtDeadline({ connected: true, tvOn: true }), 'power')
-  assert.equal(decideAtDeadline({ connected: true, tvOn: false }), 'skip')
-  assert.equal(decideAtDeadline({ connected: false, tvOn: true }), 'skip')
+  assert.equal(decideAtDeadline({ ...H, connected: true, tvOn: true }), 'power')
+  assert.equal(decideAtDeadline({ ...H, connected: true, tvOn: false }), 'skip')
+  assert.equal(decideAtDeadline({ ...H, connected: false, tvOn: true }), 'skip')
+})
+
+test('decideAtDeadline never powers a different tv', () => {
+  assert.equal(decideAtDeadline({ connected: true, tvOn: true, armedHost: '10.0.0.2', host: '10.0.0.3' }), 'changed')
 })
 
 test('presets are ascending minutes', () => {

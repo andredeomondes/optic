@@ -36,9 +36,12 @@ export function ConnectionStatus() {
         </small>
       </div>
       {status === 'error' && host ? (
-        <button className="btn retry" onClick={() => connect(host)}>
-          <RefreshCw size={14} /> Reconectar
-        </button>
+        <div className="top-actions">
+          <SleepTimer />
+          <button className="btn retry" onClick={() => connect(host)}>
+            <RefreshCw size={14} /> Reconectar
+          </button>
+        </div>
       ) : (
         <div className="top-actions">
           <SleepTimer />

@@ -13,13 +13,15 @@ const Ctx = createContext<SleepTimer | null>(null)
 
 /** Single shared timer: one setTimeout to the deadline, in memory only. */
 export function SleepTimerProvider({ children }: { children: ReactNode }) {
-  const { connected, tvState, press, notify } = useRemote()
+  const { connected, host, tvState, press, notify } = useRemote()
   const [deadline, setDeadline] = useState<number | null>(null)
   const timer = useRef<number | undefined>(undefined)
 
   // The timeout fires long after it was armed: read the freshest state then.
-  const latest = useRef({ connected, tvOn: tvState?.on === true, press, notify })
-  latest.current = { connected, tvOn: tvState?.on === true, press, notify }
+  const latest = useRef({ connected, host, tvOn: tvState?.on === true, press, notify })
+  latest.current = { connected, host, tvOn: tvState?.on === true, press, notify }
+  // The TV the timer was armed for; it never powers another one.
+  const armedHost = useRef('')
 
   const clear = useCallback(() => {
     window.clearTimeout(timer.current)
@@ -34,14 +36,18 @@ export function SleepTimerProvider({ children }: { children: ReactNode }) {
   const start = useCallback(
     (minutes: number) => {
       clear()
+      armedHost.current = latest.current.host
       const at = Date.now() + minutes * 60_000
       setDeadline(at)
       timer.current = window.setTimeout(() => {
         timer.current = undefined
         setDeadline(null)
         const s = latest.current
-        if (decideAtDeadline(s) === 'power') {
+        const d = decideAtDeadline({ ...s, armedHost: armedHost.current })
+        if (d === 'power') {
           s.press('POWER').then((ok) => ok && s.notify('ok', 'TV desligada pelo timer'))
+        } else if (d === 'changed') {
+          s.notify('info', 'Timer cancelado: a TV conectada mudou')
         } else {
           s.notify('info', 'Timer cancelado: a TV já estava desligada ou desconectada')
         }
@@ -51,6 +57,14 @@ export function SleepTimerProvider({ children }: { children: ReactNode }) {
   )
 
   useEffect(() => clear, [clear])
+
+  // Switching to another TV drops the timer right away.
+  useEffect(() => {
+    if (deadline !== null && host !== armedHost.current) {
+      cancel()
+      latest.current.notify('info', 'Timer cancelado: a TV conectada mudou')
+    }
+  }, [host, deadline, cancel])
 
   const value = useMemo(() => ({ deadline, start, cancel }), [deadline, start, cancel])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
