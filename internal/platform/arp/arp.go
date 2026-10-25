@@ -2,6 +2,7 @@
 package arp
 
 import (
+	"context"
 	"net"
 	"net/netip"
 	"os"
@@ -9,11 +10,13 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"time"
 )
 
 var (
 	ipv4Re = regexp.MustCompile(`\b\d{1,3}(?:\.\d{1,3}){3}\b`)
-	macRe  = regexp.MustCompile(`(?i)\b[0-9a-f]{2}(?:[:-][0-9a-f]{2}){5}\b`)
+	// macOS prints octets without leading zeros (0:1e:c2:9:28:6b).
+	macRe = regexp.MustCompile(`(?i)\b[0-9a-f]{1,2}(?:[:-][0-9a-f]{1,2}){5}\b`)
 )
 
 // ParseTable reads `arp -a` (Windows), `arp -an` (macOS) or /proc/net/arp
@@ -31,13 +34,24 @@ func ParseTable(out string) map[string]string {
 		if _, err := netip.ParseAddr(ip); err != nil {
 			continue
 		}
-		hw, err := net.ParseMAC(mac)
+		hw, err := net.ParseMAC(padOctets(mac))
 		if err != nil || isPlaceholder(hw) {
 			continue
 		}
 		table[ip] = strings.ToLower(hw.String())
 	}
 	return table
+}
+
+// padOctets left-pads each octet to two digits so net.ParseMAC accepts it.
+func padOctets(mac string) string {
+	parts := strings.FieldsFunc(mac, func(r rune) bool { return r == ':' || r == '-' })
+	for i, p := range parts {
+		if len(p) == 1 {
+			parts[i] = "0" + p
+		}
+	}
+	return strings.Join(parts, ":")
 }
 
 // isPlaceholder reports all-ones (broadcast) and all-zeros (incomplete) MACs.
@@ -77,8 +91,13 @@ func readTable() (string, error) {
 	}
 }
 
+// commandTimeout bounds the arp tool so a hung one cannot stall a connection.
+var commandTimeout = 2 * time.Second
+
 func run(name string, args ...string) (string, error) {
-	cmd := exec.Command(name, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, name, args...)
 	hideWindow(cmd)
 	b, err := cmd.Output()
 	return string(b), err
