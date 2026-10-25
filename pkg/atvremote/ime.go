@@ -103,7 +103,8 @@ func (r *Remote) handleIme(f fields) {
 func IsTextFrame(msg []byte) bool {
 	f, err := parseFields(msg)
 	if err != nil {
-		return false
+		// DumpRaw would print the whole frame as hex; fail closed.
+		return true
 	}
 	if _, ok := f[rmImeBatchEdit]; ok {
 		return true
@@ -111,14 +112,19 @@ func IsTextFrame(msg []byte) bool {
 	if _, ok := f[rmImeShow]; ok {
 		return true
 	}
-	if b, ok := f.bytes(rmImeKeyInject); ok {
+	// Field 20 may repeat; any occurrence with a text field (or unparseable) counts.
+	for _, v := range f[rmImeKeyInject] {
+		b, ok := v.([]byte)
+		if !ok {
+			continue
+		}
 		kf, err := parseFields(b)
 		if err != nil {
-			// Cannot tell what it holds; fail closed.
 			return true
 		}
-		_, field := kf[2]
-		return field
+		if _, field := kf[2]; field {
+			return true
+		}
 	}
 	return false
 }

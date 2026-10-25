@@ -104,7 +104,7 @@ func TestIsTextFrame(t *testing.T) {
 		want bool
 	}{
 		"batch": {batch, true}, "show": {show, true}, "app only": {appOnly, false},
-		"field status": {withField, true}, "key": {key, false}, "garbage": {[]byte{0xff, 0xff}, false},
+		"field status": {withField, true}, "key": {key, false}, "garbage": {[]byte{0xff, 0xff}, true}, "repeated 20": {append(append([]byte{}, appOnly...), withField...), true},
 	} {
 		if got := IsTextFrame(c.msg); got != c.want {
 			t.Errorf("%s: IsTextFrame = %v, want %v", name, got, c.want)

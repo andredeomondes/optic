@@ -102,3 +102,9 @@ test('raw hex lines are omitted', () => {
   assert.ok(!r.includes('68690a0b'))
   assert.ok(r.includes('<raw omitido>'))
 })
+
+test('truncated raw line is omitted', () => {
+  const r = buildReport({ ...base, log: [{ id: 1, dir: '<', text: '<raw 68690a0b', time: '00:00' }] })
+  assert.ok(!r.includes('68690a0b'))
+  assert.ok(r.includes('<raw omitido>'))
+})
