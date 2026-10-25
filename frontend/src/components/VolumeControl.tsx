@@ -5,7 +5,7 @@ import { RemoteButton } from './RemoteButton'
 
 /** Volume −/slider/+, mute, and the channel rocker. */
 export function VolumeControl() {
-  const { tvState, connected, setVolume, feedback } = useRemote()
+  const { tvState, info, connected, setVolume, feedback } = useRemote()
   const max = tvState?.volumeMax || 100
   const level = tvState?.volume ?? 0
   const muted = tvState?.muted ?? false
@@ -23,7 +23,11 @@ export function VolumeControl() {
         <RemoteButton tvKey="VOLUME_DOWN" label="Volume −" className="ghost sm">
           <Minus size={16} />
         </RemoteButton>
-        <div className="slider-wrap" title={known ? 'Arraste para ajustar' : 'Volume aparece após a primeira mudança'}>
+        <div className="slider-wrap" title={known
+            ? 'Arraste para ajustar'
+            : info?.platform === 'roku'
+              ? 'Esta TV não informa o volume: use + e −'
+              : 'Volume aparece após a primeira mudança'}>
           <input
             type="range"
             min={0}

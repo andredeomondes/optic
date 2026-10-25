@@ -1,7 +1,7 @@
 import { LoaderCircle, Power, Tv, X } from 'lucide-react'
 import { since, useNow } from '../hooks/useNow'
 import { useRemote } from '../hooks/useRemote'
-import { PLATFORM_LABEL, canConnect, isSupported } from '../lib/capabilities'
+import { PLATFORM_LABEL, canConnect, canPowerOn, isSupported } from '../lib/capabilities'
 import type { TV } from '../lib/types'
 
 /** One TV in the sidebar. The selected TV expands with live details. */
@@ -14,7 +14,7 @@ export function DeviceCard({ tv, index }: { tv: TV; index: number }) {
 
   const supported = isSupported(tv.platform)
   const connectable = canConnect(tv)
-  const canWake = !!tv.mac && supported && !live && !busy
+  const canWake = canPowerOn(tv) && !live && !busy
   const waking = feedback[`power:${tv.ip}`] === 'pending'
 
   const state = !supported
@@ -54,7 +54,7 @@ export function DeviceCard({ tv, index }: { tv: TV; index: number }) {
         )}
       </button>
       {canWake && (
-        <button className="device-wake" onClick={() => powerOn(tv.ip)} disabled={waking} title="Ligar a TV (Wake-on-LAN)">
+        <button className="device-wake" onClick={() => powerOn(tv.ip)} disabled={waking} title={tv.platform === 'roku' ? 'Ligar a TV pela rede' : 'Ligar a TV (Wake-on-LAN)'}>
           {waking ? <LoaderCircle size={12} className="spin" /> : <Power size={12} />}
           Ligar
         </button>

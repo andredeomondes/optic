@@ -1,7 +1,7 @@
 // Run with: npm test (Node's built-in test runner + type stripping).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { PLATFORM_LABEL, can, canConnect, isSupported } from './capabilities.ts'
+import { PLATFORM_LABEL, can, canConnect, canPowerOn, isSupported } from './capabilities.ts'
 import type { DeviceInfo, TV } from './types.ts'
 
 test('isSupported', () => {
@@ -17,6 +17,14 @@ test('canConnect', () => {
   assert.equal(canConnect(tv('androidtv', false)), false)
   assert.equal(canConnect(tv('androidtv', true)), true)
   assert.equal(canConnect(tv('webos', false)), false)
+})
+
+test('canPowerOn', () => {
+  const tv = (platform: TV['platform'], mac?: string): TV => ({ name: 'TV', model: '', ip: '10.0.0.2', remotev2: false, platform, mac })
+  assert.equal(canPowerOn(tv('roku')), true)
+  assert.equal(canPowerOn(tv('androidtv')), false)
+  assert.equal(canPowerOn(tv('androidtv', 'aa:bb:cc:dd:ee:ff')), true)
+  assert.equal(canPowerOn(tv('webos', 'aa:bb:cc:dd:ee:ff')), false)
 })
 
 test('can', () => {

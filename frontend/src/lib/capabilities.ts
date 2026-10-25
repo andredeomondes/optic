@@ -19,6 +19,11 @@ export function canConnect(tv: TV): boolean {
   return isSupported(tv.platform) && (tv.platform === 'roku' || tv.remotev2)
 }
 
+/** Whether the TV can be switched on from the network (Wake-on-LAN or Roku ECP). */
+export function canPowerOn(tv: TV): boolean {
+  return isSupported(tv.platform) && (!!tv.mac || tv.platform === 'roku')
+}
+
 /** Whether the connected TV supports a feature (false while not connected). */
 export function can(info: DeviceInfo | null, cap: keyof Capabilities): boolean {
   return info?.capabilities?.[cap] === true
