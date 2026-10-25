@@ -25,6 +25,7 @@ export const SHORTCUTS: { keys: string[]; label: string }[] = [
   { keys: ['H'], label: 'Início' },
   { keys: ['M'], label: 'Mudo' },
   { keys: ['+', '−'], label: 'Volume' },
+  { keys: ['Roda do mouse'], label: 'Volume pela roda' },
   { keys: ['Espaço'], label: 'Play / pause' },
   { keys: ['Ctrl', 'K'], label: 'Comandos rápidos' },
   { keys: ['Ctrl', 'T'], label: 'Digitar na TV' },

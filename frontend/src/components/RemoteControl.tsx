@@ -1,21 +1,39 @@
-import { Fragment } from 'react'
+import { Fragment, useMemo, WheelEvent } from 'react'
 import { useRemote } from '../hooks/useRemote'
 import { can } from '../lib/capabilities'
 import { SHORTCUTS } from '../lib/shortcuts'
+import { createThrottle, wheelStep } from '../lib/throttle'
 import { ConnectionStatus } from './ConnectionStatus'
 import { DPad } from './DPad'
 import { MediaControls, NavButtons } from './MediaControls'
 import { TextInput } from './TextInput'
 import { VolumeControl } from './VolumeControl'
 
+const WHEEL_THROTTLE_MS = 120
+
 /**
  * The main remote. `compact` keeps only D-pad, navigation, volume and media,
  * ready for a future compact window.
  */
 export function RemoteControl({ compact = false }: { compact?: boolean }) {
-  const { info } = useRemote()
+  const { info, connected, press } = useRemote()
+  // One gate per panel, so its window survives re-renders.
+  const wheelGate = useMemo(() => createThrottle(WHEEL_THROTTLE_MS), [])
+
+  // Wheel over the panel changes the TV volume. React attaches wheel listeners
+  // as passive, so preventDefault would be ignored; the panel still scrolls.
+  function onWheel(e: WheelEvent<HTMLElement>) {
+    const step = wheelStep(e.deltaY)
+    if (!step || !connected || !wheelGate()) return
+    press(step)
+  }
+
   return (
-    <section className={`glass remote enter ${compact ? 'compact' : ''}`} style={{ animationDelay: '120ms' }}>
+    <section
+      className={`glass remote enter ${compact ? 'compact' : ''}`}
+      style={{ animationDelay: '120ms' }}
+      onWheel={onWheel}
+    >
       {!compact && <ConnectionStatus />}
       <VolumeControl />
       <DPad />
