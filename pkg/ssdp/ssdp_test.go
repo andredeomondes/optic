@@ -1,7 +1,10 @@
 package ssdp
 
 import (
+	"context"
+	"errors"
 	"net"
+	"os"
 	"testing"
 )
 
@@ -33,5 +36,25 @@ func TestParseAndClassify(t *testing.T) {
 		if r.IP != "192.168.0.30" {
 			t.Errorf("%s: IP = %q", c.name, r.IP)
 		}
+	}
+}
+
+func TestReadErrAction(t *testing.T) {
+	live := context.Background()
+	done, cancel := context.WithCancel(live)
+	cancel()
+	reset := errors.New("wsarecvfrom: forcibly closed by remote host")
+
+	if stop, ret := readErrAction(live, os.ErrDeadlineExceeded); !stop || ret != nil {
+		t.Errorf("timeout: stop=%v ret=%v", stop, ret)
+	}
+	if stop, ret := readErrAction(done, reset); !stop || ret != nil {
+		t.Errorf("cancelled: stop=%v ret=%v", stop, ret)
+	}
+	if stop, _ := readErrAction(live, reset); stop {
+		t.Error("transient error must not stop the search")
+	}
+	if stop, ret := readErrAction(live, net.ErrClosed); !stop || ret == nil {
+		t.Errorf("closed: stop=%v ret=%v", stop, ret)
 	}
 }

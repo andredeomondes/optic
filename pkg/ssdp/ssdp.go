@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/textproto"
@@ -99,7 +100,10 @@ func Search(ctx context.Context, timeout time.Duration) ([]Response, error) {
 	for {
 		n, from, err := conn.ReadFromUDP(buf)
 		if err != nil {
-			return out, nil // deadline or cancellation: return what we have
+			if stop, ret := readErrAction(ctx, err); stop {
+				return out, ret
+			}
+			continue // transient (e.g. connection reset): keep listening
 		}
 		r, ok := Parse(buf[:n], from.IP)
 		if !ok || seen[r.IP+r.ST] {
@@ -108,4 +112,18 @@ func Search(ctx context.Context, timeout time.Duration) ([]Response, error) {
 		seen[r.IP+r.ST] = true
 		out = append(out, r)
 	}
+}
+
+// readErrAction decides what the read loop does with a ReadFromUDP error:
+// stop with ret, or keep reading. Deadline/cancellation end the search cleanly;
+// a closed socket is fatal; anything else is treated as transient.
+func readErrAction(ctx context.Context, err error) (stop bool, ret error) {
+	var ne net.Error
+	switch {
+	case ctx.Err() != nil, errors.As(err, &ne) && ne.Timeout():
+		return true, nil
+	case errors.Is(err, net.ErrClosed):
+		return true, err
+	}
+	return false, nil
 }
