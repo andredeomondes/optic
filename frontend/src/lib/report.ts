@@ -12,15 +12,34 @@ export type ReportInput = {
   log: LogLine[]
 }
 
-/** Hides the device-specific half of a MAC address: aa:bb:cc:dd:ee:ff -> aa:bb:cc:**:**:**. */
-function maskMac(mac: string): string {
-  return mac.replace(/^((?:[0-9a-f]{2}[:-]){3})(?:[0-9a-f]{2}[:-]){2}[0-9a-f]{2}$/i, '$1**:**:**')
+const MASKED_MAC = '**:**:**:**:**:**'
+
+/** First three octets (vendor prefix) of 6 hex digits, followed by the masked device half. */
+function ouiOnly(hex6: string): string {
+  const h = hex6.toLowerCase()
+  return `${h.slice(0, 2)}:${h.slice(2, 4)}:${h.slice(4, 6)}:**:**:**`
 }
 
-/** Also masks MACs that show up inside free-form log text. */
-function maskMacsIn(text: string): string {
-  return text.replace(/\b((?:[0-9a-f]{2}[:-]){3})(?:[0-9a-f]{2}[:-]){2}[0-9a-f]{2}\b/gi, '$1**:**:**')
+/** Fails closed: any value that is not a clean 12-digit MAC is fully masked. */
+function maskMac(mac: string): string {
+  const hex = mac.replace(/[^0-9a-f]/gi, '')
+  return hex.length === 12 && /^[0-9a-f:.\-\s]+$/i.test(mac) ? ouiOnly(hex.slice(0, 6)) : MASKED_MAC
 }
+
+/**
+ * Masks MACs anywhere in free text: separated (colon/dash), dotted (aabb.ccdd.eeff)
+ * and unseparated, the latter only as a standalone 12-digit token so longer hex
+ * strings in protocol log lines are left alone.
+ */
+function maskMacsIn(text: string): string {
+  return text
+    .replace(/\b((?:[0-9a-f]{2}[:-]){3})(?:[0-9a-f]{2}[:-]){2}[0-9a-f]{2}\b/gi, (_m, oui: string) => ouiOnly(oui.replace(/[:-]/g, '')))
+    .replace(/\b([0-9a-f]{4})\.([0-9a-f]{4})\.[0-9a-f]{4}\b/gi, (_m, a: string, b: string) => ouiOnly(a + b.slice(0, 2)))
+    .replace(/\b([0-9a-f]{6})[0-9a-f]{6}\b/gi, (_m, oui: string) => ouiOnly(oui))
+}
+
+/** Table cells: keep the row intact if a value contains a pipe. */
+const cell = (v: string) => v.replace(/\|/g, '\\|')
 
 /** Markdown diagnostic report, ready to paste into a GitHub issue. */
 export function buildReport({ version, userAgent, tvs, info, host, log }: ReportInput): string {
@@ -32,7 +51,7 @@ export function buildReport({ version, userAgent, tvs, info, host, log }: Report
   } else {
     out.push('| Nome | IP | Plataforma |', '| --- | --- | --- |')
     for (const t of tvs) {
-      out.push(`| ${t.name} | ${t.ip} | ${PLATFORM_LABEL[t.platform] ?? t.platform} |`)
+      out.push(`| ${cell(t.name)} | ${cell(t.ip)} | ${PLATFORM_LABEL[t.platform] ?? t.platform} |`)
     }
     const macs = tvs.filter((t) => t.mac).map((t) => `${t.name}: ${maskMac(t.mac!)}`)
     if (macs.length) out.push('', ...macs.map((m) => `- MAC ${m}`))
@@ -56,7 +75,8 @@ export function buildReport({ version, userAgent, tvs, info, host, log }: Report
   out.push('')
 
   out.push('### Log', '', '```')
-  out.push(...log.slice(-MAX_LOG_LINES).map((l) => maskMacsIn(`${l.time} ${l.dir} ${l.text}`)))
+  out.push(...log.slice(-MAX_LOG_LINES).map((l) => `${l.time} ${l.dir} ${l.text}`))
   out.push('```', '')
-  return out.join('\n')
+  // One pass over everything: names, models, user agent and log may all embed a MAC.
+  return maskMacsIn(out.join('\n'))
 }
