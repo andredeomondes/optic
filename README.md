@@ -27,13 +27,16 @@ Controle remoto desktop open source para **Android TV e Google TV**, falando dir
 - **Liga a TV** pela rede (Wake-on-LAN), depois da primeira conexão com ela ligada.
 - **Controle completo:** D-pad, voltar, início, volume (com slider), canais, mídia e power.
 - **Abre apps** com um clique: YouTube, Netflix, Prime Video, Globoplay e qualquer outro pelo nome do pacote.
-- **Digita na TV** pelo teclado do PC, direto no campo de busca.
+- **Digita na TV** pelo teclado do PC, direto no campo de busca. `Ctrl+V` cola o texto copiado na TV.
 - **Comandos rápidos** (`Ctrl+K`): "netflix", "volume 20", "digitar …" e outros.
 - **Atalhos de teclado:** setas navegam, `Enter` OK, `Esc` voltar, `H` início, `M` mudo, `+`/`-` volume, espaço play/pause, `Ctrl+T` digitar.
+- **Volume pela roda do mouse** sobre o controle e pelo menu da bandeja.
+- **Timer para desligar** a TV em 15, 30, 60 ou 90 minutos (ou "desligar em 45 min" no `Ctrl+K`).
+- **Aviso de nova versão:** o app avisa quando sai uma release nova (dá para desligar em Configurações). A checagem só consulta a página pública de releases no GitHub; nada sobre você ou sua TV é enviado.
 - **Modo compacto** 360×520 que pode ficar sempre no topo, ao lado do que você estiver fazendo.
 - **Bandeja do sistema** (Windows): fechar esconde o app na área de ícones ocultos; abrir de novo traz a mesma janela.
 - **Tela cheia** com `F11` e janela maximizável.
-- **100% local:** nada passa por servidores. O certificado do pareamento fica só no seu PC.
+- **100% local:** o controle não passa por servidores. O certificado do pareamento fica só no seu PC.
 
 > Para ligar a TV pela rede, a opção **Ligar pela rede** (ou *Network standby*) precisa estar ativa na TV. Samsung, LG e Roku já aparecem na lista de TVs; o suporte a elas chega nas próximas versões.
 
