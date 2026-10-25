@@ -167,7 +167,7 @@ function useRemoteState() {
   )
 
   const powerOn = useCallback(
-    (ip: string) => run(`power:${ip}`, () => api.PowerOn(ip), 'Ligando a TV…'),
+    (ip: string) => run(`power:${ip}`, () => api.PowerOn(ip), 'Ligando a TVâ€¦'),
     [run],
   )
 
