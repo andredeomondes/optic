@@ -11,6 +11,9 @@ import (
 // ErrAppNotInstalled means the requested app is not on the Samsung TV.
 var ErrAppNotInstalled = errors.New("Este app não está instalado na TV Samsung.")
 
+// ErrAppsUnavailable means the TV did not send its app list.
+var ErrAppsUnavailable = errors.New("A TV Samsung não enviou a lista de apps. Tente de novo.")
+
 type knownApp struct{ ID, Name string }
 
 // knownApps maps the Android packages OPTIC's catalog uses to Samsung app IDs.
@@ -97,4 +100,17 @@ func resolveMarket(target string, installed []domain.App) (string, error) {
 		}
 	}
 	return "", ErrAppNotInstalled
+}
+
+// knownID returns the Samsung app ID of a market:// link in the catalog, or "".
+func knownID(target string) string {
+	target = strings.TrimSpace(target)
+	if !strings.HasPrefix(strings.ToLower(target), "market://") {
+		return ""
+	}
+	u, err := url.Parse(target)
+	if err != nil {
+		return ""
+	}
+	return knownApps[u.Query().Get("id")].ID
 }

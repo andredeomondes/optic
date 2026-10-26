@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,7 +25,7 @@ var (
 	// ErrPairingLost means the connection dropped before the prompt was answered.
 	ErrPairingLost = errors.New("Conexão com a TV perdida durante o pareamento.")
 	// ErrTVNotResponding means the TV did not answer; the pairing is kept.
-	ErrTVNotResponding = errors.New("A TV Samsung não respondeu. Verifique se ela está ligada e tente de novo.")
+	ErrTVNotResponding = errors.New("A TV Samsung não respondeu. Verifique se ela está ligada e tente de novo. Se aparecer 'Permitir' na TV, aceite e tente de novo.")
 	// ErrKeyboardClosed means text was sent with no text field open on the TV.
 	ErrKeyboardClosed = errors.New("Abra um campo de texto na TV antes de enviar.")
 )
@@ -138,11 +139,12 @@ func (a *Adapter) Connect(ctx context.Context, host string, ev domain.SessionEve
 	sctx, scancel := context.WithCancel(context.Background())
 	s := &session{
 		conn: conn, ev: ev, ctx: sctx, cancel: scancel,
+		imeSynced: info.ImeSynced,
 		poll: func(ctx context.Context) (tizen.Info, error) { return a.info(ctx, host) },
 		info: domain.DeviceInfo{
 			Model:        info.Model,
 			Vendor:       "Samsung",
-			Version:      info.OS,
+			Version:      osVersion(info),
 			Platform:     domain.PlatformTizen,
 			Capabilities: domain.Capabilities{Text: true, AppList: true},
 		},
@@ -252,6 +254,8 @@ type session struct {
 	cancel context.CancelFunc
 	info   domain.DeviceInfo
 	poll   func(ctx context.Context) (tizen.Info, error)
+	// imeSynced: the TV reports its text-field state, so text is gated on it.
+	imeSynced bool
 
 	keyMu  sync.Mutex // guards paused; serializes play/pause
 	paused bool       // last MEDIA_PLAY_PAUSE sent KEY_PAUSE
@@ -347,9 +351,11 @@ func (s *session) SendKey(name string) error {
 	return s.conn.Key(key)
 }
 
-// SendText types text in the open TV keyboard. pkg/tizen never traces it.
+// SendText types text in the TV keyboard. Only a TV that reports its
+// text-field state (ImeSyncedSupport) is gated on it; others get the text anyway.
+// pkg/tizen never traces it.
 func (s *session) SendText(text string) error {
-	if !s.State().Keyboard {
+	if s.imeSynced && !s.State().Keyboard {
 		return ErrKeyboardClosed
 	}
 	return s.conn.Text(text)
@@ -360,12 +366,12 @@ func (s *session) SendText(text string) error {
 func (s *session) LaunchApp(target string) error {
 	installed, err := s.installed(false)
 	if err != nil {
-		return err
+		return s.launchKnown(target, err)
 	}
 	app, err := pick(target, installed)
 	if errors.Is(err, ErrAppNotInstalled) {
 		if installed, err = s.installed(true); err != nil {
-			return err
+			return s.launchKnown(target, err)
 		}
 		app, err = pick(target, installed)
 	}
@@ -373,6 +379,27 @@ func (s *session) LaunchApp(target string) error {
 		return err
 	}
 	return s.conn.Launch(app.ID, app.Type)
+}
+
+// launchKnown launches a market link whose Samsung ID is known when the app
+// list cannot be fetched; otherwise it returns cause.
+func (s *session) launchKnown(target string, cause error) error {
+	if id := knownID(target); id != "" {
+		return s.conn.Launch(id, 2)
+	}
+	return cause
+}
+
+// osVersion is the model year ("2018"), else the OS when it says more than
+// "Tizen"; empty when nothing useful is known.
+func osVersion(info tizen.Info) string {
+	if info.Year != "" {
+		return info.Year
+	}
+	if info.OS == "" || strings.EqualFold(info.OS, "Tizen") {
+		return ""
+	}
+	return info.OS
 }
 
 // pick resolves target among the installed apps, keeping the app type.
@@ -403,7 +430,7 @@ func toDomain(apps []tizen.App) []domain.App {
 func (s *session) Apps(ctx context.Context) ([]domain.App, error) {
 	apps, err := s.conn.Apps(ctx)
 	if err != nil {
-		return nil, err
+		return nil, ErrAppsUnavailable
 	}
 	s.mu.Lock()
 	s.apps = apps

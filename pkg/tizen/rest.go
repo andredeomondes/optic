@@ -28,6 +28,9 @@ type Info struct {
 	PowerState string // "on" when the TV does not report it (older models)
 	OS         string
 	TokenAuth  bool
+	ModelCode  string // e.g. "18_KANTM2_QTV"
+	Year       string // "2018", from the model code prefix; empty when unknown
+	ImeSynced  bool   // the TV reports its text-field state (ImeSyncedSupport)
 }
 
 // GetInfo reads GET {base}/api/v2/. base is "http://host:8001", or just the
@@ -73,6 +76,8 @@ func GetInfo(ctx context.Context, client *http.Client, base string) (Info, error
 		Device struct {
 			Name       string          `json:"name"`
 			ModelName  string          `json:"modelName"`
+			Model      string          `json:"model"`
+			ImeSynced  json.RawMessage `json:"ImeSyncedSupport"`
 			WifiMAC    string          `json:"wifiMac"`
 			PowerState string          `json:"PowerState"`
 			OS         string          `json:"OS"`
@@ -89,10 +94,26 @@ func GetInfo(ctx context.Context, client *http.Client, base string) (Info, error
 		WifiMAC:    d.WifiMAC,
 		PowerState: d.PowerState,
 		OS:         d.OS,
-		TokenAuth:  strings.EqualFold(strings.Trim(string(d.TokenAuth), `"`), "true"),
+		TokenAuth:  rawTrue(d.TokenAuth),
+		ModelCode:  d.Model,
+		Year:       modelYear(d.Model),
+		ImeSynced:  rawTrue(d.ImeSynced),
 	}
 	if info.PowerState == "" {
 		info.PowerState = "on"
 	}
 	return info, nil
+}
+
+// rawTrue reads a JSON "true" or true.
+func rawTrue(r json.RawMessage) bool {
+	return strings.EqualFold(strings.Trim(string(r), `"`), "true")
+}
+
+// modelYear turns a code like "18_KANTM2_QTV" into "2018".
+func modelYear(code string) string {
+	if len(code) >= 3 && code[2] == '_' && code[0] >= '0' && code[0] <= '9' && code[1] >= '0' && code[1] <= '9' {
+		return "20" + code[:2]
+	}
+	return ""
 }

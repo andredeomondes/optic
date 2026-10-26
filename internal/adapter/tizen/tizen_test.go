@@ -37,6 +37,10 @@ type fakeTV struct {
 	restFail  bool
 	ws        *websocket.Conn // last socket
 	apps      []map[string]any
+	model     string        // REST device.model
+	imeSynced bool          // REST ImeSyncedSupport
+	appsMode  string        // "" answers; "silent" never answers the app list
+	timeout   time.Duration // client request timeout; 0 keeps the default
 
 	msgs   chan map[string]any // frames the TV received
 	closed chan struct{}       // a socket was closed by the client
@@ -48,6 +52,8 @@ func newFakeTV(t *testing.T) *fakeTV {
 		t:         t,
 		power:     "on",
 		tokenAuth: true,
+		model:     "18_KANTM2_QTV",
+		imeSynced: true,
 		apps: []map[string]any{
 			{"appId": "3201907018807", "name": "Netflix", "app_type": 2},
 			{"appId": "111299001912", "name": "YouTube", "app_type": 2},
@@ -93,10 +99,14 @@ func (tv *fakeTV) rest(w http.ResponseWriter) {
 	if tv.tokenAuth {
 		auth = "true"
 	}
-	json.NewEncoder(w).Encode(map[string]any{"device": map[string]any{
+	dev := map[string]any{
 		"name": "[TV] Sala", "modelName": "QN55Q60", "PowerState": tv.power,
-		"OS": "Tizen", "TokenAuthSupport": auth,
-	}})
+		"OS": "Tizen", "TokenAuthSupport": auth, "model": tv.model,
+	}
+	if tv.imeSynced {
+		dev["ImeSyncedSupport"] = "true"
+	}
+	json.NewEncoder(w).Encode(map[string]any{"device": dev})
 }
 
 func (tv *fakeTV) serve(ws *websocket.Conn, token string) {
@@ -133,8 +143,11 @@ func (tv *fakeTV) serve(ws *websocket.Conn, token string) {
 		tv.msgs <- m
 		if p, _ := m["params"].(map[string]any); p["event"] == "ed.installedApp.get" {
 			tv.mu.Lock()
-			apps := tv.apps
+			apps, mode := tv.apps, tv.appsMode
 			tv.mu.Unlock()
+			if mode == "silent" {
+				continue
+			}
 			tv.write(func() {
 				ws.WriteJSON(map[string]any{"event": "ed.installedApp.get", "data": map[string]any{"data": apps}})
 			})
@@ -228,6 +241,9 @@ func newAdapter(t *testing.T, tv *fakeTV) (*Adapter, chan dialRec) {
 	a.Dial = func(ctx context.Context, h, token string, secure bool, opt tizen.Options) (*tizen.Conn, string, error) {
 		dials <- dialRec{secure, token}
 		opt.URL = tv.url
+		tv.mu.Lock()
+		opt.Timeout = tv.timeout
+		tv.mu.Unlock()
 		return tizen.Dial(ctx, h, token, secure, opt)
 	}
 	a.InfoBase = func(string) string { return tv.base }
@@ -358,7 +374,7 @@ func TestPairingTVOff(t *testing.T) {
 	if _, err := a.StartPairing(context.Background(), host); !errors.Is(err, ErrTVNotResponding) {
 		t.Fatalf("err = %v", err)
 	}
-	if ErrTVNotResponding.Error() != "A TV Samsung não respondeu. Verifique se ela está ligada e tente de novo." {
+	if ErrTVNotResponding.Error() != "A TV Samsung não respondeu. Verifique se ela está ligada e tente de novo. Se aparecer 'Permitir' na TV, aceite e tente de novo." {
 		t.Errorf("text = %q", ErrTVNotResponding)
 	}
 }
@@ -455,7 +471,7 @@ func TestInfoAndState(t *testing.T) {
 	s, ev := connect(t, tv)
 	info := s.Info()
 	want := domain.DeviceInfo{
-		Model: "QN55Q60", Vendor: "Samsung", Version: "Tizen", Platform: domain.PlatformTizen,
+		Model: "QN55Q60", Vendor: "Samsung", Version: "2018", Platform: domain.PlatformTizen,
 		Capabilities: domain.Capabilities{Text: true, AppList: true},
 	}
 	if info != want {
@@ -669,5 +685,94 @@ func TestTokensFile(t *testing.T) {
 	dir := t.TempDir()
 	if New(dir).keys.Path != filepath.Join(dir, "samsung_tokens.json") {
 		t.Error("tokens file path")
+	}
+}
+
+func TestVersionEmptyWithoutModelYear(t *testing.T) {
+	tv := newFakeTV(t)
+	tv.model = ""
+	s, _ := connect(t, tv)
+	if v := s.Info().Version; v != "" {
+		t.Errorf("version = %q", v)
+	}
+}
+
+func TestSendTextSentWhenIMENotSynced(t *testing.T) {
+	tv := newFakeTV(t)
+	tv.imeSynced = false
+	s, _ := connect(t, tv)
+	if err := s.SendText("ola"); err != nil {
+		t.Fatal(err)
+	}
+	p := tv.next(t)
+	if p["TypeOfRemote"] != "SendInputString" {
+		t.Errorf("frame = %v", p)
+	}
+	if s.State().Keyboard {
+		t.Error("keyboard state invented")
+	}
+}
+
+func TestAppsUnavailableIsPortuguese(t *testing.T) {
+	tv := newFakeTV(t)
+	tv.appsMode = "silent"
+	s, _ := connect(t, tv)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	_, err := s.Apps(ctx)
+	if !errors.Is(err, ErrAppsUnavailable) || strings.Contains(err.Error(), "deadline") {
+		t.Fatalf("err = %v", err)
+	}
+	if err.Error() != "A TV Samsung não enviou a lista de apps. Tente de novo." {
+		t.Errorf("text = %q", err)
+	}
+}
+
+func TestLaunchFallsBackToKnownIDWhenListFails(t *testing.T) {
+	tv := newFakeTV(t)
+	tv.appsMode = "silent"
+	tv.timeout = 100 * time.Millisecond
+	s, _ := connect(t, tv)
+	if err := s.LaunchApp("market://launch?id=com.netflix.ninja"); err != nil {
+		t.Fatal(err)
+	}
+	tv.next(t) // installedApp.get
+	d, _ := tv.next(t)["data"].(map[string]any)
+	if d["appId"] != "3201907018807" || d["action_type"] != "DEEP_LINK" {
+		t.Errorf("launch = %v", d)
+	}
+	for _, target := range []string{"market://launch?id=org.xbmc.kodi", "youtube"} {
+		if err := s.LaunchApp(target); !errors.Is(err, ErrAppsUnavailable) {
+			t.Errorf("%s: err = %v", target, err)
+		}
+	}
+}
+
+func TestConnectUnauthorizedWithoutTokenAuthIsPromptRejected(t *testing.T) {
+	tv := newFakeTV(t)
+	tv.tokenAuth = false
+	tv.connect = "unauthorized"
+	a, _ := newAdapter(t, tv)
+	if _, err := a.Connect(context.Background(), host, newEvents()); !errors.Is(err, ErrPromptRejected) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestPairingEmptyTokenIsPairingLost(t *testing.T) {
+	tv := newFakeTV(t)
+	a, _ := newAdapter(t, tv)
+	a.Dial = func(context.Context, string, string, bool, tizen.Options) (*tizen.Conn, string, error) {
+		return nil, "", nil
+	}
+	p, err := a.StartPairing(context.Background(), host)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.Close()
+	if err := p.Finish(""); !errors.Is(err, ErrPairingLost) {
+		t.Fatalf("err = %v", err)
+	}
+	if a.keys.Get(host) != "" {
+		t.Error("token stored")
 	}
 }

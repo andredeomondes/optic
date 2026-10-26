@@ -465,14 +465,14 @@ func TestGetInfo(t *testing.T) {
 		path = r.URL.Path
 		json.NewEncoder(w).Encode(map[string]any{"device": map[string]any{
 			"name": "Sala", "modelName": "UN55", "wifiMac": "AA:BB", "PowerState": "standby",
-			"OS": "Tizen", "TokenAuthSupport": "true",
+			"OS": "Tizen", "TokenAuthSupport": "true", "model": "18_KANTM2_QTV", "ImeSyncedSupport": "true",
 		}})
 	})
 	got, err := GetInfo(context.Background(), &http.Client{Timeout: time.Second}, base)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := Info{Name: "Sala", Model: "UN55", WifiMAC: "AA:BB", PowerState: "standby", OS: "Tizen", TokenAuth: true}
+	want := Info{Name: "Sala", Model: "UN55", WifiMAC: "AA:BB", PowerState: "standby", OS: "Tizen", TokenAuth: true, ModelCode: "18_KANTM2_QTV", Year: "2018", ImeSynced: true}
 	if got != want {
 		t.Errorf("info = %+v", got)
 	}
@@ -489,7 +489,7 @@ func TestGetInfoDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.PowerState != "on" || got.TokenAuth {
+	if got.PowerState != "on" || got.TokenAuth || got.ImeSynced || got.Year != "" {
 		t.Errorf("info = %+v", got)
 	}
 }
@@ -645,5 +645,29 @@ func TestGetInfoIPv6Host(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), "invalid port") || strings.Contains(err.Error(), "endereço inválido") {
 		t.Errorf("err = %v", err)
+	}
+}
+
+func TestModelYear(t *testing.T) {
+	for code, want := range map[string]string{
+		"18_KANTM2_QTV": "2018", "22_NIKEM_UHD": "2022", "": "", "UN55": "", "1_X": "", "AB_CD": "",
+	} {
+		if got := modelYear(code); got != want {
+			t.Errorf("modelYear(%q) = %q, want %q", code, got, want)
+		}
+	}
+}
+
+func TestGetInfoImeSyncedFalseOrAbsent(t *testing.T) {
+	for _, body := range []string{
+		`{"device":{"ImeSyncedSupport":"false"}}`,
+		`{"device":{"ImeSyncedSupport":false}}`,
+		`{"device":{}}`,
+	} {
+		base := infoServer(t, func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(body)) })
+		got, err := GetInfo(context.Background(), &http.Client{}, base)
+		if err != nil || got.ImeSynced {
+			t.Errorf("%s: info = %+v err = %v", body, got, err)
+		}
 	}
 }
