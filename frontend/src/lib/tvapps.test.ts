@@ -41,6 +41,8 @@ test('matchInput: exact, spacing-insensitive and prefix', () => {
   assert.equal(matchInput(inputs, 'hdmi2')?.id, 'h2')
   assert.equal(matchInput(inputs, '  hdmi   1 ')?.id, 'h1')
   assert.equal(matchInput(inputs, 'hd')?.id, 'h1')
+  assert.equal(matchInput([{ id: 'h10', name: 'HDMI 10' }, ...inputs], 'hdmi 1')?.id, 'h1')
+  assert.equal(matchInput([{ id: 'h10', name: 'HDMI 10' }], 'hdmi 1'), undefined)
 })
 
 test('matchInput: no match or empty query', () => {

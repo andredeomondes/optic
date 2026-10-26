@@ -25,6 +25,10 @@ export function matchInput(inputs: TVInput[], query: string): TVInput | undefine
   return (
     inputs.find((i) => normalize(i.name) === q) ??
     inputs.find((i) => squash(i.name) === sq) ??
-    inputs.find((i) => squash(i.name).startsWith(sq))
+    inputs.find((i) => {
+      const n = squash(i.name)
+      // "hdmi1" must not pick "hdmi10"
+      return n.startsWith(sq) && !(/\d$/.test(sq) && /\d/.test(n[sq.length] ?? ''))
+    })
   )
 }

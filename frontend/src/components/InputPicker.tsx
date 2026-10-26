@@ -11,6 +11,9 @@ export function InputPicker() {
   const [list, setList] = useState<TVInput[]>([])
   const root = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
+  // Bumped on TV change and on each fetch; a stale or duplicate response is dropped.
+  const req = useRef(0)
+  const fetching = useRef(false)
 
   useEffect(() => {
     if (!open) return
@@ -46,6 +49,8 @@ export function InputPicker() {
 
   // A different TV has a different list.
   useEffect(() => {
+    req.current++
+    fetching.current = false
     setOpen(false)
     setList([])
   }, [info])
@@ -57,16 +62,24 @@ export function InputPicker() {
       setOpen(false)
       return
     }
+    if (fetching.current) return
+    const mine = ++req.current
+    fetching.current = true
     try {
-      setList(await inputs())
+      const l = await inputs()
+      if (req.current !== mine) return
+      setList(l)
       setOpen(true)
     } catch {
-      notify('err', 'Não foi possível listar as entradas')
+      if (req.current === mine) notify('err', 'Não foi possível listar as entradas')
+    } finally {
+      if (req.current === mine) fetching.current = false
     }
   }
 
   const pick = (i: TVInput) => {
     setOpen(false)
+    trigger.current?.focus()
     switchInput(i.id, i.name)
   }
 

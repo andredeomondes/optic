@@ -76,7 +76,7 @@ w.go = {
           setTimeout(pushState, 300)
           return {
             model: 'TCL 43S5', vendor: 'TCL', version: '12.5', appVersion: '', platform: 'roku',
-            capabilities: { text: true, appList: true, absoluteVolume: false, powerOn: true, inputs: false, pointer: false, toast: false },
+            capabilities: { text: true, appList: true, absoluteVolume: false, powerOn: true, inputs: true, pointer: false, toast: false },
           }
         }
         if (ip === WEBOS_HOST) {
@@ -162,6 +162,16 @@ w.go = {
         return ip === WEBOS_HOST ? { name: 'LG Sala', mode: 'prompt' } : { name: 'UnionTV', mode: 'code' }
       },
       async Inputs() {
+        if (host === ROKU_HOST) {
+          return [
+            { id: 'InputTuner', name: 'TV' },
+            { id: 'InputHDMI1', name: 'HDMI 1' },
+            { id: 'InputHDMI2', name: 'HDMI 2' },
+            { id: 'InputHDMI3', name: 'HDMI 3' },
+            { id: 'InputHDMI4', name: 'HDMI 4' },
+            { id: 'InputAV1', name: 'AV' },
+          ]
+        }
         return [
           { id: 'HDMI_1', name: 'HDMI 1' },
           { id: 'HDMI_2', name: 'HDMI 2' },
