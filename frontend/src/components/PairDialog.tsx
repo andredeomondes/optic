@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react'
 import { KeyRound, LoaderCircle } from 'lucide-react'
 import { useI18n } from '../hooks/useI18n'
 import { errText } from '../lib/backend'
+import { translateError } from '../lib/errors'
 import { Modal } from './Modal'
 
 type Props = { mode: 'code' | 'prompt'; onSubmit: (code: string) => Promise<void>; onCancel: () => void }
@@ -38,21 +39,22 @@ function PromptDialog({ onCancel }: { onCancel: () => void }) {
 
 function CodeDialog({ onSubmit, onCancel }: Omit<Props, 'mode'>) {
   const [code, setCode] = useState('')
-  const [err, setErr] = useState('')
+  // Our own message is shown as is; a backend one is raw and translated at render.
+  const [err, setErr] = useState<{ text: string; raw: boolean } | null>(null)
   const [busy, setBusy] = useState(false)
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (code.length !== 6) {
-      setErr(t('pair.codeLength'))
+      setErr({ text: t('pair.codeLength'), raw: false })
       return
     }
     setBusy(true)
     try {
       await onSubmit(code)
     } catch (e) {
-      setErr(errText(e))
+      setErr({ text: errText(e), raw: true })
       setBusy(false)
     }
   }
@@ -70,10 +72,10 @@ function CodeDialog({ onSubmit, onCancel }: Omit<Props, 'mode'>) {
           className={`code-input ${err ? 'shake' : ''}`}
           onChange={(e) => {
             setCode(e.target.value.toUpperCase().replace(/[^0-9A-F]/g, ''))
-            setErr('')
+            setErr(null)
           }}
         />
-        {err && <div className="err">{err}</div>}
+        {err && <div className="err">{err.raw ? translateError(err.text, lang) : err.text}</div>}
         <div className="actions">
           <button type="button" className="btn" onClick={onCancel}>
             {t('common.cancel')}

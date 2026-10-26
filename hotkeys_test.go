@@ -212,3 +212,33 @@ func TestSuspendHotkeys(t *testing.T) {
 		t.Fatalf("resume is idempotent: %v", fake.sets)
 	}
 }
+
+func TestDispatchNotConnectedFollowsLanguage(t *testing.T) {
+	for lang, want := range map[string]string{"en": "Connect a TV first", "pt-BR": "Conecte uma TV primeiro", "": "Conecte uma TV primeiro"} {
+		var ev []emitted
+		dispatchHotkey("home", func(string) error { return domain.ErrNotConnected }, hotkeyEffects{
+			visible: func() bool { return true },
+			show:    func() {},
+			emit:    func(e string, d ...any) { ev = append(ev, emitted{e, d}) },
+			lang:    func() string { return lang },
+		})
+		if len(ev) != 1 || ev[0].data[0] != want {
+			t.Errorf("lang %q: got %v, want %q", lang, ev, want)
+		}
+	}
+}
+
+func TestShellSetLanguage(t *testing.T) {
+	s := &Shell{}
+	if s.language() != "" {
+		t.Fatalf("default: %q", s.language())
+	}
+	s.SetLanguage("en")
+	if s.language() != "en" {
+		t.Fatalf("en: %q", s.language())
+	}
+	s.SetLanguage("fr")
+	if s.language() != "pt-BR" {
+		t.Fatalf("unknown must fall back to pt-BR: %q", s.language())
+	}
+}

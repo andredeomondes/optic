@@ -6,6 +6,7 @@ import * as api from '../lib/backend'
 import { useI18n } from './useI18n'
 import { cleanPaste } from '../lib/paste'
 import { load, save } from '../lib/storage'
+import { translateError } from '../lib/errors'
 import type { Key } from '../lib/i18n'
 import type { DeviceInfo, Feedback, LogLine, Status, Toast, TV, TVState } from '../lib/types'
 
@@ -50,6 +51,8 @@ function useRemoteState() {
 
   const connected = status === 'connected'
 
+  const errMsg = useCallback((e: unknown) => translateError(api.errText(e), langRef.current), [])
+
   const addLog = useCallback((dir: string, text: string) => {
     const time = new Date().toLocaleTimeString(langRef.current)
     setLog((l) => [...l.slice(-300), { id: ++seq, dir, text, time }])
@@ -72,8 +75,9 @@ function useRemoteState() {
         return true
       } catch (e) {
         setFeedback((f) => ({ ...f, [id]: 'err' }))
-        notify('err', api.errText(e))
-        addLog('!', api.errText(e))
+        const text = errMsg(e)
+        notify('err', text)
+        addLog('!', text)
         return false
       } finally {
         window.setTimeout(
@@ -86,7 +90,7 @@ function useRemoteState() {
         )
       }
     },
-    [notify, addLog],
+    [notify, addLog, errMsg],
   )
 
   const connect = useCallback(
@@ -151,11 +155,11 @@ function useRemoteState() {
     try {
       setDevices(await api.Discover())
     } catch (e) {
-      notify('err', api.errText(e))
+      notify('err', errMsg(e))
     } finally {
       setScanning(false)
     }
-  }, [notify])
+  }, [notify, errMsg])
 
   scanRef.current = scan
 
@@ -248,7 +252,7 @@ function useRemoteState() {
     try {
       text = cleanPaste(await api.ClipboardGetText())
     } catch (e) {
-      notify('err', api.errText(e))
+      notify('err', errMsg(e))
       return false
     }
     if (!text) {
@@ -256,7 +260,7 @@ function useRemoteState() {
       return false
     }
     return sendText(text)
-  }, [notify, sendText])
+  }, [notify, errMsg, sendText])
 
   const powerOn = useCallback(
     async (ip: string) => {

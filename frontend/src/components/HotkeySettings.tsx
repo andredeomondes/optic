@@ -3,6 +3,7 @@ import { Keyboard, RotateCcw } from 'lucide-react'
 import * as api from '../lib/backend'
 import { useI18n } from '../hooks/useI18n'
 import { accelFromEvent, labelFor } from '../lib/accel'
+import { translateError } from '../lib/errors'
 import type { Key } from '../lib/i18n'
 
 type State = Awaited<ReturnType<typeof api.GetHotkeys>>
@@ -27,7 +28,8 @@ const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
 /** Global (system-wide) shortcuts: toggles, rebinding by key capture, per-binding errors. */
 export function HotkeySettings() {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
+  const te = (raw: string) => translateError(raw, lang)
   const [st, setSt] = useState<State | null>(null)
   const [capturing, setCapturing] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -90,12 +92,12 @@ export function HotkeySettings() {
     return () => window.removeEventListener('keydown', onKey, true)
   }, [capturing, st, current, save])
 
-  if (loadError) return <p className="err" role="alert">{t('hotkeys.loadFailed', { error: loadError })}</p>
+  if (loadError) return <p className="err" role="alert">{t('hotkeys.loadFailed', { error: te(loadError) })}</p>
   if (!st) return api.hasRuntime() ? <p className="note">{t('hotkeys.loading')}</p> : <p className="note">{t('hotkeys.unsupported')}</p>
 
   const off = !st.supported || busy || isCapturing
   const accelOf = (id: string) => st.bindings.find((b) => b.id === id)?.accel ?? ACTIONS.find((a) => a.id === id)!.def
-  const errorOf = (id: string) => (failure?.id === id ? failure.text : st.bindings.find((b) => b.id === id)?.error || '')
+  const errorOf = (id: string) => te(failure?.id === id ? failure.text : st.bindings.find((b) => b.id === id)?.error || '')
   const defaults = Object.fromEntries(ACTIONS.map((a) => [a.id, a.def]))
 
   return (
@@ -132,7 +134,7 @@ export function HotkeySettings() {
             .filter((b) => b.id in MEDIA_LABELS && b.error)
             .map((b) => (
               <span key={b.id} className="err" role="alert">
-                {t(MEDIA_LABELS[b.id])}: {b.error}
+                {t(MEDIA_LABELS[b.id])}: {te(b.error)}
               </span>
             ))}
         </li>
@@ -168,7 +170,7 @@ export function HotkeySettings() {
         </li>
         {failure && failure.id === '' && (
           <li className="note">
-            <span className="err" role="alert">{failure.text}</span>
+            <span className="err" role="alert">{te(failure.text)}</span>
           </li>
         )}
       </ul>

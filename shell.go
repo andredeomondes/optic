@@ -32,6 +32,7 @@ type Shell struct {
 	icon  []byte
 	tray  tray.Tray
 
+	lang        atomic.Value // string: "en" or "pt-BR", set by the UI
 	closeToTray atomic.Bool
 	quitting    atomic.Bool
 	hidden      atomic.Bool // window hidden to the tray
@@ -57,6 +58,7 @@ func (s *Shell) startup(ctx context.Context) {
 	s.tray = tray.Start(tray.Options{
 		Icon:        s.icon,
 		Tooltip:     "OPTIC",
+		Language:    s.language(),
 		CloseToTray: s.closeToTray.Load(),
 		Handlers: tray.Handlers{
 			Open: s.ShowWindow,
@@ -90,6 +92,7 @@ func (s *Shell) onHotkey(id string) {
 		visible: func() bool { return !s.hidden.Load() },
 		show:    s.ShowWindow,
 		emit:    func(ev string, data ...any) { runtime.EventsEmit(s.ctx, ev, data...) },
+		lang:    s.language,
 	})
 }
 
@@ -189,6 +192,23 @@ func (s *Shell) ResizeWindow(minW, minH, w, h int) {
 	runtime.WindowUnmaximise(s.ctx)
 	runtime.WindowSetMinSize(s.ctx, minW, minH)
 	runtime.WindowSetSize(s.ctx, w, h)
+}
+
+// SetLanguage records the UI language ("en"; anything else is pt-BR) for the
+// tray menu and for texts emitted from Go.
+func (s *Shell) SetLanguage(lang string) {
+	if lang != "en" {
+		lang = "pt-BR"
+	}
+	s.lang.Store(lang)
+	if s.tray != nil {
+		s.tray.SetLanguage(lang)
+	}
+}
+
+func (s *Shell) language() string {
+	l, _ := s.lang.Load().(string)
+	return l
 }
 
 // SetCompactMode mirrors the window mode (owned by the frontend) in the tray.

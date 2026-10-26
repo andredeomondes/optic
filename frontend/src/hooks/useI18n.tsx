@@ -27,9 +27,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.lang = lang
-    // Binding arrives with the backend language support; skip until then.
-    const setLanguage = (api as any).SetLanguage as ((l: string) => Promise<unknown>) | undefined
-    if (typeof setLanguage === 'function') void Promise.resolve(setLanguage(lang)).catch(() => {})
+    // Tray menu and Go-emitted texts follow the UI language.
+    void Promise.resolve(api.SetLanguage(lang)).catch(() => {})
   }, [lang])
 
   const value = useMemo<I18n>(

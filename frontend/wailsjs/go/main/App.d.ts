@@ -21,6 +21,8 @@ export function InstalledApps(): Promise<Array<TVApp>>;
 export function Inputs(): Promise<Array<TVInput>>;
 export function GetHotkeys(): Promise<HotkeyState>;
 export function SuspendHotkeys(arg1: boolean): Promise<void>;
+export function SetLanguage(arg1: string): Promise<void>;
+
 export function SetHotkeys(arg1: boolean, arg2: boolean, arg3: Record<string, string>): Promise<HotkeyState>;
 export function LastHost(): Promise<string>;
 export function LatestRelease(): Promise<Release>;

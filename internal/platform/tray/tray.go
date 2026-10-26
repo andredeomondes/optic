@@ -23,6 +23,8 @@ type Tray interface {
 	Ready() bool
 	SetCompact(on bool)
 	SetCloseToTray(on bool)
+	// SetLanguage relabels the menu: "en", anything else is pt-BR.
+	SetLanguage(lang string)
 	// Stop removes the icon, waiting briefly so no ghost icon is left behind.
 	Stop()
 }
@@ -31,7 +33,8 @@ type Tray interface {
 type Options struct {
 	Icon        []byte // .ico bytes on Windows
 	Tooltip     string
-	CloseToTray bool // initial state of the checkbox
+	CloseToTray bool   // initial state of the checkbox
+	Language    string // initial menu language, see SetLanguage
 	Handlers    Handlers
 }
 
@@ -41,4 +44,5 @@ type noop struct{}
 func (noop) Ready() bool         { return false }
 func (noop) SetCompact(bool)     {}
 func (noop) SetCloseToTray(bool) {}
+func (noop) SetLanguage(string)  {}
 func (noop) Stop()               {}

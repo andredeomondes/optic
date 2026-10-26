@@ -147,6 +147,15 @@ type hotkeyEffects struct {
 	visible func() bool
 	show    func()
 	emit    func(event string, data ...any)
+	lang    func() string // UI language for texts emitted from Go; nil means pt-BR
+}
+
+// connectFirstText is the toast for a shortcut pressed with no TV connected.
+func connectFirstText(lang string) string {
+	if lang == "en" {
+		return "Connect a TV first"
+	}
+	return "Conecte uma TV primeiro"
 }
 
 // dispatchHotkey runs the action behind a fired shortcut. Failures are
@@ -166,7 +175,11 @@ func dispatchHotkey(id string, keys func(string) error, fx hotkeyEffects) {
 		return
 	}
 	if errors.Is(err, domain.ErrNotConnected) {
-		fx.emit(evHotkeyError, "Conecte uma TV primeiro")
+		lang := ""
+		if fx.lang != nil {
+			lang = fx.lang()
+		}
+		fx.emit(evHotkeyError, connectFirstText(lang))
 		return
 	}
 	fx.emit(evHotkeyError, err.Error())

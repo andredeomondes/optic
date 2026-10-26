@@ -4,6 +4,7 @@ import { since, useNow } from '../hooks/useNow'
 import { useRemote } from '../hooks/useRemote'
 import { useTVApps } from '../hooks/useTVApps'
 import { CATALOG } from '../lib/apps'
+import { translateError } from '../lib/errors'
 import { can, platformOSLabel } from '../lib/capabilities'
 import { nowPlayingText, playingKey } from '../lib/nowplaying'
 import { InputPicker } from './InputPicker'
@@ -16,7 +17,7 @@ const CATALOG_NAMES = CATALOG.map(({ pkg, name }) => ({ pkg, name }))
 export function ConnectionStatus() {
   const { status, pairingMode, host, info, tvs, error, connectedAt, connect, tvState } = useRemote()
   const now = useNow()
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const { apps: installed } = useTVApps(host || null, can(info, 'appList'))
   const pk = playingKey(tvState?.playing ?? '')
   const playingText = pk ? t(pk) : ''
@@ -47,7 +48,7 @@ export function ConnectionStatus() {
             </>
           )}
           {status === 'pairing' && (pairingMode === 'prompt' ? t('common.confirmOnTv') : t('status.pairing'))}
-          {status === 'error' && (error ? ('key' in error ? t(error.key, error.vars) : error.raw) : t('status.error'))}
+          {status === 'error' && (error ? ('key' in error ? t(error.key, error.vars) : translateError(error.raw, lang)) : t('status.error'))}
           {status === 'idle' && t('status.idle')}
         </small>
         {nowText && (

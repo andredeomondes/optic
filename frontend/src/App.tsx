@@ -18,6 +18,7 @@ import { useUpdates } from './hooks/useUpdates'
 import { useWindowMode } from './hooks/useWindowMode'
 import { appsForPlatform, launchLink } from './lib/apps'
 import * as api from './lib/backend'
+import { translateError } from './lib/errors'
 import { matchInput } from './lib/tvapps'
 import type { Command } from './lib/commands'
 
@@ -32,7 +33,7 @@ export default function App() {
 }
 
 function Shell() {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const remote = useRemote()
   const sleep = useSleepTimer()
   const apps = useApps()
@@ -44,7 +45,7 @@ function Shell() {
   const togglePalette = useCallback(() => setPalette((p) => !p), [])
   // Global shortcuts: the palette key opens the quick command, failures become toasts.
   useEffect(() => api.onEvent('hotkey:palette', () => setPalette(true)), [])
-  useEffect(() => api.onEvent('hotkey:error', (msg: string) => remote.notify('err', msg)), [remote.notify])
+  useEffect(() => api.onEvent('hotkey:error', (msg: string) => remote.notify('err', translateError(msg, lang))), [remote.notify, lang])
   useShortcuts({ connected: remote.connected, press: remote.press, togglePalette, paste: remote.pasteToTV })
 
   const runCommand = (c: Command) => {
