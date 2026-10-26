@@ -1,0 +1,384 @@
+// Package webos is a client for the LG webOS SSAP protocol (JSON over
+// WebSocket), with prompt pairing and the pointer-input socket.
+package webos
+
+import (
+	"context"
+	"crypto/tls"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strconv"
+	"sync"
+	"time"
+
+	"github.com/gorilla/websocket"
+)
+
+// ErrRegisterRejected is returned when the TV refuses the pairing.
+var ErrRegisterRejected = errors.New("webos: registro recusado pela TV")
+
+const (
+	registerID = "register_0"
+	insertText = "ssap://com.webos.service.ime/insertText"
+	pointerURI = "ssap://com.webos.service.networkinput/getPointerInputSocket"
+)
+
+// Options tunes Dial.
+type Options struct {
+	// URLs replaces the default list (wss://host:3001, ws://host:3000).
+	URLs    []string
+	Timeout time.Duration // default 5s
+	// Trace receives a direction ("→" or "←") and a line. Payloads are never traced.
+	Trace func(dir, line string)
+}
+
+type message struct {
+	Type    string          `json:"type"`
+	ID      string          `json:"id"`
+	Error   string          `json:"error"`
+	Payload json.RawMessage `json:"payload"`
+}
+
+type pendingReq struct {
+	ch chan message
+}
+
+// Conn is an SSAP connection. Safe for concurrent use.
+type Conn struct {
+	ws     *websocket.Conn
+	dialer *websocket.Dialer
+	opt    Options
+
+	wmu sync.Mutex // serializes writes
+
+	mu      sync.Mutex
+	pending map[string]*pendingReq
+	subs    map[string]func(json.RawMessage)
+	seq     int
+	pointer *Pointer
+
+	done      chan struct{}
+	closeOnce sync.Once
+}
+
+// Dial connects to the TV, trying each URL in order.
+func Dial(ctx context.Context, host string, opt Options) (*Conn, error) {
+	if opt.Timeout <= 0 {
+		opt.Timeout = 5 * time.Second
+	}
+	urls := opt.URLs
+	if len(urls) == 0 {
+		urls = []string{"wss://" + host + ":3001", "ws://" + host + ":3000"}
+	}
+	d := newDialer(opt.Timeout)
+	var last error
+	for _, u := range urls {
+		dctx, cancel := context.WithTimeout(ctx, opt.Timeout)
+		ws, _, err := d.DialContext(dctx, u, nil)
+		cancel()
+		if err != nil {
+			last = err
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+			continue
+		}
+		c := &Conn{
+			ws:      ws,
+			dialer:  d,
+			opt:     opt,
+			pending: map[string]*pendingReq{},
+			subs:    map[string]func(json.RawMessage){},
+			done:    make(chan struct{}),
+		}
+		go c.readLoop()
+		return c, nil
+	}
+	return nil, fmt.Errorf("webos: nao foi possivel conectar: %w", last)
+}
+
+// The TV presents a self-signed certificate.
+func newDialer(timeout time.Duration) *websocket.Dialer {
+	return &websocket.Dialer{
+		HandshakeTimeout: timeout,
+		TLSClientConfig:  &tls.Config{InsecureSkipVerify: true},
+	}
+}
+
+func (c *Conn) trace(dir, line string) {
+	if c.opt.Trace != nil {
+		c.opt.Trace(dir, line)
+	}
+}
+
+func (c *Conn) readLoop() {
+	defer func() {
+		c.mu.Lock()
+		p := c.pointer
+		c.mu.Unlock()
+		if p != nil {
+			p.Close()
+		}
+		close(c.done)
+	}()
+	for {
+		var m message
+		if err := c.ws.ReadJSON(&m); err != nil {
+			var syn *json.SyntaxError
+			var ute *json.UnmarshalTypeError
+			if errors.As(err, &syn) || errors.As(err, &ute) {
+				continue
+			}
+			return
+		}
+		c.mu.Lock()
+		fn := c.subs[m.ID]
+		pr := c.pending[m.ID]
+		c.mu.Unlock()
+		if fn != nil {
+			fn(m.Payload)
+			continue
+		}
+		if pr != nil {
+			select {
+			case pr.ch <- m:
+			default:
+			}
+		}
+	}
+}
+
+func (c *Conn) write(v any) error {
+	c.wmu.Lock()
+	defer c.wmu.Unlock()
+	return c.ws.WriteJSON(v)
+}
+
+func (c *Conn) addPending(id string) *pendingReq {
+	pr := &pendingReq{ch: make(chan message, 4)}
+	c.mu.Lock()
+	c.pending[id] = pr
+	c.mu.Unlock()
+	return pr
+}
+
+func (c *Conn) dropPending(id string) {
+	c.mu.Lock()
+	delete(c.pending, id)
+	c.mu.Unlock()
+}
+
+func (c *Conn) wait(ctx context.Context, pr *pendingReq) (message, error) {
+	select {
+	case m := <-pr.ch:
+		return m, nil
+	case <-ctx.Done():
+		return message{}, ctx.Err()
+	case <-c.done:
+		return message{}, errors.New("webos: conexao encerrada")
+	}
+}
+
+// Register pairs with the TV. With an empty key the TV shows a prompt and
+// Register waits for the user; ctx bounds that wait.
+func (c *Conn) Register(ctx context.Context, key string) (string, error) {
+	payload := map[string]any{
+		"forcePairing": false,
+		"pairingType":  "PROMPT",
+		"manifest":     Manifest,
+	}
+	if key != "" {
+		payload["client-key"] = key
+	}
+	pr := c.addPending(registerID)
+	defer c.dropPending(registerID)
+	c.trace("→", "register")
+	err := c.write(map[string]any{"type": "register", "id": registerID, "payload": payload})
+	if err != nil {
+		return "", fmt.Errorf("webos: enviar registro: %w", err)
+	}
+	for {
+		m, err := c.wait(ctx, pr)
+		if err != nil {
+			return "", err
+		}
+		switch m.Type {
+		case "response":
+			continue // PROMPT: waiting for the user
+		case "registered":
+			var p struct {
+				Key string `json:"client-key"`
+			}
+			if err := json.Unmarshal(m.Payload, &p); err != nil || p.Key == "" {
+				return "", errors.New("webos: resposta de registro sem chave")
+			}
+			c.trace("←", "registered")
+			return p.Key, nil
+		case "error":
+			c.trace("←", "register erro")
+			return "", fmt.Errorf("%w: %s", ErrRegisterRejected, m.Error)
+		}
+	}
+}
+
+func (c *Conn) nextID() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.seq++
+	return strconv.Itoa(c.seq)
+}
+
+func tracedURI(uri string) string {
+	if uri == insertText {
+		return "insertText [texto omitido]"
+	}
+	return uri
+}
+
+// Request sends a request and waits for the matching response.
+func (c *Conn) Request(ctx context.Context, uri string, payload any) (json.RawMessage, error) {
+	id := c.nextID()
+	pr := c.addPending(id)
+	defer c.dropPending(id)
+	if uri == insertText {
+		c.trace("→", "insertText [texto omitido]")
+	} else {
+		c.trace("→", "request "+uri)
+	}
+	msg := map[string]any{"type": "request", "id": id, "uri": uri}
+	if payload != nil {
+		msg["payload"] = payload
+	}
+	if err := c.write(msg); err != nil {
+		return nil, fmt.Errorf("webos: enviar %s: %w", tracedURI(uri), err)
+	}
+	m, err := c.wait(ctx, pr)
+	if err != nil {
+		return nil, err
+	}
+	if text := errorText(m); text != "" {
+		c.trace("←", "response "+tracedURI(uri)+" erro")
+		return nil, fmt.Errorf("webos: %s: %s", tracedURI(uri), text)
+	}
+	c.trace("←", "response "+tracedURI(uri)+" ok")
+	return m.Payload, nil
+}
+
+// errorText returns the TV's error text, or "" when the message is a success.
+func errorText(m message) string {
+	if m.Type == "error" {
+		if m.Error != "" {
+			return m.Error
+		}
+		return "erro desconhecido"
+	}
+	var p struct {
+		ReturnValue *bool  `json:"returnValue"`
+		ErrorText   string `json:"errorText"`
+	}
+	if json.Unmarshal(m.Payload, &p) == nil && p.ReturnValue != nil && !*p.ReturnValue {
+		if p.ErrorText != "" {
+			return p.ErrorText
+		}
+		return "erro desconhecido"
+	}
+	return ""
+}
+
+// Subscribe registers fn for every message the TV sends for the subscription.
+// fn runs on the reader goroutine and must not block.
+func (c *Conn) Subscribe(ctx context.Context, uri string, fn func(json.RawMessage)) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	id := c.nextID()
+	c.mu.Lock()
+	c.subs[id] = fn
+	c.mu.Unlock()
+	c.trace("→", "subscribe "+uri)
+	err := c.write(map[string]any{"type": "subscribe", "id": id, "uri": uri})
+	if err != nil {
+		c.mu.Lock()
+		delete(c.subs, id)
+		c.mu.Unlock()
+		return fmt.Errorf("webos: assinar %s: %w", uri, err)
+	}
+	return nil
+}
+
+// Done is closed when the connection drops.
+func (c *Conn) Done() <-chan struct{} { return c.done }
+
+// Close closes the connection and the pointer socket. Idempotent.
+func (c *Conn) Close() error {
+	var err error
+	c.closeOnce.Do(func() {
+		c.mu.Lock()
+		p := c.pointer
+		c.mu.Unlock()
+		if p != nil {
+			p.Close()
+		}
+		err = c.ws.Close()
+	})
+	return err
+}
+
+// Pointer is the pointer-input socket used for remote buttons.
+type Pointer struct {
+	ws        *websocket.Conn
+	wmu       sync.Mutex
+	closeOnce sync.Once
+}
+
+// Pointer opens the pointer-input socket.
+func (c *Conn) Pointer(ctx context.Context) (*Pointer, error) {
+	raw, err := c.Request(ctx, pointerURI, nil)
+	if err != nil {
+		return nil, err
+	}
+	var p struct {
+		SocketPath string `json:"socketPath"`
+	}
+	if err := json.Unmarshal(raw, &p); err != nil || p.SocketPath == "" {
+		return nil, errors.New("webos: TV nao informou o socket de ponteiro")
+	}
+	dctx, cancel := context.WithTimeout(ctx, c.opt.Timeout)
+	defer cancel()
+	ws, _, err := c.dialer.DialContext(dctx, p.SocketPath, nil)
+	if err != nil {
+		return nil, fmt.Errorf("webos: conectar ao socket de ponteiro: %w", err)
+	}
+	ptr := &Pointer{ws: ws}
+	c.mu.Lock()
+	old := c.pointer
+	c.pointer = ptr
+	c.mu.Unlock()
+	if old != nil {
+		old.Close()
+	}
+	// Drain so the socket notices when the TV closes it.
+	go func() {
+		for {
+			if _, _, err := ws.ReadMessage(); err != nil {
+				return
+			}
+		}
+	}()
+	return ptr, nil
+}
+
+// Button presses a remote button (UP, DOWN, ENTER, ...).
+func (p *Pointer) Button(name string) error {
+	p.wmu.Lock()
+	defer p.wmu.Unlock()
+	return p.ws.WriteMessage(websocket.TextMessage, []byte("type:button\nname:"+name+"\n\n"))
+}
+
+// Close closes the socket. Idempotent.
+func (p *Pointer) Close() error {
+	var err error
+	p.closeOnce.Do(func() { err = p.ws.Close() })
+	return err
+}
