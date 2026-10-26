@@ -53,6 +53,7 @@ export const STATIC: StaticCommand[] = [
   key('back', 'cmd.back', 'back', 'BACK', ['back', 'retornar', 'go back']),
   key('ok', 'cmd.ok', 'ok', 'DPAD_CENTER', ['enter', 'confirmar', 'selecionar', 'select', 'confirm']),
   key('play', 'cmd.play', 'play', 'MEDIA_PLAY_PAUSE', ['pausar', 'tocar', 'continuar', 'pause', 'play', 'resume']),
+  { id: 'settings', titleKey: 'cmd.settings', icon: 'settings', keywords: ['logs', 'diagnostico', 'preferencias', 'settings', 'diagnostics', 'preferences'], action: { type: 'ui', target: 'settings' } },
   key('settings-tv', 'cmd.tvSettings', 'settings', 'SETTINGS', ['configuracoes da tv', 'ajustes', 'tv settings']),
   key('ch-up', 'cmd.chUp', 'channel', 'CHANNEL_UP', ['canal +', 'canal acima', 'channel up', 'next channel']),
   key('ch-down', 'cmd.chDown', 'channel', 'CHANNEL_DOWN', ['canal -', 'canal abaixo', 'channel down', 'previous channel']),
@@ -61,7 +62,6 @@ export const STATIC: StaticCommand[] = [
   { id: 'paste', titleKey: 'cmd.paste', icon: 'text', keywords: ['colar', 'clipboard', 'área de transferência', 'paste'], action: { type: 'ui', target: 'paste' } },
   { id: 'sleep-cancel', titleKey: 'cmd.sleepCancel', icon: 'moon', keywords: ['cancelar timer', 'parar timer', 'sem timer', 'cancel timer', 'stop timer', 'no timer'], action: { type: 'sleep', minutes: 0 } },
   { id: 'scan', titleKey: 'cmd.scan', icon: 'search', keywords: ['procurar', 'descobrir', 'scan', 'find tvs', 'discover'], action: { type: 'ui', target: 'scan' } },
-  { id: 'settings', titleKey: 'cmd.settings', icon: 'settings', keywords: ['logs', 'diagnostico', 'preferencias', 'settings', 'diagnostics', 'preferences'], action: { type: 'ui', target: 'settings' } },
 ]
 
 /** Lowercase, strip accents and extra spaces so "Início" matches "inicio". */
@@ -86,7 +86,7 @@ const PARSERS: Parser[] = [
   },
   // "desligar em 30 min", "turn off in 30 min", "timer 45" (1-240; anything else is not suggested)
   (input, _apps, _raw, ctx) => {
-    const m = input.match(/^(?:desligar\s+em|turn\s+(?:tv\s+)?off\s+in|sleep\s+in|timer)\s+(\d{1,4})(?:\s*min(?:utos?|utes?|s)?)?$/)
+    const m = input.match(/^(?:desligar\s+em|turn\s+(?:the\s+)?(?:tv\s+)?off(?:\s+(?:the\s+)?tv)?\s+in|sleep(?:\s+in)?|timer)\s+(\d{1,4})(?:\s*min(?:utos?|utes?|s)?)?$/)
     if (!m) return []
     const minutes = Number(m[1])
     if (minutes < 1 || minutes > 240) return []

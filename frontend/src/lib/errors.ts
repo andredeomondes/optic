@@ -36,7 +36,7 @@ const exact: Record<string, string> = {
   'MAC da TV desconhecido: conecte uma vez com ela ligada': 'TV MAC address unknown: connect once while it is on.',
   'Entrada desconhecida': 'Unknown input.',
   'Mensagem vazia': 'Empty message.',
-  'checagem de versão indisponível': 'Version check unavailable.',
+  'checagem de versão indisponível': 'Version check not available.',
   // Roku
   'A Roku bloqueou o controle pela rede. Na TV: Configurações › Sistema › Configurações avançadas do sistema › Controle por apps móveis › Acesso à rede: Padrão.':
     'Roku blocked network control. On the TV: Settings › System › Advanced system settings › Control by mobile apps › Network access: Default.',
@@ -53,13 +53,13 @@ const exact: Record<string, string> = {
   'webos: resposta de registro sem chave': 'The TV registration response had no key.',
   'webos: TV não informou o socket de ponteiro': "The TV didn't provide the pointer socket.",
   'webos: socket de ponteiro inválido': 'Invalid pointer socket.',
-  'webos: não foi possível conectar ao socket de ponteiro': 'Could not connect to the pointer socket.',
+  'webos: não foi possível conectar ao socket de ponteiro': "Couldn't connect to the pointer socket.",
   // Global shortcuts
   'Use Ctrl ou Alt junto com a tecla': 'Use Ctrl or Alt together with the key.',
   'A tecla Windows é reservada pelo sistema': 'The Windows key is reserved by the system.',
   'Atalho reservado pelo sistema': 'Shortcut reserved by the system.',
   'Em uso por outro programa': 'In use by another program.',
-  'Atalhos globais indisponíveis neste sistema': 'Global shortcuts are unavailable on this system.',
+  'Atalhos globais indisponíveis neste sistema': 'Global shortcuts are not available on this system.',
   'Atalhos globais desligados': 'Global shortcuts are off.',
   'Ação repetida': 'Repeated action.',
   'Atalho já usado em outra ação': 'Shortcut already used by another action.',
@@ -83,6 +83,14 @@ const labelAlternation = Object.keys(actionLabels)
   .map((l) => l.replace(/[+]/g, '\\$&'))
   .join('|')
 
+// Pairing status reasons (poloStatusText in polo.go).
+const pairingReasons: Record<string, string> = {
+  'erro genérico': 'generic error',
+  'configuração recusada': 'configuration rejected',
+  'código incorreto': 'wrong code',
+  desconhecido: 'unknown',
+}
+
 // Ordered specific → general; the first match wins.
 const patterns: Array<[RegExp, (m: RegExpMatchArray) => string]> = [
   [/^Este app não está instalado na TV (.+)\.$/, (m) => `This app isn't installed on the ${m[1]} TV.`],
@@ -90,13 +98,14 @@ const patterns: Array<[RegExp, (m: RegExpMatchArray) => string]> = [
   [/^[Tt]ecla desconhecida: (.+)$/, (m) => `Unknown key: ${m[1]}.`],
   [/^Atalho repetido: (.+)$/, (m) => `Duplicate shortcut: ${m[1]}.`],
   [/^código deve ter (\d+) caracteres$/, (m) => `The code must have ${m[1]} characters.`],
-  [/^TV respondeu status (\d+) \((.*)\)$/, (m) => `The TV answered with status ${m[1]} (${m[2]}).`],
+  [/^TV respondeu status (\d+) \((.*)\)$/, (m) => `The TV answered with status ${m[1]} (${pairingReasons[m[2]] ?? m[2]}).`],
+  [/^(.+) ainda não é suportada$/, (m) => (m[1] === 'Desconhecida' ? 'This platform is not supported yet.' : `${m[1]} is not supported yet.`)],
   [/^TV respondeu mensagem inesperada \(esperava campo (\d+)\)$/, (m) => `The TV sent an unexpected message (expected field ${m[1]}).`],
   [/^lendo resposta da TV: (.+)$/, (m) => `Reading the TV's response: ${m[1]}`],
   [/^MAC inválido (".*")$/, (m) => `Invalid MAC address ${m[1]}.`],
   [/^descrição UPnP: status (\d+)$/, (m) => `UPnP description: status ${m[1]}.`],
   [/^descrição UPnP grande demais$/, () => 'UPnP description too large.'],
-  [/^(?:tizen|webos): não foi possível conectar(?:: (.+))?$/, (m) => (m[1] ? `Could not connect: ${m[1]}` : 'Could not connect.')],
+  [/^(?:tizen|webos): não foi possível conectar(?:: (.+))?$/, (m) => (m[1] ? `Couldn't connect: ${m[1]}` : "Couldn't connect.")],
   [/^tizen: a TV respondeu (\d+)$/, (m) => `The TV answered with status ${m[1]}.`],
   [/^tizen: consultar a TV: (.+)$/, (m) => `Querying the TV: ${m[1]}`],
   [/^tizen: ler resposta da TV: (.+)$/, (m) => `Reading the TV response: ${m[1]}`],

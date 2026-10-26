@@ -146,3 +146,25 @@ test('english search link', () => {
   const c = suggest('search cats on youtube', CATALOG, { lang: 'en' })[0]
   assert.ok(c.action.type === 'link' && c.action.url.endsWith('search_query=cats'))
 })
+
+test('sleep timer phrasings', () => {
+  for (const q of ['turn off tv in 30', 'turn the tv off in 30', 'turn tv off in 30', 'turn off in 30', 'sleep 30', 'sleep in 30', 'desligar em 30']) {
+    assert.deepEqual(suggest(q, CATALOG)[0].action, { type: 'sleep', minutes: 30 }, q)
+  }
+})
+
+test('"type" and "input" alone suggest the static commands, not a parsed action', () => {
+  const ctx = { inputs: true, toast: true }
+  const t = suggest('type', CATALOG, ctx)
+  assert.ok(!t.some((c) => c.action.type === 'text'))
+  assert.deepEqual(t.find((c) => c.id === 'type')?.action, { type: 'ui', target: 'focus-text' })
+  const i = suggest('input', CATALOG, ctx)
+  assert.ok(!i.some((c) => c.action.type === 'input'))
+  assert.deepEqual(i.find((c) => c.id === 'input')?.action, { type: 'key', key: 'TV_INPUT' })
+})
+
+for (const lang of ['pt-BR', 'en'] as const) {
+  test(`"settings" ranks OPTIC settings first (UI ${lang})`, () => {
+    assert.equal(suggest('settings', CATALOG, { lang })[0].id, 'settings')
+  })
+}

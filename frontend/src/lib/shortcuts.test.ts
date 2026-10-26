@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { FOOTER_HINTS, SHORTCUTS } from './shortcuts.ts'
+import { FOOTER_HINTS, KEY_HINT, NAMED_KEYS, SHORTCUTS } from './shortcuts.ts'
 
 test('shortcut ids are unique', () => {
   const ids = SHORTCUTS.map((s) => s.id)
@@ -9,4 +9,9 @@ test('shortcut ids are unique', () => {
 
 test('every footer hint id exists in SHORTCUTS', () => {
   for (const id of FOOTER_HINTS) assert.ok(SHORTCUTS.some((s) => s.id === id), `missing ${id}`)
+})
+
+test('play/pause hint is a named key so it can be translated', () => {
+  assert.equal(KEY_HINT.MEDIA_PLAY_PAUSE, 'Space')
+  assert.ok('Space' in NAMED_KEYS)
 })

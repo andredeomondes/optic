@@ -51,7 +51,7 @@ test('transport errors translate the fixed part and keep the technical tail', ()
   assert.equal(translateError('tizen: ler resposta da TV: EOF', 'en'), 'Reading the TV response: EOF')
   assert.equal(translateError('tizen: enviar: write failed', 'en'), 'Sending: write failed')
   assert.equal(translateError('webos: TV não informou o socket de ponteiro', 'en'), "The TV didn't provide the pointer socket.")
-  assert.equal(translateError('webos: não foi possível conectar ao socket de ponteiro', 'en'), 'Could not connect to the pointer socket.')
+  assert.equal(translateError('webos: não foi possível conectar ao socket de ponteiro', 'en'), "Couldn't connect to the pointer socket.")
   assert.equal(translateError('webos: socket de ponteiro inválido', 'en'), 'Invalid pointer socket.')
   assert.equal(translateError('webos: enviar ssap://x: EOF', 'en'), 'Sending ssap://x: EOF')
   assert.equal(translateError('webos: assinar ssap://y: EOF', 'en'), 'Subscribing to ssap://y: EOF')
@@ -64,4 +64,26 @@ test('transport errors translate the fixed part and keep the technical tail', ()
 test('generic "a: b" does not swallow other messages', () => {
   assert.equal(translateError('roku: algo novo', 'en'), 'roku: algo novo')
   assert.equal(translateError('Outra coisa: motivo', 'en'), 'Outra coisa: motivo')
+})
+
+test('unsupported platform', () => {
+  assert.equal(translateError('Samsung ainda não é suportada', 'en'), 'Samsung is not supported yet.')
+  assert.equal(translateError('LG webOS ainda não é suportada', 'en'), 'LG webOS is not supported yet.')
+  assert.equal(translateError('Roku ainda não é suportada', 'en'), 'Roku is not supported yet.')
+  assert.equal(translateError('Android TV ainda não é suportada', 'en'), 'Android TV is not supported yet.')
+  assert.equal(translateError('Desconhecida ainda não é suportada', 'en'), 'This platform is not supported yet.')
+  assert.equal(translateError('Samsung ainda não é suportada', 'pt-BR'), 'Samsung ainda não é suportada')
+})
+
+test('pairing status reason is translated', () => {
+  assert.equal(translateError('TV respondeu status 400 (erro genérico)', 'en'), 'The TV answered with status 400 (generic error).')
+  assert.equal(translateError('TV respondeu status 401 (configuração recusada)', 'en'), 'The TV answered with status 401 (configuration rejected).')
+  assert.equal(translateError('TV respondeu status 402 (código incorreto)', 'en'), 'The TV answered with status 402 (wrong code).')
+  assert.equal(translateError('TV respondeu status 500 (desconhecido)', 'en'), 'The TV answered with status 500 (unknown).')
+  assert.equal(translateError('TV respondeu status 9 (outra)', 'en'), 'The TV answered with status 9 (outra).')
+})
+
+test("uses Couldn't and 'not available' wording", () => {
+  assert.equal(translateError('tizen: não foi possível conectar', 'en'), "Couldn't connect.")
+  assert.equal(translateError('Atalhos globais indisponíveis neste sistema', 'en'), 'Global shortcuts are not available on this system.')
 })

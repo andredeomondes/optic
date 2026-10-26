@@ -48,5 +48,5 @@ export const KEY_HINT: Record<string, string> = {
   MUTE: 'M',
   VOLUME_UP: '+',
   VOLUME_DOWN: '−',
-  MEDIA_PLAY_PAUSE: 'Espaço',
+  MEDIA_PLAY_PAUSE: 'Space',
 }

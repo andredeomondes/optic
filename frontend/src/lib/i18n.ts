@@ -508,7 +508,7 @@ export const en: Record<Key, string> = {
   'settings.tabs.diagnostics': 'Diagnostics',
   'settings.tabs.updates': 'Updates',
   'settings.tabs.about': 'About',
-  'window.closeToTray': 'Closing hides to the tray',
+  'window.closeToTray': 'Close hides to tray',
   'window.trayUnavailable': 'Tray icon is not available on this system.',
   'window.trayHelp': 'Click the tray icon to reopen. To quit for good, use “Quit” in the icon menu.',
   'window.compactNote': 'Compact mode: button next to minimize, in the title bar.',
