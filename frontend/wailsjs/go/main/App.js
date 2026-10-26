@@ -9,6 +9,8 @@ export function Discover() { return window['go']['main']['App']['Discover'](); }
 export function FinishPairing(arg1) { return window['go']['main']['App']['FinishPairing'](arg1); }
 export function InstalledApps() { return window['go']['main']['App']['InstalledApps'](); }
 export function Inputs() { return window['go']['main']['App']['Inputs'](); }
+export function GetHotkeys() { return window['go']['main']['App']['GetHotkeys'](); }
+export function SetHotkeys(arg1, arg2, arg3) { return window['go']['main']['App']['SetHotkeys'](arg1, arg2, arg3); }
 export function LastHost() { return window['go']['main']['App']['LastHost'](); }
 export function LatestRelease() { return window['go']['main']['App']['LatestRelease'](); }
 export function LaunchApp(arg1) { return window['go']['main']['App']['LaunchApp'](arg1); }

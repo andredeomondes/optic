@@ -96,6 +96,8 @@ func main() {
 		}),
 	}
 
+	shell.keys = app.svc.SendKey
+
 	err = wails.Run(&options.App{
 		Title:            "OPTIC",
 		Width:            820,

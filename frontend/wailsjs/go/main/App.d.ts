@@ -9,6 +9,9 @@ export type PairingInfo = { name: string; mode: 'code' | 'prompt' };
 export type TVInput = { id: string; name: string };
 export type Release = { tag: string; name: string; url: string; notes: string; publishedAt: string };
 
+export type HotkeyBinding = { id: string; accel: string; error: string };
+export type HotkeyState = { supported: boolean; enabled: boolean; media: boolean; bindings: Array<HotkeyBinding> };
+
 export function CancelPairing(): Promise<void>;
 export function Connect(arg1: string): Promise<DeviceInfo>;
 export function Disconnect(): Promise<void>;
@@ -16,6 +19,8 @@ export function Discover(): Promise<Array<TV>>;
 export function FinishPairing(arg1: string): Promise<void>;
 export function InstalledApps(): Promise<Array<TVApp>>;
 export function Inputs(): Promise<Array<TVInput>>;
+export function GetHotkeys(): Promise<HotkeyState>;
+export function SetHotkeys(arg1: boolean, arg2: boolean, arg3: Record<string, string>): Promise<HotkeyState>;
 export function LastHost(): Promise<string>;
 export function LatestRelease(): Promise<Release>;
 export function LaunchApp(arg1: string): Promise<void>;

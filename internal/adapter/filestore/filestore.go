@@ -5,6 +5,7 @@ package filestore
 
 import (
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -24,10 +25,30 @@ const (
 type Prefs struct {
 	// CloseToTray makes the window's close button hide to the tray.
 	CloseToTray bool `json:"closeToTray"`
+	// Hotkeys are the global keyboard shortcuts.
+	Hotkeys HotkeyPrefs `json:"hotkeys"`
 }
 
-// DefaultPrefs apply when nothing was saved yet.
-var DefaultPrefs = Prefs{CloseToTray: true}
+// HotkeyPrefs configures global shortcuts. Bindings maps an action id to an
+// accelerator such as "Ctrl+Alt+H".
+type HotkeyPrefs struct {
+	Enabled  bool              `json:"enabled"`
+	Media    bool              `json:"media"`
+	Bindings map[string]string `json:"bindings"`
+}
+
+// DefaultPrefs apply when nothing was saved yet. Do not mutate its map;
+// LoadPrefs returns a copy.
+var DefaultPrefs = Prefs{
+	CloseToTray: true,
+	Hotkeys: HotkeyPrefs{Bindings: map[string]string{
+		"volume_up":   "Ctrl+Alt+Up",
+		"volume_down": "Ctrl+Alt+Down",
+		"mute":        "Ctrl+Alt+M",
+		"home":        "Ctrl+Alt+H",
+		"palette":     "Ctrl+Alt+K",
+	}},
+}
 
 // Store reads and writes files in Dir. Errors on read fall back to defaults:
 // this is convenience state, never worth failing the app over.
@@ -46,8 +67,17 @@ func (s Store) SaveLastHost(host string) error {
 
 func (s Store) LoadPrefs() Prefs {
 	p := DefaultPrefs
+	p.Hotkeys.Bindings = maps.Clone(DefaultPrefs.Hotkeys.Bindings)
 	if b, err := os.ReadFile(s.path(prefsFile)); err == nil {
-		_ = json.Unmarshal(b, &p)
+		var saved Prefs
+		saved.CloseToTray = p.CloseToTray
+		if json.Unmarshal(b, &saved) == nil {
+			p.CloseToTray = saved.CloseToTray
+			p.Hotkeys.Enabled = saved.Hotkeys.Enabled
+			p.Hotkeys.Media = saved.Hotkeys.Media
+			// Saved bindings win; actions missing from the file keep defaults.
+			maps.Copy(p.Hotkeys.Bindings, saved.Hotkeys.Bindings)
+		}
 	}
 	return p
 }
