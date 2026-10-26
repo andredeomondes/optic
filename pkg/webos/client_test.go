@@ -355,6 +355,7 @@ func TestPointerKeepsOnlyPathOnTVHost(t *testing.T) {
 	var mu sync.Mutex
 	var ptrReq string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqURI := r.RequestURI // read before Upgrade hijacks the request
 		ws, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			return
@@ -362,7 +363,7 @@ func TestPointerKeepsOnlyPathOnTVHost(t *testing.T) {
 		defer ws.Close()
 		if r.URL.Path == "/x" {
 			mu.Lock()
-			ptrReq = r.RequestURI
+			ptrReq = reqURI
 			mu.Unlock()
 			ws.ReadMessage()
 			return
