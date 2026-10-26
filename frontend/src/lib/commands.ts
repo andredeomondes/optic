@@ -10,6 +10,8 @@ export type Action =
   | { type: 'volume'; level: number }
   | { type: 'text'; text: string }
   | { type: 'toast'; text: string }
+  /** Switch to the input whose name matches query. */
+  | { type: 'input'; query: string }
   /** minutes 0 cancels the timer. */
   | { type: 'sleep'; minutes: number }
   | { type: 'link'; url: string; label: string }
@@ -65,7 +67,7 @@ export const normalize = (s: string) =>
 type Parser = (input: string, apps: AppDef[], raw: string, ctx: Context) => Command[]
 
 /** What the connected TV can do; parsers for optional features check it. */
-export type Context = { toast?: boolean; platform?: Platform }
+export type Context = { toast?: boolean; inputs?: boolean; platform?: Platform }
 
 const PARSERS: Parser[] = [
   // "volume 30", "vol 30", "volume em 30"
@@ -106,6 +108,15 @@ const PARSERS: Parser[] = [
     if (!m) return []
     return [{ id: 'type-text', title: `Digitar “${m[1]}”`, hint: 'envia para o campo de texto aberto', icon: 'text', action: { type: 'text', text: m[1] } }]
   },
+  // "entrada tv", "input hdmi 2", "hdmi 2" (only when the TV lists inputs)
+  (_input, _apps, raw, ctx) => {
+    if (!ctx.inputs) return []
+    const t = raw.trim()
+    const m = t.match(/^(?:entrada|input|fonte|source)\s+(.+)$/i) ?? t.match(/^(hdmi\s*\d+)$/i)
+    const query = m?.[1].trim()
+    if (!query) return []
+    return [{ id: 'input-pick', title: `Trocar para a entrada ${query}`, icon: 'channel', action: { type: 'input', query } }]
+  },
   // "avisar na tv a janta saiu", "mensagem oi" (only when the TV can show toasts)
   (_input, _apps, raw, ctx) => {
     if (!ctx.toast) return []
@@ -130,8 +141,9 @@ export function suggest(raw: string, apps: AppDef[], ctx: Context = {}): Command
     action: { type: 'launch', app: a },
   }))
 
-  // LG has no input key; switching inputs is not offered there yet.
-  const statics = ctx.platform === 'webos' ? STATIC.filter((c) => c.id !== 'input') : STATIC
+  // The raw TV_INPUT key only exists on Android; Roku and LG use the picker.
+  const keyInput = ctx.platform === undefined || ctx.platform === '' || ctx.platform === 'androidtv'
+  const statics = keyInput ? STATIC : STATIC.filter((c) => c.id !== 'input')
   const pool = [...statics, ...appCommands]
   const matched = input
     ? pool.filter((c) => [c.title, ...(c.keywords ?? [])].some((k) => normalize(k).includes(input)))

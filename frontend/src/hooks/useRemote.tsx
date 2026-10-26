@@ -88,11 +88,13 @@ function useRemoteState() {
       setStatus('connecting')
       try {
         const i = await api.Connect(ip)
+        if (pairRun.current !== attempt) return // a newer connect took over
         setInfo(i)
         setStatus('connected')
         setConnectedAt(Date.now())
         addLog('•', `conectado em ${ip}`)
       } catch (e) {
+        if (pairRun.current !== attempt) return
         const msg = api.errText(e)
         if (msg.includes('NOT_PAIRED')) {
           try {
@@ -211,6 +213,13 @@ function useRemoteState() {
     [run],
   )
 
+  const inputs = useCallback(() => api.Inputs(), [])
+
+  const switchInput = useCallback(
+    (id: string, name: string) => run('input', () => api.SwitchInput(id), `Entrada: ${name}`),
+    [run],
+  )
+
   const sendText = useCallback(
     (text: string) => run('text', () => api.SendText(text), 'Texto enviado para a TV'),
     [run],
@@ -290,7 +299,7 @@ function useRemoteState() {
     tvs, scanning, scan, addManual, removeManual,
     status, connected, host, info, tvState, error, connectedAt,
     connect, finishPairing, cancelPairing, pairingMode,
-    press, pressedKey, launch, sendText, sendToast, pasteToTV, setVolume, powerOn, run,
+    press, pressedKey, launch, inputs, switchInput, sendText, sendToast, pasteToTV, setVolume, powerOn, run,
     feedback, toast, dismissToast: () => setToast(null), notify,
     log, clearLog: () => setLog([]),
   }

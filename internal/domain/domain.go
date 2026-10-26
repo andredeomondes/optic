@@ -107,6 +107,7 @@ type State struct {
 	Muted     bool   `json:"muted"`
 	App       string `json:"app"`      // foreground app: Android package (com.netflix.ninja) or Roku channel name (Netflix)
 	Keyboard  bool   `json:"keyboard"` // Android on-screen keyboard is open
+	Playing   string `json:"playing"`  // "playing", "paused" or "" when unknown
 }
 
 var (

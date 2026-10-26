@@ -133,6 +133,22 @@ func (c Client) DeviceInfo(ctx context.Context) (DeviceInfo, error) {
 	return d, err
 }
 
+// Player is the media player state from /query/media-player.
+type Player struct {
+	State string // play, pause, stop, close, buffer...
+}
+
+// MediaPlayer returns the playback state. Older Rokus answer 404.
+func (c Client) MediaPlayer(ctx context.Context) (Player, error) {
+	var v struct {
+		State string `xml:"state,attr"`
+	}
+	if err := c.get(ctx, "/query/media-player", &v); err != nil {
+		return Player{}, err
+	}
+	return Player{State: v.State}, nil
+}
+
 type appXML struct {
 	ID   string `xml:"id,attr"`
 	Type string `xml:"type,attr"`

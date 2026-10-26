@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -20,13 +21,15 @@ type fakeRoku struct {
 	power     string
 	active    string
 	forbidden bool
+	notTV     bool
+	player    string // media-player state; "" answers 404
 	reqs      []string
 	srv       *httptest.Server
 }
 
 func newFake(t *testing.T) *fakeRoku {
 	t.Helper()
-	f := &fakeRoku{power: "PowerOn", active: "Roku"}
+	f := &fakeRoku{power: "PowerOn", active: "Roku", player: "close"}
 	f.srv = httptest.NewServer(http.HandlerFunc(f.handle))
 	t.Cleanup(f.srv.Close)
 	return f
@@ -43,17 +46,29 @@ func (f *fakeRoku) handle(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.URL.Path == "/query/device-info":
 		fmt.Fprintf(w, `<device-info><vendor-name>TCL</vendor-name><model-name>55R635</model-name>`+
-			`<software-version>12.5.0</software-version><power-mode>%s</power-mode><is-tv>true</is-tv></device-info>`, f.power)
+			`<software-version>12.5.0</software-version><power-mode>%s</power-mode><is-tv>%t</is-tv></device-info>`, f.power, !f.notTV)
+	case r.URL.Path == "/query/media-player":
+		if f.player == "" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		fmt.Fprintf(w, `<player error="false" state="%s"/>`, f.player)
 	case r.URL.Path == "/query/active-app":
 		fmt.Fprintf(w, `<active-app><app id="12">%s</app></active-app>`, f.active)
 	case r.URL.Path == "/query/apps":
-		fmt.Fprint(w, `<apps><app id="12" type="appl">Netflix</app><app id="837" type="appl">YouTube</app></apps>`)
+		fmt.Fprint(w, `<apps><app id="12" type="appl">Netflix</app><app id="837" type="appl">YouTube</app><app id="tvinput.hdmi1" type="tvin">HDMI 1</app></apps>`)
 	}
 }
 
 func (f *fakeRoku) set(power, active string) {
 	f.mu.Lock()
 	f.power, f.active = power, active
+	f.mu.Unlock()
+}
+
+func (f *fakeRoku) setPlayer(state string) {
+	f.mu.Lock()
+	f.player = state
 	f.mu.Unlock()
 }
 
@@ -324,5 +339,95 @@ func TestAppsListed(t *testing.T) {
 	apps, err := l.Apps(context.Background())
 	if err != nil || len(apps) != 2 || apps[0] != (domain.App{ID: "12", Name: "Netflix"}) {
 		t.Fatalf("apps = %v, err = %v", apps, err)
+	}
+}
+
+func TestInputsOnTV(t *testing.T) {
+	f := newFake(t)
+	s, _ := connect(t, f)
+	if !s.Info().Capabilities.Inputs {
+		t.Fatal("Capabilities.Inputs false on a TV")
+	}
+	l, ok := s.(domain.InputLister)
+	if !ok {
+		t.Fatal("session is not an InputLister")
+	}
+	got, err := l.Inputs(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []domain.Input{
+		{ID: "InputTuner", Name: "TV"}, {ID: "InputHDMI1", Name: "HDMI 1"}, {ID: "InputHDMI2", Name: "HDMI 2"},
+		{ID: "InputHDMI3", Name: "HDMI 3"}, {ID: "InputHDMI4", Name: "HDMI 4"}, {ID: "InputAV1", Name: "AV"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("inputs = %v", got)
+	}
+}
+
+func TestInputsNotTV(t *testing.T) {
+	f := newFake(t)
+	f.notTV = true
+	s, _ := connect(t, f)
+	if s.Info().Capabilities.Inputs {
+		t.Fatal("Capabilities.Inputs true on a streaming box")
+	}
+	_, err := s.(domain.InputLister).Inputs(context.Background())
+	var u domain.ErrUnsupported
+	if !errors.As(err, &u) || u.Platform != domain.PlatformRoku {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestSwitchInputKeypress(t *testing.T) {
+	f := newFake(t)
+	s, _ := connect(t, f)
+	if err := s.(domain.InputLister).SwitchInput(context.Background(), "InputHDMI2"); err != nil {
+		t.Fatal(err)
+	}
+	if f.count("/keypress/InputHDMI2") != 1 {
+		t.Fatal("no InputHDMI2 keypress")
+	}
+}
+
+func TestSwitchInputUnknown(t *testing.T) {
+	f := newFake(t)
+	s, _ := connect(t, f)
+	before := f.count("/keypress")
+	err := s.(domain.InputLister).SwitchInput(context.Background(), "PowerOff")
+	if err == nil || err.Error() != "Entrada desconhecida" {
+		t.Fatalf("err = %v", err)
+	}
+	if f.count("/keypress") != before {
+		t.Fatal("request sent for unknown input")
+	}
+}
+
+func TestPollPlayingState(t *testing.T) {
+	f := newFake(t)
+	f.setPlayer("play")
+	s, ev := connect(t, f)
+	eventually(t, "playing", func() bool { return s.State().Playing == "playing" })
+	f.setPlayer("pause")
+	eventually(t, "paused", func() bool { return s.State().Playing == "paused" })
+	if !ev.sawState(func(s domain.State) bool { return s.Playing == "paused" }) {
+		t.Fatal("paused not emitted")
+	}
+	f.setPlayer("close")
+	eventually(t, "unknown", func() bool { return s.State().Playing == "" })
+}
+
+func TestMediaPlayerErrorNotFatal(t *testing.T) {
+	f := newFake(t)
+	f.setPlayer("")
+	s, _ := connect(t, f)
+	eventually(t, "polls past MaxFails", func() bool { return f.count("/query/media-player") > 6 })
+	select {
+	case <-s.Done():
+		t.Fatal("session died on media-player 404")
+	default:
+	}
+	if s.State().Playing != "" {
+		t.Fatalf("playing = %q", s.State().Playing)
 	}
 }

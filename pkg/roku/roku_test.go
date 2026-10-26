@@ -290,3 +290,26 @@ func TestPostHasEmptyBody(t *testing.T) {
 		t.Fatalf("content-length %d, body %q", cl, body)
 	}
 }
+
+func TestMediaPlayer(t *testing.T) {
+	for state, want := range map[string]string{"play": "play", "pause": "pause", "close": "close"} {
+		c, rec := newServer(t, `<player error="false" state="`+state+`"><plugin id="12" name="Netflix"/></player>`)
+		p, err := c.MediaPlayer(context.Background())
+		if err != nil || p.State != want {
+			t.Fatalf("%s: player = %+v, err = %v", state, p, err)
+		}
+		if rec.calls[0] != "GET /query/media-player" {
+			t.Fatalf("call = %v", rec.calls)
+		}
+	}
+}
+
+func TestMediaPlayerErrorStatus(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+	if _, err := (&Client{BaseURL: srv.URL}).MediaPlayer(context.Background()); err == nil {
+		t.Fatal("expected error")
+	}
+}

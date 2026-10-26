@@ -76,9 +76,24 @@ test('sleep timer rejects minutes outside 1-240', () => {
   }
 })
 
-test('input command is hidden on webos only', () => {
-  const has = (platform?: 'webos' | 'roku') => suggest('hdmi', CATALOG, { platform }).some((c) => c.id === 'input')
+test('input key command shows only on android tv or unknown platform', () => {
+  const has = (platform?: 'androidtv' | 'webos' | 'roku' | '') => suggest('hdmi', CATALOG, { platform }).some((c) => c.id === 'input')
   assert.ok(has())
-  assert.ok(has('roku'))
+  assert.ok(has(''))
+  assert.ok(has('androidtv'))
+  assert.ok(!has('roku'))
   assert.ok(!has('webos'))
+})
+
+test('input command parses names and hdmi numbers when the TV lists inputs', () => {
+  const ctx = { inputs: true }
+  assert.deepEqual(suggest('hdmi 2', CATALOG, ctx)[0].action, { type: 'input', query: 'hdmi 2' })
+  assert.deepEqual(suggest('hdmi2', CATALOG, ctx)[0].action, { type: 'input', query: 'hdmi2' })
+  assert.deepEqual(suggest('entrada tv', CATALOG, ctx)[0].action, { type: 'input', query: 'tv' })
+  assert.ok(!suggest('entrada', CATALOG, ctx).some((c) => c.action.type === 'input'))
+})
+
+test('input command is hidden without inputs', () => {
+  assert.ok(!suggest('hdmi 2', CATALOG).some((c) => c.action.type === 'input'))
+  assert.ok(!suggest('entrada tv', CATALOG, { inputs: false }).some((c) => c.action.type === 'input'))
 })

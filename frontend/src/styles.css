@@ -170,6 +170,9 @@ button { font: inherit; color: inherit; }
 .tv-title { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
 .tv-title .dot { margin-left: 0; }
 .status-line { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 11.5px; color: var(--muted); margin-top: 4px; animation: fade 0.35s var(--ease); }
+.now-playing { display: flex; align-items: center; gap: 5px; margin-top: 3px; font-size: 11.5px; color: var(--muted); min-width: 0; }
+.now-playing svg { flex: none; }
+.now-playing span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .status-line.connected > span:first-child { color: var(--ok); }
 .status-line.error { color: var(--danger); }
 .chip { font-size: 10.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--stroke); background: rgba(255, 255, 255, 0.05); color: var(--muted); }
@@ -312,6 +315,19 @@ kbd + kbd { margin-left: 2px; }
 .catalog-item span { flex: 1; }
 .catalog-plus { color: var(--muted); }
 .custom-app { display: flex; flex-direction: column; gap: 8px; }
+.tv-apps { display: flex; flex-direction: column; gap: 8px; }
+.tv-apps-list { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
+.tv-apps-state { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tv-app { display: flex; align-items: center; gap: 4px; border-radius: 12px; border: 1px solid var(--stroke); background: var(--glass); transition: 0.2s; }
+.tv-app:hover { border-color: color-mix(in srgb, var(--brand) 60%, transparent); background: var(--glass-strong); }
+.tv-app.fb-ok { border-color: var(--ok); }
+.tv-app.fb-err { border-color: var(--danger); }
+.tv-app button { background: none; border: none; color: inherit; cursor: pointer; font: inherit; }
+.tv-app button:disabled { cursor: default; opacity: 0.5; }
+.tv-app-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 8px 10px; font-size: 12px; text-align: left; }
+.tv-app-open span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tv-app-star { padding: 8px 10px; color: var(--muted); display: inline-flex; }
+.tv-app-star:hover, .tv-app-star.on { color: var(--accent-2); }
 
 /* settings */
 .tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--stroke); }
@@ -571,15 +587,16 @@ body {
 .update-banner .msg { flex: 1; min-width: 0; }
 .update-banner .link.muted { color: var(--muted); }
 
-/* sleep timer */
+/* sleep timer + input picker */
 .top-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.sleep { position: relative; display: flex; align-items: center; gap: 6px; }
+.sleep, .input-pick { position: relative; display: flex; align-items: center; gap: 6px; }
 .sleep .btn.active { color: var(--accent-2); }
-.sleep-menu {
+.sleep-menu, .input-menu {
   position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; min-width: 130px; padding: 4px;
   display: flex; flex-direction: column; border-radius: 12px; border: 1px solid var(--stroke-hi);
   background: rgba(30, 26, 52, 0.97); backdrop-filter: blur(18px); animation: fade 0.2s var(--ease);
 }
-.sleep-menu button { border: 0; background: transparent; color: var(--text); font-size: 12.5px; text-align: left; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
-.sleep-menu button:hover, .sleep-menu button:focus-visible { background: rgba(255, 255, 255, 0.08); outline: none; }
+.sleep-menu button, .input-menu button { border: 0; background: transparent; color: var(--text); font-size: 12.5px; text-align: left; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.sleep-menu button:hover, .sleep-menu button:focus-visible, .input-menu button:hover, .input-menu button:focus-visible { background: rgba(255, 255, 255, 0.08); outline: none; }
 .sleep-menu button.danger { color: var(--danger); }
+.input-empty { font-size: 12px; color: var(--muted); padding: 8px 10px; }
