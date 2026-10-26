@@ -275,6 +275,7 @@ w.go = {
         size = { w, h }
       },
       async ShowWindow() {},
+      async SuspendHotkeys() {},
       async QuitApp() {},
       async ToggleFullscreen() {
         if (document.fullscreenElement) await document.exitFullscreen().catch(() => {})

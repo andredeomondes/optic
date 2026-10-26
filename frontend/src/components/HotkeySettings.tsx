@@ -5,6 +5,7 @@ import { accelFromEvent, labelFor } from '../lib/accel'
 
 type State = Awaited<ReturnType<typeof api.GetHotkeys>>
 
+// Defaults mirror filestore.DefaultPrefs (Go); keep both in sync.
 const ACTIONS: { id: string; label: string; def: string }[] = [
   { id: 'volume_up', label: 'Volume +', def: 'Ctrl+Alt+Up' },
   { id: 'volume_down', label: 'Volume −', def: 'Ctrl+Alt+Down' },
@@ -12,6 +13,13 @@ const ACTIONS: { id: string; label: string; def: string }[] = [
   { id: 'home', label: 'Início', def: 'Ctrl+Alt+H' },
   { id: 'palette', label: 'Comandos rápidos', def: 'Ctrl+Alt+K' },
 ]
+
+const MEDIA_LABELS: Record<string, string> = {
+  media_play_pause: 'Play/pause',
+  media_next: 'Próxima',
+  media_prev: 'Anterior',
+  media_stop: 'Parar',
+}
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
@@ -21,11 +29,23 @@ export function HotkeySettings() {
   const [capturing, setCapturing] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState<{ id: string; text: string } | null>(null)
+  const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
     if (!api.hasRuntime()) return
-    api.GetHotkeys().then(setSt).catch(() => {})
+    api.GetHotkeys().then(setSt).catch((e) => setLoadError(msg(e)))
   }, [])
+
+  // While capturing, drop the registered hotkeys so the pressed keys do not
+  // reach the TV. Restored on finish, cancel and unmount.
+  const isCapturing = capturing !== null
+  useEffect(() => {
+    if (!isCapturing || !api.hasRuntime()) return
+    void api.SuspendHotkeys(true).catch(() => {})
+    return () => {
+      void api.SuspendHotkeys(false).catch(() => {})
+    }
+  }, [isCapturing])
 
   const current = useCallback(
     () => Object.fromEntries(ACTIONS.map((a) => [a.id, st?.bindings.find((b) => b.id === a.id)?.accel ?? a.def])),
@@ -67,9 +87,10 @@ export function HotkeySettings() {
     return () => window.removeEventListener('keydown', onKey, true)
   }, [capturing, st, current, save])
 
-  if (!st) return <p className="note">Atalhos globais indisponíveis neste sistema</p>
+  if (loadError) return <p className="err" role="alert">Não foi possível carregar os atalhos: {loadError}</p>
+  if (!st) return api.hasRuntime() ? <p className="note">Carregando…</p> : <p className="note">Atalhos globais indisponíveis neste sistema</p>
 
-  const off = !st.supported || busy
+  const off = !st.supported || busy || isCapturing
   const accelOf = (id: string) => st.bindings.find((b) => b.id === id)?.accel ?? ACTIONS.find((a) => a.id === id)!.def
   const errorOf = (id: string) => (failure?.id === id ? failure.text : st.bindings.find((b) => b.id === id)?.error || '')
   const defaults = Object.fromEntries(ACTIONS.map((a) => [a.id, a.def]))
@@ -78,7 +99,7 @@ export function HotkeySettings() {
     <div className="hotkeys" data-capturing={capturing ?? undefined}>
       {!st.supported && <p className="err">Atalhos globais indisponíveis neste sistema</p>}
       <ul className="shortcut-list">
-        <li>
+        <li className="stack">
           <label className="pref" htmlFor="hk-enabled">
             <span>Atalhos globais (funcionam com outra janela em foco)</span>
             <input
@@ -104,6 +125,13 @@ export function HotkeySettings() {
             />
           </label>
           <span className="note">Enquanto ligado, o player de música do PC não recebe essas teclas</span>
+          {st.bindings
+            .filter((b) => b.id in MEDIA_LABELS && b.error)
+            .map((b) => (
+              <span key={b.id} className="err" role="alert">
+                {MEDIA_LABELS[b.id]}: {b.error}
+              </span>
+            ))}
         </li>
         {ACTIONS.map((a) => {
           const err = errorOf(a.id)
@@ -118,7 +146,7 @@ export function HotkeySettings() {
                   ) : (
                     <kbd className="hk-accel">{labelFor(accelOf(a.id))}</kbd>
                   )}
-                  <button className="link" disabled={off} onClick={() => (setFailure(null), setCapturing(isCap ? null : a.id))}>
+                  <button className="link" disabled={!st.supported || busy} onClick={() => (setFailure(null), setCapturing(isCap ? null : a.id))}>
                     <Keyboard size={12} /> {isCap ? 'Cancelar' : 'Alterar'}
                   </button>
                 </span>
@@ -127,6 +155,9 @@ export function HotkeySettings() {
             </li>
           )
         })}
+        <li className="note">
+          Ctrl+Alt equivale a AltGr em alguns teclados; se um atalho impedir digitar um caractere, troque-o.
+        </li>
         <li className="note">
           <button className="link" disabled={off} onClick={() => (setCapturing(null), save(st.enabled, st.media, defaults))}>
             <RotateCcw size={12} /> Restaurar padrão

@@ -34,6 +34,11 @@ test('accelFromEvent table', () => {
     [ev('a', 'KeyA', { metaKey: true }), null],
     [ev('Escape', 'Escape'), null],
     [ev('F13', 'F13'), null],
+    [ev('z', 'KeyY', { ctrlKey: true, altKey: true }), 'Ctrl+Alt+Z'], // QWERTZ
+    [ev('/', 'KeyQ', { ctrlKey: true, altKey: true }), 'Ctrl+Alt+Q'], // AltGr symbol: fall back to code
+    [ev('!', 'Digit1', { shiftKey: true }), 'Shift+1'],
+    [ev('1', 'Numpad1'), null],
+    [ev('Enter', 'NumpadEnter'), null],
   ]
   for (const [e, want] of cases) assert.equal(accelFromEvent(e), want, `${e.key} ${e.code}`)
 })

@@ -21,6 +21,7 @@ export {
   SetHotkeys,
   SetVolume,
   StartPairing,
+  SuspendHotkeys,
   SwitchInput,
   Toast,
   ToggleFullscreen,

@@ -10,6 +10,7 @@ export function FinishPairing(arg1) { return window['go']['main']['App']['Finish
 export function InstalledApps() { return window['go']['main']['App']['InstalledApps'](); }
 export function Inputs() { return window['go']['main']['App']['Inputs'](); }
 export function GetHotkeys() { return window['go']['main']['App']['GetHotkeys'](); }
+export function SuspendHotkeys(arg1) { return window['go']['main']['App']['SuspendHotkeys'](arg1); }
 export function SetHotkeys(arg1, arg2, arg3) { return window['go']['main']['App']['SetHotkeys'](arg1, arg2, arg3); }
 export function LastHost() { return window['go']['main']['App']['LastHost'](); }
 export function LatestRelease() { return window['go']['main']['App']['LatestRelease'](); }

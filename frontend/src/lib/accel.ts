@@ -28,21 +28,22 @@ const NAMED: Record<string, string> = {
   AudioVolumeDown: 'VolumeDown',
   AudioVolumeMute: 'VolumeMute',
 }
-// Browsers report some media keys under the Go-style names already.
-const MEDIA_ALIASES: Record<string, string> = { MediaNext: 'MediaNext', MediaPrev: 'MediaPrev' }
 
 const MODIFIER_KEYS = new Set(['Control', 'Alt', 'Shift', 'Meta', 'AltGraph', 'OS'])
 
 function keyName(e: KeyEventLike): string | null {
-  const named = NAMED[e.key] ?? MEDIA_ALIASES[e.key]
+  if (e.code.startsWith('Numpad')) return null // not supported
+  const named = NAMED[e.key]
   if (named) return named
   if (/^F([1-9]|1[0-2])$/.test(e.key)) return e.key
-  // code is layout- and modifier-independent (Alt+K may produce another char in key).
+  // Letters follow the layout (RegisterHotKey uses the same virtual keys), so
+  // AZERTY/QWERTZ/Dvorak work. Alt/AltGr may turn key into a symbol or dead
+  // key; only then fall back to the physical code.
+  if (/^[a-zA-Z]$/.test(e.key)) return e.key.toUpperCase()
   const letter = /^Key([A-Z])$/.exec(e.code)
   if (letter) return letter[1]
   const digit = /^Digit([0-9])$/.exec(e.code)
   if (digit) return digit[1]
-  if (/^[a-zA-Z0-9]$/.test(e.key)) return e.key.toUpperCase()
   return null
 }
 
