@@ -205,6 +205,18 @@ w.go = {
           url: 'https://github.com/andredeomondes/optic/releases/tag/v1.0.4',
           notes: 'Correções e melhorias.',
           publishedAt: new Date().toISOString(),
+          assets: [
+            ['OPTIC-1.0.4-setup.exe', 9_400_000],
+            ['OPTIC-1.0.4-portable.exe', 9_100_000],
+            ['OPTIC-1.0.4.dmg', 11_200_000],
+            ['optic-1.0.4-linux-amd64.tar.gz', 8_700_000],
+            ['optic-1.0.4-linux-amd64-webkit41.tar.gz', 8_700_000],
+            ['SHA256SUMS', 480],
+          ].map(([name, size]) => ({
+            name: name as string,
+            url: `https://github.com/andredeomondes/optic/releases/download/v1.0.4/${name}`,
+            size: size as number,
+          })),
         }
       },
       async PowerOn(ip: string) {

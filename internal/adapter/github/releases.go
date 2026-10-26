@@ -34,6 +34,13 @@ type release struct {
 	URL         string    `json:"html_url"`
 	Body        string    `json:"body"`
 	PublishedAt time.Time `json:"published_at"`
+	Assets      []asset   `json:"assets"`
+}
+
+type asset struct {
+	Name string `json:"name"`
+	URL  string `json:"browser_download_url"`
+	Size int64  `json:"size"`
 }
 
 // Latest fetches the most recent non-draft, non-prerelease release.
@@ -84,5 +91,13 @@ func (c Client) Latest(ctx context.Context) (domain.Release, error) {
 	if !strings.HasPrefix(link, "https://github.com/"+c.Repo+"/") {
 		link = ""
 	}
-	return domain.Release{Tag: r.Tag, Name: r.Name, URL: link, Notes: r.Body, PublishedAt: r.PublishedAt}, nil
+	// Likewise, only the project's own release downloads are kept.
+	dl := "https://github.com/" + c.Repo + "/releases/download/"
+	assets := []domain.Asset{}
+	for _, a := range r.Assets {
+		if strings.HasPrefix(a.URL, dl) {
+			assets = append(assets, domain.Asset{Name: a.Name, URL: a.URL, Size: a.Size})
+		}
+	}
+	return domain.Release{Tag: r.Tag, Name: r.Name, URL: link, Notes: r.Body, PublishedAt: r.PublishedAt, Assets: assets}, nil
 }

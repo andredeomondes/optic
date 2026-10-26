@@ -136,6 +136,14 @@ type Release struct {
 	URL         string    `json:"url"`
 	Notes       string    `json:"notes"`
 	PublishedAt time.Time `json:"publishedAt"`
+	Assets      []Asset   `json:"assets"`
+}
+
+// Asset is a downloadable file attached to a Release.
+type Asset struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+	Size int64  `json:"size"`
 }
 
 // ReleaseSource looks up the latest published release.
