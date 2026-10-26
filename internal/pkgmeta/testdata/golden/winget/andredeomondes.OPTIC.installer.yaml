@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+PackageIdentifier: andredeomondes.OPTIC
+PackageVersion: 1.2.3
+InstallerType: nullsoft
+Scope: user
+UpgradeBehavior: install
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/andredeomondes/optic/releases/download/v1.2.3/OPTIC-windows-amd64-setup.exe
+    InstallerSha256: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+ManifestType: installer
+ManifestVersion: 1.6.0

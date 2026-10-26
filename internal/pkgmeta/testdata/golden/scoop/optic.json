@@ -1,0 +1,32 @@
+{
+    "version": "1.2.3",
+    "description": "Control your TV from your PC",
+    "homepage": "https://github.com/andredeomondes/optic",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/andredeomondes/optic/releases/download/v1.2.3/OPTIC-windows-amd64-portable.exe#/optic.exe",
+            "hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+    },
+    "bin": "optic.exe",
+    "shortcuts": [
+        [
+            "optic.exe",
+            "OPTIC"
+        ]
+    ],
+    "checkver": {
+        "github": "https://github.com/andredeomondes/optic"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/andredeomondes/optic/releases/download/v$version/OPTIC-windows-amd64-portable.exe#/optic.exe",
+                "hash": {
+                    "url": "https://github.com/andredeomondes/optic/releases/download/v$version/SHA256SUMS"
+                }
+            }
+        }
+    }
+}

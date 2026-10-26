@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>{{.AppID}}</id>
+  <name>OPTIC</name>
+  <summary>{{.DescEN}}</summary>
+  <summary xml:lang="pt-BR">{{.DescPT}}</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>{{.License}}</project_license>
+  <developer_name>{{.Publisher}}</developer_name>
+  <url type="homepage">{{.Homepage}}</url>
+  <url type="bugtracker">{{.Homepage}}/issues</url>
+  <description>
+    <p>Open source desktop remote for Android TV, Google TV, Roku, LG webOS and Samsung Tizen. It talks straight to the TV over your local network: no extra hardware, no cloud, no account.</p>
+    <p xml:lang="pt-BR">Controle remoto de código aberto para Android TV, Google TV, Roku, LG webOS e Samsung Tizen. Fala direto com a TV pela rede local: sem hardware extra, sem nuvem, sem conta.</p>
+  </description>
+  <launchable type="desktop-id">{{.AppID}}.desktop</launchable>
+  <provides>
+    <binary>optic-desktop</binary>
+  </provides>
+  <categories>
+    <category>Utility</category>
+    <category>AudioVideo</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="{{.Version}}" date="{{.Date}}"/>
+  </releases>
+</component>

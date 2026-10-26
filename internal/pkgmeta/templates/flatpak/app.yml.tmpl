@@ -1,0 +1,32 @@
+# NOT READY FOR FLATHUB WITH THE CURRENT RELEASES.
+# The prebuilt Linux binary in the tarball links against WebKitGTK 4.0
+# (libwebkit2gtk-4.0). Current Flathub GNOME runtimes only ship WebKitGTK 4.1
+# and 6.0, so this manifest needs a binary built with `-tags webkit2_41`
+# (to be produced by CI later). It will not run with today's tarball.
+app-id: {{.AppID}}
+runtime: org.gnome.Platform
+runtime-version: '46'
+sdk: org.gnome.Sdk
+command: optic-desktop
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+modules:
+  - name: optic
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 optic-desktop /app/bin/optic-desktop
+      - install -Dm644 optic.png /app/share/icons/hicolor/512x512/apps/{{.AppID}}.png
+      - sed 's/^Icon=.*/Icon={{.AppID}}/' optic.desktop > {{.AppID}}.desktop
+      - install -Dm644 {{.AppID}}.desktop /app/share/applications/{{.AppID}}.desktop
+      - install -Dm644 {{.AppID}}.metainfo.xml /app/share/metainfo/{{.AppID}}.metainfo.xml
+    sources:
+      - type: archive
+        url: {{.Tarball.URL}}
+        sha256: {{.Tarball.SHA256}}
+        strip-components: 1
+      - type: file
+        path: {{.AppID}}.metainfo.xml

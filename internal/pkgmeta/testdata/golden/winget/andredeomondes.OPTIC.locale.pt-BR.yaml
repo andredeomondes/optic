@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.locale.1.6.0.schema.json
+PackageIdentifier: andredeomondes.OPTIC
+PackageVersion: 1.2.3
+PackageLocale: pt-BR
+Publisher: andredeomondes
+PublisherUrl: https://github.com/andredeomondes
+PackageName: OPTIC
+PackageUrl: https://github.com/andredeomondes/optic
+License: MIT
+LicenseUrl: https://github.com/andredeomondes/optic/blob/main/LICENSE
+ShortDescription: Controle sua TV pelo computador
+Tags:
+  - remote-control
+  - tv
+  - smart-tv
+ManifestType: locale
+ManifestVersion: 1.6.0

@@ -1,0 +1,18 @@
+# Note: the app is not signed or notarized, so macOS Gatekeeper blocks the
+# first launch. See PACKAGING.md for the workaround.
+cask "optic" do
+  version "{{.Version}}"
+  sha256 "{{.DMG.SHA256}}"
+
+  url "{{.Homepage}}/releases/download/v#{version}/{{.DMG.Name}}"
+  name "OPTIC"
+  desc "{{.DescEN}}"
+  homepage "{{.Homepage}}"
+
+  livecheck do
+    url :url
+    strategy :github_latest
+  end
+
+  app "OPTIC.app"
+end
