@@ -78,3 +78,11 @@ JSON por WebSocket em `wss://<ip>:3001` (certificado autoassinado; TVs antigas: 
 | `ssap://com.webos.service.networkinput/getPointerInputSocket` | socket de ponteiro para teclas |
 
 **Teclas:** pelo socket de ponteiro (outro WebSocket no mesmo host), um frame de texto por tecla: `type:button\nname:UP\n\n`.
+
+## Samsung Tizen
+
+- **Informações:** `GET http://<ip>:8001/api/v2/` devolve nome, modelo, `PowerState` (`on`/`standby`) e `TokenAuthSupport`.
+- **Controle:** WebSocket `wss://<ip>:8002/api/v2/channels/samsung.remote.control?name=<base64 de "OPTIC">&token=<token>` (certificado autoassinado). Sem token, a TV mostra "Permitir?"; ao aceitar, envia `ms.channel.connect` com o token, guardado em `samsung_tokens.json`. Recusa: `ms.channel.unauthorized`. TVs sem `TokenAuthSupport` (2016) usam `ws://<ip>:8001` sem token.
+- **Teclas:** `{"method":"ms.remote.control","params":{"Cmd":"Click","DataOfCmd":"KEY_HOME","Option":"false","TypeOfRemote":"SendRemoteKey"}}`.
+- **Texto:** só com o teclado da TV aberto (eventos `ms.remote.imeStart`/`imeEnd`): `SendInputString` com o texto em base64, seguido de `SendInputEnd`.
+- **Apps:** `ms.channel.emit` com `ed.installedApp.get` lista os apps; `ed.apps.launch` abre (`DEEP_LINK` para apps do tipo 2, `NATIVE_LAUNCH` para os demais).

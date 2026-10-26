@@ -62,7 +62,9 @@ main (composição) ──► adapters ──► domain ◄── control (casos
 | `internal/domain` | Entidades, erros de negócio e portas: `Discoverer`, `Connector`, `Session`, `Pairer`, `PairingSession`, `HostStore`, `EventSink` | nada |
 | `internal/control` | Casos de uso: descobrir, parear, conectar, enviar tecla/texto/app, ajustar volume | `domain` |
 | `internal/adapter/atv` | `Connector`, `Pairer` e `Session` sobre o protocolo Remote v2 | `domain`, `pkg/atvremote` |
-| `internal/adapter/webos` | `Connector`, `Pairer` (confirmação na TV) e `Session` sobre o SSAP da LG; chaves em `webos_keys.json` | `domain`, `pkg/webos` |
+| `internal/adapter/webos` | `Connector`, `Pairer` (confirmação na TV) e `Session` sobre o SSAP da LG; chaves em `webos_keys.json` | `domain`, `pkg/webos`, `keystore` |
+| `internal/adapter/tizen` | `Connector`, `Pairer` (confirmação na TV) e `Session` da Samsung; tokens em `samsung_tokens.json` | `domain`, `pkg/tizen`, `keystore` |
+| `internal/adapter/keystore` | Chaves/tokens por TV num arquivo JSON (gravação atômica, 0600) | stdlib |
 | `internal/adapter/roku` | `Connector`, `Session` e ligar pela rede sobre o ECP da Roku (estado por polling) | `domain`, `pkg/roku` |
 | `internal/adapter/registry` | Escolhe o adapter pela plataforma de cada TV | `domain` |
 | `internal/adapter/mdns` | `Discoverer` via mDNS | `domain`, `pkg/discovery` |
@@ -74,6 +76,7 @@ main (composição) ──► adapters ──► domain ◄── control (casos
 | `pkg/discovery` | mDNS/zeroconf | `zeroconf` |
 | `pkg/roku` | Cliente ECP (HTTP na porta 8060): teclas, texto, apps, device-info | stdlib |
 | `pkg/webos` | Cliente SSAP (WebSocket 3001/3000): registro com "Permitir", requisições, assinaturas e socket de ponteiro | stdlib, `gorilla/websocket` |
+| `pkg/tizen` | Controle remoto da Samsung (WebSocket 8002/8001 com token) e informações pela REST 8001 | stdlib, `gorilla/websocket` |
 | `cmd/optic` | CLI de diagnóstico e engenharia reversa | `pkg/*` |
 
 ## SOLID na prática
