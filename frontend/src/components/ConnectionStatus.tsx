@@ -1,14 +1,24 @@
-import { LoaderCircle, Power, RefreshCw } from 'lucide-react'
+import { LoaderCircle, Pause, Play, Power, RefreshCw } from 'lucide-react'
 import { since, useNow } from '../hooks/useNow'
 import { useRemote } from '../hooks/useRemote'
+import { useTVApps } from '../hooks/useTVApps'
+import { CATALOG } from '../lib/apps'
+import { can } from '../lib/capabilities'
+import { appLabel, playingLabel } from '../lib/nowplaying'
 import { InputPicker } from './InputPicker'
 import { RemoteButton } from './RemoteButton'
 import { SleepTimer } from './SleepTimer'
 
+const CATALOG_NAMES = CATALOG.map(({ pkg, name }) => ({ pkg, name }))
+
 /** Remote header: TV name, live status line and the power / reconnect button. */
 export function ConnectionStatus() {
-  const { status, pairingMode, host, info, tvs, error, connectedAt, connect } = useRemote()
+  const { status, pairingMode, host, info, tvs, error, connectedAt, connect, tvState } = useRemote()
   const now = useNow()
+  const { apps: installed } = useTVApps(host || null, can(info, 'appList'))
+  const playing = playingLabel(tvState?.playing ?? '')
+  const appName =
+    status === 'connected' && tvState?.on !== false ? appLabel(tvState?.app ?? '', { installed, catalog: CATALOG_NAMES }) : ''
   const name = info ? `${info.vendor} ${info.model}` : tvs.find((t) => t.ip === host)?.name || host
 
   return (
@@ -35,6 +45,12 @@ export function ConnectionStatus() {
           {status === 'error' && (error || 'Erro')}
           {status === 'idle' && 'Selecione uma TV na lista ao lado'}
         </small>
+        {appName && (
+          <div className="now-playing" title={playing ? `${appName} · ${playing}` : appName}>
+            {tvState?.playing === 'paused' ? <Pause size={12} /> : <Play size={12} />}
+            <span>{playing ? `${appName} · ${playing}` : appName}</span>
+          </div>
+        )}
       </div>
       {status === 'error' && host ? (
         <div className="top-actions">

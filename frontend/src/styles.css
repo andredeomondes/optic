@@ -170,6 +170,9 @@ button { font: inherit; color: inherit; }
 .tv-title { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
 .tv-title .dot { margin-left: 0; }
 .status-line { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 11.5px; color: var(--muted); margin-top: 4px; animation: fade 0.35s var(--ease); }
+.now-playing { display: flex; align-items: center; gap: 5px; margin-top: 3px; font-size: 11.5px; color: var(--muted); min-width: 0; }
+.now-playing svg { flex: none; }
+.now-playing span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .status-line.connected > span:first-child { color: var(--ok); }
 .status-line.error { color: var(--danger); }
 .chip { font-size: 10.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--stroke); background: rgba(255, 255, 255, 0.05); color: var(--muted); }
