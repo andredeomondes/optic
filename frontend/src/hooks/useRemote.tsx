@@ -6,12 +6,16 @@ import * as api from '../lib/backend'
 import { useI18n } from './useI18n'
 import { cleanPaste } from '../lib/paste'
 import { load, save } from '../lib/storage'
+import type { Key } from '../lib/i18n'
 import type { DeviceInfo, Feedback, LogLine, Status, Toast, TV, TVState } from '../lib/types'
 
 const MANUAL_KEY = 'optic.manualHosts.v1'
 const FEEDBACK_MS = 650
 const POWER_ON_RESCAN_MS = 8000
 const TRAY_KEYS = ['VOLUME_UP', 'VOLUME_DOWN', 'MUTE']
+
+/** Connection error: our own message (translated when shown) or raw backend text. */
+export type RemoteError = { key: Key; vars?: Record<string, string | number> } | { raw: string }
 
 let seq = 0
 
@@ -30,7 +34,7 @@ function useRemoteState() {
   const [host, setHost] = useState('')
   const [info, setInfo] = useState<DeviceInfo | null>(null)
   const [tvState, setTvState] = useState<TVState | null>(null)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<RemoteError | null>(null)
   const [pairingMode, setPairingMode] = useState<'code' | 'prompt'>('code')
   const [connectedAt, setConnectedAt] = useState<number | null>(null)
   const [log, setLog] = useState<LogLine[]>([])
@@ -89,7 +93,7 @@ function useRemoteState() {
     async (ip: string) => {
       const attempt = ++pairRun.current
       setHost(ip)
-      setError('')
+      setError(null)
       // Drop the previous TV's capabilities and live state while reconnecting.
       setInfo(null)
       setTvState(null)
@@ -121,7 +125,7 @@ function useRemoteState() {
                 },
                 (fe) => {
                   if (pairRun.current !== attempt) return
-                  setError(api.errText(fe))
+                  setError({ raw: api.errText(fe) })
                   setStatus('error')
                 },
               )
@@ -129,11 +133,11 @@ function useRemoteState() {
               addLog('•', tRef.current('log.showingCode'))
             }
           } catch (pe) {
-            setError(api.errText(pe))
+            setError({ raw: api.errText(pe) })
             setStatus('error')
           }
         } else {
-          setError(msg)
+          setError({ raw: msg })
           setStatus('error')
         }
       }
@@ -278,7 +282,7 @@ function useRemoteState() {
       api.onEvent('trace', (dir: string, text: string) => addLog(dir, text)),
       api.onEvent('disconnected', () => {
         setStatus('error')
-        setError(tRef.current('error.connectionLost'))
+        setError({ key: 'error.connectionLost' })
         setConnectedAt(null)
         addLog('•', tRef.current('log.disconnected'))
       }),

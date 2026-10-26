@@ -2,7 +2,8 @@ import { Fragment, useEffect, useMemo, useRef } from 'react'
 import { useI18n } from '../hooks/useI18n'
 import { useRemote } from '../hooks/useRemote'
 import { can } from '../lib/capabilities'
-import { SHORTCUTS } from '../lib/shortcuts'
+import type { Key } from '../lib/i18n'
+import { FOOTER_HINTS, SHORTCUTS } from '../lib/shortcuts'
 import { createThrottle, wheelVolumeStep } from '../lib/throttle'
 import { ConnectionStatus } from './ConnectionStatus'
 import { DPad } from './DPad'
@@ -71,28 +72,28 @@ export function RemoteControl({ compact = false }: { compact?: boolean }) {
   )
 }
 
-// Footer hints: SHORTCUTS label (pt, used as id) -> translated lowercase text.
-const HINT_KEY = {
-  Navegar: 'remote.hint.navigate',
-  OK: 'remote.hint.ok',
-  Voltar: 'remote.hint.back',
-  Início: 'remote.hint.home',
-  Mudo: 'remote.hint.mute',
-  'Comandos rápidos': 'remote.hint.quick',
-} as const
+// Footer hints: shortcut id -> translated lowercase text.
+const HINT_KEY: Record<(typeof FOOTER_HINTS)[number], Key> = {
+  navigate: 'remote.hint.navigate',
+  ok: 'remote.hint.ok',
+  back: 'remote.hint.back',
+  home: 'remote.hint.home',
+  mute: 'remote.hint.mute',
+  palette: 'remote.hint.quick',
+}
 
 function ShortcutHints() {
   const { t } = useI18n()
-  const shown = SHORTCUTS.filter((s) => s.label in HINT_KEY)
+  const shown = FOOTER_HINTS.map((id) => SHORTCUTS.find((s) => s.id === id)).filter((s): s is (typeof SHORTCUTS)[number] => !!s)
   return (
     <div className="hint">
       {shown.map((s, i) => (
-        <Fragment key={s.label}>
+        <Fragment key={s.id}>
           {i > 0 && ' · '}
           {s.keys.map((k) => (
             <kbd key={k}>{k}</kbd>
           ))}{' '}
-          {t(HINT_KEY[s.label as keyof typeof HINT_KEY])}
+          {t(HINT_KEY[s.id as (typeof FOOTER_HINTS)[number]])}
         </Fragment>
       ))}
     </div>

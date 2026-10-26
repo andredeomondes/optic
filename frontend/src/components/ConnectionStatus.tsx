@@ -47,7 +47,7 @@ export function ConnectionStatus() {
             </>
           )}
           {status === 'pairing' && (pairingMode === 'prompt' ? t('common.confirmOnTv') : t('status.pairing'))}
-          {status === 'error' && (error || t('status.error'))}
+          {status === 'error' && (error ? ('key' in error ? t(error.key, error.vars) : error.raw) : t('status.error'))}
           {status === 'idle' && t('status.idle')}
         </small>
         {nowText && (

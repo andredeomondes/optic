@@ -1,5 +1,6 @@
 import { ReactNode, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '../hooks/useI18n'
 import { X } from 'lucide-react'
 
 type Props = {
@@ -16,6 +17,7 @@ type Props = {
  * would otherwise clip an absolutely positioned overlay to the panel.
  */
 export function Modal({ title, icon, onClose, children, className = '' }: Props) {
+  const { t } = useI18n()
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // A key-capture field inside the dialog owns Esc (it cancels the capture only).
@@ -35,7 +37,7 @@ export function Modal({ title, icon, onClose, children, className = '' }: Props)
           <header className="dialog-head">
             {icon && <div className="dialog-ic">{icon}</div>}
             <h2>{title}</h2>
-            <button className="icon-btn" onClick={onClose} aria-label="Fechar">
+            <button className="icon-btn" onClick={onClose} aria-label={t('common.close')}>
               <X size={16} />
             </button>
           </header>
