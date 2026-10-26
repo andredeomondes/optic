@@ -15,7 +15,7 @@ test('normalize strips accents, case and spaces', () => {
 
 test('filterApps is accent-insensitive', () => {
   assert.deepEqual(filterApps(apps, 'GLOBO').map((a) => a.id), ['g'])
-  assert.deepEqual(filterApps(apps, 'album').map((a) => a.id), ['a'])
+  assert.deepEqual(filterApps(apps, 'albun').map((a) => a.id), ['a'])
 })
 
 test('filterApps with empty query returns all sorted', () => {
