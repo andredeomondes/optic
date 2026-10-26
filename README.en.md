@@ -73,6 +73,20 @@ Download from [**Releases**](https://github.com/andredeomondes/optic/releases/la
 
 The step by step, including the SmartScreen and Gatekeeper warnings (the binaries are not signed yet), is in the [**guide**](https://andredeomondes.github.io/optic/en/).
 
+### Package managers (coming soon)
+
+They work once each package is published; they are not available yet.
+
+```sh
+winget install andredeomondes.OPTIC                                   # Windows
+scoop bucket add optic https://github.com/andredeomondes/scoop-optic  # Windows (Scoop)
+scoop install optic
+brew install --cask andredeomondes/optic/optic                        # macOS
+yay -S optic-bin                                                      # Arch Linux (AUR)
+```
+
+Flatpak: coming soon. Checksums: `SHA256SUMS` in each release. Maintainer guide (in Portuguese): [docs/PACKAGING.md](docs/PACKAGING.md).
+
 ## First use
 
 1. PC and TV on the **same network** (Wi-Fi or cable).
