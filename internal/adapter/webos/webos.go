@@ -23,6 +23,8 @@ var (
 	ErrPromptTimeout = errors.New("A TV não respondeu ao pedido: confirme 'Permitir' na tela.")
 	// ErrPairingLost means the connection dropped before the prompt was answered.
 	ErrPairingLost = errors.New("Conexão com a TV perdida durante o pareamento.")
+	// ErrTVNotResponding means the TV did not answer; the pairing is kept.
+	ErrTVNotResponding = errors.New("A TV LG não respondeu. Verifique se ela está ligada e tente de novo.")
 )
 
 const (
@@ -84,7 +86,7 @@ func (a *Adapter) Connect(ctx context.Context, host string, ev domain.SessionEve
 	}
 	conn, err := a.dial(ctx, host, webos.Options{Trace: ev.OnTrace})
 	if err != nil {
-		return nil, err
+		return nil, dialError(ctx, err)
 	}
 	timeout := a.registerTimeout
 	if timeout <= 0 {
@@ -95,12 +97,14 @@ func (a *Adapter) Connect(ctx context.Context, host string, ev domain.SessionEve
 	cancel()
 	if err != nil {
 		conn.Close()
-		// A revoked key is answered with an error, a new prompt, or silence
-		// until our deadline: in all cases pair again.
-		if errors.Is(err, webos.ErrRegisterRejected) || errors.Is(err, webos.ErrPromptShown) ||
-			(errors.Is(err, context.DeadlineExceeded) && ctx.Err() == nil) {
+		// A revoked key is answered with an error or a new prompt: pair again.
+		if errors.Is(err, webos.ErrRegisterRejected) || errors.Is(err, webos.ErrPromptShown) {
 			_ = a.keys.Delete(host)
 			return nil, domain.ErrNotPaired
+		}
+		// Silence is not a revoked key: a TV waking up can be slow.
+		if errors.Is(err, context.DeadlineExceeded) && ctx.Err() == nil {
+			return nil, ErrTVNotResponding
 		}
 		return nil, err
 	}
@@ -130,6 +134,14 @@ func (a *Adapter) Connect(ctx context.Context, host string, ev domain.SessionEve
 		return nil, err
 	}
 	return s, nil
+}
+
+// dialError hides the raw dial text from the UI.
+func dialError(ctx context.Context, err error) error {
+	if ctx.Err() != nil {
+		return err
+	}
+	return ErrTVNotResponding
 }
 
 // readInfo fetches model and firmware; failures leave the fields empty.
@@ -170,7 +182,7 @@ func readInfo(ctx context.Context, conn *webos.Conn) domain.DeviceInfo {
 func (a *Adapter) StartPairing(ctx context.Context, host string) (domain.PairingSession, error) {
 	conn, err := a.dial(ctx, host, webos.Options{})
 	if err != nil {
-		return nil, err
+		return nil, dialError(ctx, err)
 	}
 	timeout := a.promptTimeout
 	if timeout <= 0 {

@@ -33,6 +33,7 @@ type fakeTV struct {
 	// register is "accept" (default), "prompt", "promptonly" (PROMPT, never
 	// answered), "rotate" (issues "rotated"), "reject", "silent" or "drop".
 	register string
+	mu       sync.Mutex     // guards replies once the server runs
 	replies  map[string]any // request uri -> payload (default {"returnValue":true})
 	subs     map[string]any // subscription uri -> first payload
 
@@ -129,7 +130,9 @@ func (tv *fakeTV) serve(ws *websocket.Conn) {
 			}
 		case "request":
 			tv.reqs <- m
+			tv.mu.Lock()
 			reply, ok := tv.replies[m["uri"].(string)]
+			tv.mu.Unlock()
 			if !ok {
 				reply = map[string]any{"returnValue": true}
 			}
@@ -140,6 +143,13 @@ func (tv *fakeTV) serve(ws *websocket.Conn) {
 			}
 		}
 	}
+}
+
+// setReply changes the answer to a request uri while the TV is serving.
+func (tv *fakeTV) setReply(uri string, payload any) {
+	tv.mu.Lock()
+	tv.replies[uri] = payload
+	tv.mu.Unlock()
 }
 
 // nextReq returns the next request whose uri is not an info/pointer call.
@@ -356,18 +366,18 @@ func TestConnectStaleKeyPromptRepairs(t *testing.T) {
 	}
 }
 
-func TestConnectRegisterTimeoutRepairs(t *testing.T) {
+func TestConnectRegisterTimeoutKeepsKey(t *testing.T) {
 	tv := newFakeTV(t)
 	tv.register = "silent"
 	a, _ := newAdapter(t, tv)
 	a.registerTimeout = 50 * time.Millisecond
 	a.keys.Put(host, "stale")
 	_, err := a.Connect(context.Background(), host, newEvents())
-	if !errors.Is(err, domain.ErrNotPaired) {
+	if !errors.Is(err, ErrTVNotResponding) {
 		t.Fatalf("err = %v", err)
 	}
-	if a.keys.Get(host) != "" {
-		t.Error("stale key kept")
+	if a.keys.Get(host) != "stale" {
+		t.Error("key deleted on timeout")
 	}
 }
 
@@ -517,7 +527,7 @@ func TestSendKeyReopensPointer(t *testing.T) {
 func TestPlayPauseFlipsOnlyOnSuccess(t *testing.T) {
 	tv := newFakeTV(t)
 	s, _ := connect(t, tv)
-	tv.replies["ssap://com.webos.service.networkinput/getPointerInputSocket"] = map[string]any{"returnValue": false, "errorText": "no"}
+	tv.setReply("ssap://com.webos.service.networkinput/getPointerInputSocket", map[string]any{"returnValue": false, "errorText": "no"})
 	s.ptr.Close()
 	if err := s.SendKey("MEDIA_PLAY_PAUSE"); err == nil {
 		t.Fatal("want error")
@@ -584,13 +594,13 @@ func TestAppsList(t *testing.T) {
 
 func TestSetVolumeInputsToast(t *testing.T) {
 	tv := newFakeTV(t)
-	tv.replies["ssap://tv/getExternalInputList"] = map[string]any{
+	tv.setReply("ssap://tv/getExternalInputList", map[string]any{
 		"returnValue": true,
 		"devices": []map[string]any{
 			{"id": "HDMI_1", "label": "HDMI 1"},
 			{"id": "HDMI_2", "label": "PlayStation"},
 		},
-	}
+	})
 	s, _ := connect(t, tv)
 	ctx := context.Background()
 
@@ -640,7 +650,7 @@ func TestTextNotTraced(t *testing.T) {
 		t.Errorf("insertText -> %v %v", m["uri"], payload(m))
 	}
 
-	tv.replies["ssap://com.webos.service.ime/insertText"] = map[string]any{"returnValue": false, "errorText": "no keyboard"}
+	tv.setReply("ssap://com.webos.service.ime/insertText", map[string]any{"returnValue": false, "errorText": "no keyboard"})
 	err := s.SendText("segredo456")
 	if err == nil || strings.Contains(err.Error(), "segredo") {
 		t.Errorf("err = %v", err)
@@ -712,5 +722,30 @@ func TestKeyStoreAtomicAndCorrupt(t *testing.T) {
 
 	if New(dir).keys.path != filepath.Join(dir, "webos_keys.json") {
 		t.Error("keys file path")
+	}
+}
+
+func TestResolveMarketCustomAppID(t *testing.T) {
+	installed := []domain.App{{ID: "com.webos.app.browser", Name: "Web Browser"}}
+	id, err := resolveApp("market://launch?id=com.webos.app.browser", installed)
+	if err != nil || id != "com.webos.app.browser" {
+		t.Fatalf("id=%q err=%v", id, err)
+	}
+	if _, err := resolveApp("market://launch?id=com.other.app", installed); !errors.Is(err, ErrAppNotInstalled) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestConnectDialFailureIsFriendly(t *testing.T) {
+	a := New(t.TempDir())
+	a.Dial = func(context.Context, string, webos.Options) (*webos.Conn, error) {
+		return nil, errors.New("dial tcp 10.0.0.5:3001: i/o timeout")
+	}
+	a.keys.Put(host, "k1")
+	if _, err := a.Connect(context.Background(), host, newEvents()); !errors.Is(err, ErrTVNotResponding) {
+		t.Fatalf("connect: %v", err)
+	}
+	if _, err := a.StartPairing(context.Background(), host); !errors.Is(err, ErrTVNotResponding) {
+		t.Fatalf("pairing: %v", err)
 	}
 }

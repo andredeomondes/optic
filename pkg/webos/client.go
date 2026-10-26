@@ -111,7 +111,7 @@ func Dial(ctx context.Context, host string, opt Options) (*Conn, error) {
 		go c.readLoop()
 		return c, nil
 	}
-	return nil, fmt.Errorf("webos: nao foi possivel conectar: %w", last)
+	return nil, fmt.Errorf("webos: não foi possível conectar: %w", last)
 }
 
 func newDialer(timeout time.Duration) *websocket.Dialer {
@@ -212,7 +212,7 @@ func (c *Conn) wait(ctx context.Context, pr *pendingReq) (message, error) {
 	case <-ctx.Done():
 		return message{}, ctx.Err()
 	case <-c.done:
-		return message{}, errors.New("webos: conexao encerrada")
+		return message{}, errors.New("webos: conexão encerrada")
 	}
 }
 
@@ -398,27 +398,27 @@ func (c *Conn) Pointer(ctx context.Context) (*Pointer, error) {
 		SocketPath string `json:"socketPath"`
 	}
 	if err := json.Unmarshal(raw, &p); err != nil || p.SocketPath == "" {
-		return nil, errors.New("webos: TV nao informou o socket de ponteiro")
+		return nil, errors.New("webos: TV não informou o socket de ponteiro")
 	}
 	// Only the path and query are trusted; the TV host and scheme are the ones
 	// Dial connected to.
 	su, err := url.Parse(p.SocketPath)
 	if err != nil {
-		return nil, errors.New("webos: socket de ponteiro invalido")
+		return nil, errors.New("webos: socket de ponteiro inválido")
 	}
 	target := url.URL{Scheme: c.scheme, Host: c.host, Path: su.Path, RawQuery: su.RawQuery}
 	dctx, cancel := context.WithTimeout(ctx, c.opt.Timeout)
 	defer cancel()
 	ws, _, err := c.dialer.DialContext(dctx, target.String(), nil)
 	if err != nil {
-		return nil, errors.New("webos: nao foi possivel conectar ao socket de ponteiro")
+		return nil, errors.New("webos: não foi possível conectar ao socket de ponteiro")
 	}
 	ptr := &Pointer{ws: ws, timeout: c.opt.Timeout}
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()
 		ws.Close()
-		return nil, errors.New("webos: conexao encerrada")
+		return nil, errors.New("webos: conexão encerrada")
 	}
 	old := c.pointer
 	c.pointer = ptr

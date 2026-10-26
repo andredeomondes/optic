@@ -43,14 +43,14 @@ func Describe(ctx context.Context, client *http.Client, location string) (friend
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", "", fmt.Errorf("descricao UPnP: status %d", resp.StatusCode)
+		return "", "", fmt.Errorf("descrição UPnP: status %d", resp.StatusCode)
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxDescriptionBytes+1))
 	if err != nil {
 		return "", "", err
 	}
 	if len(body) > maxDescriptionBytes {
-		return "", "", errors.New("descricao UPnP grande demais")
+		return "", "", errors.New("descrição UPnP grande demais")
 	}
 	return ParseDescription(body)
 }

@@ -78,8 +78,15 @@ func resolveMarket(target string, installed []domain.App) (string, error) {
 	if err != nil {
 		return "", ErrAppNotInstalled
 	}
-	k, ok := knownApps[u.Query().Get("id")]
+	pkg := u.Query().Get("id")
+	k, ok := knownApps[pkg]
 	if !ok {
+		// Not in the catalog: it may be a webOS app ID (com.webos.app.browser).
+		for _, a := range installed {
+			if pkg != "" && a.ID == pkg {
+				return a.ID, nil
+			}
+		}
 		return "", ErrAppNotInstalled
 	}
 	for _, a := range installed {
