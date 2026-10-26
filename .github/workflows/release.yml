@@ -72,7 +72,7 @@ jobs:
         run: |
           wails build -skipbindings -trimpath -platform linux/amd64
           mkdir -p pkg/OPTIC && cp build/bin/optic-desktop pkg/OPTIC/ && cp build/appicon.png pkg/OPTIC/optic.png
-          cp packaging/linux/optic.desktop pkg/OPTIC/ && cp packaging/linux/install.sh pkg/OPTIC/ && cp LICENSE pkg/OPTIC/
+          cp packaging/linux/optic.desktop pkg/OPTIC/ && cp packaging/linux/install.sh pkg/OPTIC/ && cp LICENSE pkg/OPTIC/ && convert build/appicon.png -resize 512x512 pkg/OPTIC/optic-512.png
           tar -C pkg -czf build/bin/OPTIC-linux-amd64.tar.gz OPTIC
       - uses: actions/upload-artifact@v4
         with:

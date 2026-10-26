@@ -4,13 +4,15 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"flag"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
 
-var update = flag.Bool("update", false, "regenerate golden files")
+// Regenerate goldens with: go test ./internal/pkgmeta -update
+var update = flag.Bool("update", false, "regenerate golden files (removes stale ones)")
 
 const (
 	hexSetup    = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -75,6 +77,11 @@ func TestRenderGolden(t *testing.T) {
 	if len(written) != 10 {
 		t.Fatalf("want 10 files, got %d: %v", len(written), written)
 	}
+	if *update {
+		if err := os.RemoveAll(filepath.Join("testdata", "golden")); err != nil {
+			t.Fatal(err)
+		}
+	}
 	for _, p := range written {
 		rel, err := filepath.Rel(out, p)
 		if err != nil {
@@ -101,6 +108,38 @@ func TestRenderGolden(t *testing.T) {
 		if string(got) != strings.ReplaceAll(string(want), "\r\n", "\n") { // goldens may be CRLF after checkout
 			t.Errorf("%s differs from golden\n--- got ---\n%s\n--- want ---\n%s", rel, got, want)
 		}
+	}
+}
+
+func TestGoldenSetMatchesRenderedSet(t *testing.T) {
+	out := renderTemp(t)
+	list := func(root string) []string {
+		var files []string
+		err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+			if err == nil && !d.IsDir() {
+				rel, _ := filepath.Rel(root, p)
+				files = append(files, filepath.ToSlash(rel))
+			}
+			return err
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return files
+	}
+	got, want := list(out), list(filepath.Join("testdata", "golden"))
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Errorf("golden set differs from rendered set:\nrendered: %v\ngolden:   %v", got, want)
+	}
+}
+
+func TestWingetScopeIsMachine(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(renderTemp(t), "winget", "andredeomondes.OPTIC.installer.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "Scope: machine") {
+		t.Errorf("installer is per-machine:\n%s", data)
 	}
 }
 
@@ -186,7 +225,13 @@ func TestMetainfoIsValidXML(t *testing.T) {
 		t.Fatal(err)
 	}
 	var c struct {
-		ID       string `xml:"id"`
+		ID      string `xml:"id"`
+		DevName string `xml:"developer>name"`
+		Shots   []struct {
+			Type    string `xml:"type,attr"`
+			Caption string `xml:"caption"`
+			Image   string `xml:"image"`
+		} `xml:"screenshots>screenshot"`
 		Releases []struct {
 			Version string `xml:"version,attr"`
 			Date    string `xml:"date,attr"`
@@ -197,6 +242,13 @@ func TestMetainfoIsValidXML(t *testing.T) {
 	}
 	if c.ID != "io.github.andredeomondes.optic" {
 		t.Errorf("id = %q", c.ID)
+	}
+	if c.DevName != "andredeomondes" {
+		t.Errorf("developer name = %q", c.DevName)
+	}
+	if len(c.Shots) != 4 || c.Shots[0].Type != "default" || c.Shots[0].Caption == "" ||
+		c.Shots[0].Image != "https://raw.githubusercontent.com/andredeomondes/optic/v1.2.3/docs/screenshots/main.png" {
+		t.Errorf("screenshots = %+v", c.Shots)
 	}
 	if len(c.Releases) != 1 || c.Releases[0].Version != "1.2.3" || c.Releases[0].Date != "2026-01-02" {
 		t.Errorf("releases = %+v", c.Releases)

@@ -1,11 +1,10 @@
-# NOT READY FOR FLATHUB WITH THE CURRENT RELEASES.
-# The prebuilt Linux binary in the tarball links against WebKitGTK 4.0
-# (libwebkit2gtk-4.0). Current Flathub GNOME runtimes only ship WebKitGTK 4.1
-# and 6.0, so this manifest needs a binary built with `-tags webkit2_41`
-# (to be produced by CI later). It will not run with today's tarball.
+# Needs a Linux binary built with Wails `-tags webkit2_41` (WebKitGTK 4.1),
+# which the current release tarball is not: it links WebKitGTK 4.0
+# (libwebkit2gtk-4.0), absent from the GNOME runtimes. This manifest is ready
+# for when CI publishes such a build.
 app-id: io.github.andredeomondes.optic
 runtime: org.gnome.Platform
-runtime-version: '46'
+runtime-version: '49'
 sdk: org.gnome.Sdk
 command: optic-desktop
 finish-args:
@@ -19,7 +18,7 @@ modules:
     buildsystem: simple
     build-commands:
       - install -Dm755 optic-desktop /app/bin/optic-desktop
-      - install -Dm644 optic.png /app/share/icons/hicolor/512x512/apps/io.github.andredeomondes.optic.png
+      - install -Dm644 optic-512.png /app/share/icons/hicolor/512x512/apps/io.github.andredeomondes.optic.png
       - sed 's/^Icon=.*/Icon=io.github.andredeomondes.optic/' optic.desktop > io.github.andredeomondes.optic.desktop
       - install -Dm644 io.github.andredeomondes.optic.desktop /app/share/applications/io.github.andredeomondes.optic.desktop
       - install -Dm644 io.github.andredeomondes.optic.metainfo.xml /app/share/metainfo/io.github.andredeomondes.optic.metainfo.xml

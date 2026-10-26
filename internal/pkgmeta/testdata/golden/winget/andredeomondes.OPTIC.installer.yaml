@@ -2,7 +2,7 @@
 PackageIdentifier: andredeomondes.OPTIC
 PackageVersion: 1.2.3
 InstallerType: nullsoft
-Scope: user
+Scope: machine
 UpgradeBehavior: install
 Installers:
   - Architecture: x64

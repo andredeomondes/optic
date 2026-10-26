@@ -6,13 +6,30 @@
   <summary xml:lang="pt-BR">Controle sua TV pelo computador</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
-  <developer_name>andredeomondes</developer_name>
+  <developer id="io.github.andredeomondes">
+    <name>andredeomondes</name>
+  </developer>
   <url type="homepage">https://github.com/andredeomondes/optic</url>
   <url type="bugtracker">https://github.com/andredeomondes/optic/issues</url>
   <description>
     <p>Open source desktop remote for Android TV, Google TV, Roku, LG webOS and Samsung Tizen. It talks straight to the TV over your local network: no extra hardware, no cloud, no account.</p>
     <p xml:lang="pt-BR">Controle remoto de código aberto para Android TV, Google TV, Roku, LG webOS e Samsung Tizen. Fala direto com a TV pela rede local: sem hardware extra, sem nuvem, sem conta.</p>
   </description>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main window connected to a TV</caption>
+      <image>https://raw.githubusercontent.com/andredeomondes/optic/v1.2.3/docs/screenshots/main.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/andredeomondes/optic/v1.2.3/docs/screenshots/compact.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/andredeomondes/optic/v1.2.3/docs/screenshots/quick-command.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/andredeomondes/optic/v1.2.3/docs/screenshots/settings.png</image>
+    </screenshot>
+  </screenshots>
   <launchable type="desktop-id">io.github.andredeomondes.optic.desktop</launchable>
   <provides>
     <binary>optic-desktop</binary>
