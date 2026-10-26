@@ -72,7 +72,7 @@ jobs:
         run: |
           wails build -skipbindings -trimpath -platform linux/amd64
           mkdir -p pkg/OPTIC && cp build/bin/optic-desktop pkg/OPTIC/ && cp build/appicon.png pkg/OPTIC/optic.png
-          cp packaging/linux/optic.desktop pkg/OPTIC/ && cp packaging/linux/install.sh pkg/OPTIC/
+          cp packaging/linux/optic.desktop pkg/OPTIC/ && cp packaging/linux/install.sh pkg/OPTIC/ && cp LICENSE pkg/OPTIC/
           tar -C pkg -czf build/bin/OPTIC-linux-amd64.tar.gz OPTIC
       - uses: actions/upload-artifact@v4
         with:
@@ -84,8 +84,17 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
       - uses: actions/download-artifact@v4
         with: { path: dist, merge-multiple: true }
+      # SHA256SUMS covers the installers only; the manifests zip is added after.
+      - name: Checksums and package manifests
+        run: |
+          (cd dist && sha256sum * > SHA256SUMS)
+          go run ./cmd/pkgmeta -version "${GITHUB_REF_NAME}" -sums dist/SHA256SUMS -out packaging-out
+          (cd packaging-out && zip -r ../dist/packaging-manifests.zip .)
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*
