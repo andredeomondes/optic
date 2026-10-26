@@ -211,21 +211,27 @@ func TestSubscribeDelivers(t *testing.T) {
 
 func TestPointerButton(t *testing.T) {
 	frames := make(chan string, 1)
-	ptrURL := fakeTV(t, func(ws *websocket.Conn) {
-		_, data, err := ws.ReadMessage()
-		if err == nil {
-			frames <- string(data)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ws, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
 		}
-	})
-	url := fakeTV(t, func(ws *websocket.Conn) {
+		defer ws.Close()
+		if r.URL.Path == "/pointer" {
+			if _, data, err := ws.ReadMessage(); err == nil {
+				frames <- string(data)
+			}
+			return
+		}
 		m := readMsg(t, ws)
 		if m["uri"] != "ssap://com.webos.service.networkinput/getPointerInputSocket" {
 			t.Errorf("uri = %v", m["uri"])
 		}
-		ws.WriteJSON(map[string]any{"type": "response", "id": m["id"], "payload": map[string]any{"returnValue": true, "socketPath": ptrURL}})
+		ws.WriteJSON(map[string]any{"type": "response", "id": m["id"], "payload": map[string]any{"returnValue": true, "socketPath": "wss://tv.invalid:3001/pointer"}})
 		ws.ReadMessage()
-	})
-	c := dial(t, url, nil)
+	}))
+	defer srv.Close()
+	c := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http"), nil)
 	p, err := c.Pointer(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -323,5 +329,101 @@ func TestTextNotTraced(t *testing.T) {
 	}
 	if !strings.Contains(joined, "→ insertText [texto omitido]") {
 		t.Errorf("trace = %s", joined)
+	}
+}
+
+func TestRequestDefaultTimeout(t *testing.T) {
+	url := fakeTV(t, func(ws *websocket.Conn) {
+		for {
+			if _, _, err := ws.ReadMessage(); err != nil {
+				return
+			}
+		}
+	})
+	c, err := Dial(context.Background(), "x", Options{URLs: []string{url}, Timeout: 50 * time.Millisecond})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	_, err = c.Request(context.Background(), "ssap://a", nil)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestPointerKeepsOnlyPathOnTVHost(t *testing.T) {
+	var mu sync.Mutex
+	var ptrReq string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ws, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer ws.Close()
+		if r.URL.Path == "/x" {
+			mu.Lock()
+			ptrReq = r.RequestURI
+			mu.Unlock()
+			ws.ReadMessage()
+			return
+		}
+		m := readMsg(t, ws)
+		ws.WriteJSON(map[string]any{"type": "response", "id": m["id"], "payload": map[string]any{"returnValue": true, "socketPath": "ws://evil.invalid:9999/x?y"}})
+		ws.ReadMessage()
+	}))
+	defer srv.Close()
+	c := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http"), nil)
+	if _, err := c.Pointer(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if ptrReq != "/x?y" {
+		t.Errorf("pointer request = %q", ptrReq)
+	}
+}
+
+func TestSubscribeCallbackPanicDoesNotKillReader(t *testing.T) {
+	url := fakeTV(t, func(ws *websocket.Conn) {
+		m := readMsg(t, ws)
+		ws.WriteJSON(map[string]any{"type": "response", "id": m["id"], "payload": map[string]any{}})
+		m2 := readMsg(t, ws)
+		ws.WriteJSON(map[string]any{"type": "response", "id": m2["id"], "payload": map[string]any{"returnValue": true}})
+		ws.ReadMessage()
+	})
+	c := dial(t, url, nil)
+	c.Subscribe(context.Background(), "ssap://s", func(json.RawMessage) { panic("boom") })
+	time.Sleep(50 * time.Millisecond)
+	if _, err := c.Request(context.Background(), "ssap://a", nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSubscribeErrorSkipsCallback(t *testing.T) {
+	url := fakeTV(t, func(ws *websocket.Conn) {
+		m := readMsg(t, ws)
+		ws.WriteJSON(map[string]any{"type": "error", "id": m["id"], "error": "nope"})
+		ws.WriteJSON(map[string]any{"type": "response", "id": m["id"], "payload": map[string]any{"n": 1}})
+		ws.ReadMessage()
+	})
+	c := dial(t, url, nil)
+	ch := make(chan string, 4)
+	c.Subscribe(context.Background(), "ssap://s", func(r json.RawMessage) { ch <- string(r) })
+	select {
+	case got := <-ch:
+		if !strings.Contains(got, `"n"`) {
+			t.Errorf("callback got %q for error message", got)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("no delivery")
+	}
+}
+
+func TestPointerAfterCloseFails(t *testing.T) {
+	url := fakeTV(t, func(ws *websocket.Conn) { ws.ReadMessage() })
+	c := dial(t, url, nil)
+	c.Close()
+	if _, err := c.Pointer(context.Background()); err == nil {
+		t.Fatal("expected error")
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"strconv"
 	"sync"
 	"time"
@@ -44,19 +45,27 @@ type pendingReq struct {
 	ch chan message
 }
 
+type subscription struct {
+	uri string
+	fn  func(json.RawMessage)
+}
+
 // Conn is an SSAP connection. Safe for concurrent use.
 type Conn struct {
 	ws     *websocket.Conn
 	dialer *websocket.Dialer
 	opt    Options
+	scheme string // scheme and host:port Dial connected to; the pointer socket reuses them
+	host   string
 
 	wmu sync.Mutex // serializes writes
 
 	mu      sync.Mutex
 	pending map[string]*pendingReq
-	subs    map[string]func(json.RawMessage)
+	subs    map[string]subscription
 	seq     int
 	pointer *Pointer
+	closed  bool
 
 	done      chan struct{}
 	closeOnce sync.Once
@@ -84,12 +93,15 @@ func Dial(ctx context.Context, host string, opt Options) (*Conn, error) {
 			}
 			continue
 		}
+		pu, _ := url.Parse(u)
 		c := &Conn{
 			ws:      ws,
 			dialer:  d,
 			opt:     opt,
+			scheme:  pu.Scheme,
+			host:    pu.Host,
 			pending: map[string]*pendingReq{},
-			subs:    map[string]func(json.RawMessage){},
+			subs:    map[string]subscription{},
 			done:    make(chan struct{}),
 		}
 		go c.readLoop()
@@ -98,11 +110,12 @@ func Dial(ctx context.Context, host string, opt Options) (*Conn, error) {
 	return nil, fmt.Errorf("webos: nao foi possivel conectar: %w", last)
 }
 
-// The TV presents a self-signed certificate.
 func newDialer(timeout time.Duration) *websocket.Dialer {
 	return &websocket.Dialer{
 		HandshakeTimeout: timeout,
-		TLSClientConfig:  &tls.Config{InsecureSkipVerify: true},
+		// LG TVs use a self-signed certificate on the local network; the
+		// pairing client-key is what authenticates the TV, not the certificate.
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 }
 
@@ -133,11 +146,15 @@ func (c *Conn) readLoop() {
 			return
 		}
 		c.mu.Lock()
-		fn := c.subs[m.ID]
+		sub, isSub := c.subs[m.ID]
 		pr := c.pending[m.ID]
 		c.mu.Unlock()
-		if fn != nil {
-			fn(m.Payload)
+		if isSub {
+			if m.Type == "error" {
+				c.trace("←", "erro "+sub.uri)
+				continue
+			}
+			callSafe(sub.fn, m.Payload)
 			continue
 		}
 		if pr != nil {
@@ -149,10 +166,25 @@ func (c *Conn) readLoop() {
 	}
 }
 
+// callSafe keeps a panicking callback from killing the reader goroutine.
+func callSafe(fn func(json.RawMessage), p json.RawMessage) {
+	defer func() { _ = recover() }()
+	fn(p)
+}
+
 func (c *Conn) write(v any) error {
 	c.wmu.Lock()
 	defer c.wmu.Unlock()
+	c.ws.SetWriteDeadline(time.Now().Add(c.opt.Timeout))
 	return c.ws.WriteJSON(v)
+}
+
+// withTimeout applies the default timeout when ctx has no deadline.
+func (c *Conn) withTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
+	if _, ok := ctx.Deadline(); ok {
+		return ctx, func() {}
+	}
+	return context.WithTimeout(ctx, c.opt.Timeout)
 }
 
 func (c *Conn) addPending(id string) *pendingReq {
@@ -186,7 +218,7 @@ func (c *Conn) Register(ctx context.Context, key string) (string, error) {
 	payload := map[string]any{
 		"forcePairing": false,
 		"pairingType":  "PROMPT",
-		"manifest":     Manifest,
+		"manifest":     manifest,
 	}
 	if key != "" {
 		payload["client-key"] = key
@@ -229,6 +261,7 @@ func (c *Conn) nextID() string {
 	return strconv.Itoa(c.seq)
 }
 
+// tracedURI is the name used in traces and errors; it hides the typed-text URI.
 func tracedURI(uri string) string {
 	if uri == insertText {
 		return "insertText [texto omitido]"
@@ -238,11 +271,13 @@ func tracedURI(uri string) string {
 
 // Request sends a request and waits for the matching response.
 func (c *Conn) Request(ctx context.Context, uri string, payload any) (json.RawMessage, error) {
+	ctx, cancel := c.withTimeout(ctx)
+	defer cancel()
 	id := c.nextID()
 	pr := c.addPending(id)
 	defer c.dropPending(id)
 	if uri == insertText {
-		c.trace("→", "insertText [texto omitido]")
+		c.trace("→", tracedURI(uri))
 	} else {
 		c.trace("→", "request "+uri)
 	}
@@ -287,14 +322,17 @@ func errorText(m message) string {
 }
 
 // Subscribe registers fn for every message the TV sends for the subscription.
-// fn runs on the reader goroutine and must not block.
+// fn runs on the reader goroutine; it must not block or call Request.
+// A panic in fn is recovered and ignored. Error messages are not delivered.
 func (c *Conn) Subscribe(ctx context.Context, uri string, fn func(json.RawMessage)) error {
+	ctx, cancel := c.withTimeout(ctx)
+	defer cancel()
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 	id := c.nextID()
 	c.mu.Lock()
-	c.subs[id] = fn
+	c.subs[id] = subscription{uri: uri, fn: fn}
 	c.mu.Unlock()
 	c.trace("→", "subscribe "+uri)
 	err := c.write(map[string]any{"type": "subscribe", "id": id, "uri": uri})
@@ -315,6 +353,7 @@ func (c *Conn) Close() error {
 	var err error
 	c.closeOnce.Do(func() {
 		c.mu.Lock()
+		c.closed = true
 		p := c.pointer
 		c.mu.Unlock()
 		if p != nil {
@@ -328,11 +367,13 @@ func (c *Conn) Close() error {
 // Pointer is the pointer-input socket used for remote buttons.
 type Pointer struct {
 	ws        *websocket.Conn
+	timeout   time.Duration
 	wmu       sync.Mutex
 	closeOnce sync.Once
 }
 
-// Pointer opens the pointer-input socket.
+// Pointer opens the pointer-input socket. A returned *Pointer is invalidated
+// by the next call to Pointer.
 func (c *Conn) Pointer(ctx context.Context) (*Pointer, error) {
 	raw, err := c.Request(ctx, pointerURI, nil)
 	if err != nil {
@@ -344,14 +385,26 @@ func (c *Conn) Pointer(ctx context.Context) (*Pointer, error) {
 	if err := json.Unmarshal(raw, &p); err != nil || p.SocketPath == "" {
 		return nil, errors.New("webos: TV nao informou o socket de ponteiro")
 	}
+	// Only the path and query are trusted; the TV host and scheme are the ones
+	// Dial connected to.
+	su, err := url.Parse(p.SocketPath)
+	if err != nil {
+		return nil, errors.New("webos: socket de ponteiro invalido")
+	}
+	target := url.URL{Scheme: c.scheme, Host: c.host, Path: su.Path, RawQuery: su.RawQuery}
 	dctx, cancel := context.WithTimeout(ctx, c.opt.Timeout)
 	defer cancel()
-	ws, _, err := c.dialer.DialContext(dctx, p.SocketPath, nil)
+	ws, _, err := c.dialer.DialContext(dctx, target.String(), nil)
 	if err != nil {
-		return nil, fmt.Errorf("webos: conectar ao socket de ponteiro: %w", err)
+		return nil, errors.New("webos: nao foi possivel conectar ao socket de ponteiro")
 	}
-	ptr := &Pointer{ws: ws}
+	ptr := &Pointer{ws: ws, timeout: c.opt.Timeout}
 	c.mu.Lock()
+	if c.closed {
+		c.mu.Unlock()
+		ws.Close()
+		return nil, errors.New("webos: conexao encerrada")
+	}
 	old := c.pointer
 	c.pointer = ptr
 	c.mu.Unlock()
@@ -373,6 +426,7 @@ func (c *Conn) Pointer(ctx context.Context) (*Pointer, error) {
 func (p *Pointer) Button(name string) error {
 	p.wmu.Lock()
 	defer p.wmu.Unlock()
+	p.ws.SetWriteDeadline(time.Now().Add(p.timeout))
 	return p.ws.WriteMessage(websocket.TextMessage, []byte("type:button\nname:"+name+"\n\n"))
 }
 

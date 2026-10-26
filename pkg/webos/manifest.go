@@ -2,12 +2,13 @@ package webos
 
 import "encoding/json"
 
-// Manifest is the signed SSAP registration manifest published by open-source
+// manifest is the signed SSAP registration manifest published by open-source
 // LG webOS clients. The signature authorizes the extended permission set, so
 // the content must not be edited.
 //
-// Source: https://github.com/hobbyquaker/lgtv2 (pairing.json), MIT license.
-var Manifest = json.RawMessage(`{
+// Source: https://github.com/hobbyquaker/lgtv2 (pairing.json), MIT license,
+// Copyright (c) hobbyquaker / lgtv2 contributors.
+var manifest = json.RawMessage(`{
   "manifestVersion": 1,
   "appVersion": "1.1",
   "signed": {
