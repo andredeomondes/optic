@@ -72,6 +72,7 @@ type fakePairing struct {
 	closed  bool
 }
 
+func (p *fakePairing) Mode() string       { return domain.PairingCode }
 func (p *fakePairing) ServerName() string { return "TV" }
 func (p *fakePairing) Close() error       { p.closed = true; return nil }
 func (p *fakePairing) Finish(string) error {

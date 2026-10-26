@@ -93,6 +93,12 @@ type App struct {
 	Name string `json:"name"`
 }
 
+// Input is an external input (HDMI, AV...) a TV can switch to.
+type Input struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // State is the live state pushed by the TV.
 type State struct {
 	On        bool   `json:"on"`
@@ -164,8 +170,16 @@ type Connector interface {
 	Connect(ctx context.Context, host string, events SessionEvents) (Session, error)
 }
 
-// PairingSession is an in-progress pairing: the TV is showing a code.
+// Pairing modes: the TV shows a code to type, or a prompt to accept.
+const (
+	PairingCode   = "code"
+	PairingPrompt = "prompt"
+)
+
+// PairingSession is an in-progress pairing: the TV is showing a code or a
+// prompt, as Mode says.
 type PairingSession interface {
+	Mode() string
 	ServerName() string
 	// Finish submits the code. ErrCodeTypo keeps the session usable.
 	Finish(code string) error
