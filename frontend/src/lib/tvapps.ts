@@ -2,7 +2,7 @@ import type { TVApp, TVInput } from './types'
 
 /** Lowercase, accent-free, trimmed: the form used to compare names. */
 export const normalize = (s: string): string =>
-  s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+  s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
 
 /** Apps sorted by name (pt-BR); the input is not changed. */
 export const sortApps = (apps: TVApp[]): TVApp[] =>
