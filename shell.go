@@ -32,6 +32,7 @@ type Shell struct {
 	icon  []byte
 	tray  tray.Tray
 
+	langMu      sync.Mutex   // serializes SetLanguage with the tray creation in startup
 	lang        atomic.Value // string: "en" or "pt-BR", set by the UI
 	closeToTray atomic.Bool
 	quitting    atomic.Bool
@@ -55,6 +56,7 @@ func newShell(store filestore.Store, icon []byte) *Shell {
 // startup runs once Wails has a window; ctx is needed by every runtime call.
 func (s *Shell) startup(ctx context.Context) {
 	s.ctx = ctx
+	s.langMu.Lock()
 	s.tray = tray.Start(tray.Options{
 		Icon:        s.icon,
 		Tooltip:     "OPTIC",
@@ -71,6 +73,10 @@ func (s *Shell) startup(ctx context.Context) {
 			Quit:              s.QuitApp,
 		},
 	})
+	if l := s.language(); l != "" {
+		s.tray.SetLanguage(l) // a SetLanguage that came in before the tray existed
+	}
+	s.langMu.Unlock()
 	s.hkMu.Lock()
 	s.hk = hotkey.Start(s.onHotkey)
 	s.hkErrs = hotkeyErrors(s.hk.Set(hotkeyBindings(s.store.LoadPrefs().Hotkeys)))
@@ -200,6 +206,8 @@ func (s *Shell) SetLanguage(lang string) {
 	if lang != "en" {
 		lang = "pt-BR"
 	}
+	s.langMu.Lock()
+	defer s.langMu.Unlock()
 	s.lang.Store(lang)
 	if s.tray != nil {
 		s.tray.SetLanguage(lang)
