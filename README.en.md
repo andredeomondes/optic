@@ -46,6 +46,7 @@ Open source desktop remote for **Android TV, Google TV, Roku, LG webOS and Samsu
 - **Compact mode** 360×520 that can stay always on top, next to whatever you are doing.
 - **System tray** (Windows): closing hides the app in the hidden icons area; opening it again brings back the same window.
 - **Full screen** with `F11` and a maximizable window.
+- **Portuguese and English:** follows the system language; change it in Settings › Window › Language.
 - **100% local:** the remote does not go through servers. The pairing certificate stays only on your PC.
 
 > To turn the TV on over the network, the **Network standby** option (or equivalent) must be enabled on the TV.
