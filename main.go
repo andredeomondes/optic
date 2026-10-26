@@ -26,6 +26,7 @@ import (
 	"optic/internal/adapter/registry"
 	rokuadapter "optic/internal/adapter/roku"
 	"optic/internal/adapter/ssdp"
+	"optic/internal/adapter/webos"
 	"optic/internal/control"
 	"optic/internal/domain"
 	"optic/internal/platform/arp"
@@ -60,6 +61,7 @@ func main() {
 		Adapters: map[domain.Platform]registry.Adapter{
 			domain.PlatformAndroidTV: tv,
 			domain.PlatformRoku:      rokuadapter.Adapter{},
+			domain.PlatformWebOS:     webos.New(cfgDir),
 		},
 		Known: store,
 	}

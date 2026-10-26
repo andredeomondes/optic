@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -575,5 +576,141 @@ func TestConnectKeepsAdapterPowerOn(t *testing.T) {
 	info, err := s.Connect(context.Background(), "10.0.0.2")
 	if err != nil || !info.Capabilities.PowerOn {
 		t.Fatalf("info=%+v err=%v", info, err)
+	}
+}
+
+type modePairing struct{ fakePairing }
+
+func (modePairing) Mode() string { return domain.PairingPrompt }
+
+type modePairer struct{}
+
+func (modePairer) StartPairing(context.Context, string) (domain.PairingSession, error) {
+	return &modePairing{}, nil
+}
+
+func TestStartPairingReturnsMode(t *testing.T) {
+	s, _, _ := newService(nil, modePairer{})
+	info, err := s.StartPairing(context.Background(), "x")
+	if err != nil || info.Mode != domain.PairingPrompt || info.Name != "TV" {
+		t.Fatalf("got %+v, %v", info, err)
+	}
+	s, _, _ = newService(nil, fakePairer{&fakePairing{}})
+	if info, _ = s.StartPairing(context.Background(), "x"); info.Mode != domain.PairingCode {
+		t.Fatalf("mode = %q", info.Mode)
+	}
+}
+
+type richSession struct {
+	*fakeSession
+	levels   []int
+	switched []string
+	toasts   []string
+}
+
+func (r *richSession) SetVolume(_ context.Context, level int) error {
+	r.levels = append(r.levels, level)
+	return nil
+}
+func (r *richSession) Inputs(context.Context) ([]domain.Input, error) {
+	return []domain.Input{{ID: "HDMI_1", Name: "HDMI 1"}}, nil
+}
+func (r *richSession) SwitchInput(_ context.Context, id string) error {
+	r.switched = append(r.switched, id)
+	return nil
+}
+func (r *richSession) Toast(_ context.Context, msg string) error {
+	r.toasts = append(r.toasts, msg)
+	return nil
+}
+
+func TestSetVolumeUsesSetterAndClamps(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		name      string
+		max, in   int
+		want      int
+	}{
+		{"above max", 100, 150, 100},
+		{"below zero", 100, -3, 0},
+		{"max zero means 100", 0, 150, 100},
+		{"inside", 50, 20, 20},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rs := &richSession{fakeSession: newSession(domain.State{VolumeMax: tc.max})}
+			s, _, _ := newService(connectorFor{rs}, nil)
+			if _, err := s.Connect(ctx, "h"); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.SetVolume(tc.in); err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(rs.levels, []int{tc.want}) || len(rs.keys) != 0 {
+				t.Fatalf("levels=%v keys=%v", rs.levels, rs.keys)
+			}
+		})
+	}
+}
+
+func TestInputsAndSwitchInput(t *testing.T) {
+	ctx := context.Background()
+	rs := &richSession{fakeSession: newSession(domain.State{})}
+	s, _, _ := newService(connectorFor{rs}, nil)
+	if _, err := s.Inputs(ctx); !errors.Is(err, domain.ErrNotConnected) {
+		t.Fatalf("got %v", err)
+	}
+	if _, err := s.Connect(ctx, "h"); err != nil {
+		t.Fatal(err)
+	}
+	in, err := s.Inputs(ctx)
+	if err != nil || len(in) != 1 {
+		t.Fatalf("got %v, %v", in, err)
+	}
+	if err := s.SwitchInput(ctx, "HDMI_1"); err != nil || !slices.Equal(rs.switched, []string{"HDMI_1"}) {
+		t.Fatalf("switched=%v err=%v", rs.switched, err)
+	}
+}
+
+func TestInputsAndSwitchUnsupported(t *testing.T) {
+	ctx := context.Background()
+	s, _, _ := newService(fakeConnector{sess: newSession(domain.State{})}, nil)
+	if _, err := s.Connect(ctx, "h"); err != nil {
+		t.Fatal(err)
+	}
+	var u domain.ErrUnsupported
+	if _, err := s.Inputs(ctx); !errors.As(err, &u) {
+		t.Fatalf("Inputs: got %v", err)
+	}
+	if err := s.SwitchInput(ctx, "x"); !errors.As(err, &u) {
+		t.Fatalf("SwitchInput: got %v", err)
+	}
+	if err := s.Toast(ctx, "oi"); !errors.As(err, &u) {
+		t.Fatalf("Toast: got %v", err)
+	}
+}
+
+func TestToastValidation(t *testing.T) {
+	ctx := context.Background()
+	rs := &richSession{fakeSession: newSession(domain.State{})}
+	s, _, _ := newService(connectorFor{rs}, nil)
+	if _, err := s.Connect(ctx, "h"); err != nil {
+		t.Fatal(err)
+	}
+	for _, empty := range []string{"", "   \n"} {
+		if err := s.Toast(ctx, empty); err == nil || err.Error() != "Mensagem vazia" {
+			t.Fatalf("empty %q: got %v", empty, err)
+		}
+	}
+	if len(rs.toasts) != 0 {
+		t.Fatalf("sent %v", rs.toasts)
+	}
+	if err := s.Toast(ctx, strings.Repeat("é", 300)); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Toast(ctx, "  oi  "); err != nil {
+		t.Fatal(err)
+	}
+	if n := len([]rune(rs.toasts[0])); n != 200 || rs.toasts[1] != "oi" {
+		t.Fatalf("runes=%d toasts[1]=%q", n, rs.toasts[1])
 	}
 }

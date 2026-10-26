@@ -29,8 +29,10 @@ func (a *App) Connect(ip string) (domain.DeviceInfo, error) { return a.svc.Conne
 
 func (a *App) Disconnect() { a.svc.Disconnect() }
 
-// StartPairing makes the TV show a code and returns the TV's name.
-func (a *App) StartPairing(ip string) (string, error) { return a.svc.StartPairing(a.ctx, ip) }
+// StartPairing makes the TV show a code or a prompt; the result says which.
+func (a *App) StartPairing(ip string) (domain.PairingInfo, error) {
+	return a.svc.StartPairing(a.ctx, ip)
+}
 
 // FinishPairing submits the code; on success the frontend calls Connect.
 func (a *App) FinishPairing(code string) error { return a.svc.FinishPairing(code) }
@@ -58,6 +60,27 @@ func (a *App) InstalledApps() ([]domain.App, error) {
 	ctx, cancel := context.WithTimeout(a.ctx, 10*time.Second)
 	defer cancel()
 	return a.svc.InstalledApps(ctx)
+}
+
+// Inputs lists the external inputs of the connected TV.
+func (a *App) Inputs() ([]domain.Input, error) {
+	ctx, cancel := context.WithTimeout(a.ctx, 10*time.Second)
+	defer cancel()
+	return a.svc.Inputs(ctx)
+}
+
+// SwitchInput changes the TV to the input with the given id.
+func (a *App) SwitchInput(id string) error {
+	ctx, cancel := context.WithTimeout(a.ctx, 10*time.Second)
+	defer cancel()
+	return a.svc.SwitchInput(ctx, id)
+}
+
+// Toast shows a message on the TV.
+func (a *App) Toast(msg string) error {
+	ctx, cancel := context.WithTimeout(a.ctx, 10*time.Second)
+	defer cancel()
+	return a.svc.Toast(ctx, msg)
 }
 
 // shutdown runs when the app quits for real.

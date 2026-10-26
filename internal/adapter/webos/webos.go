@@ -276,6 +276,13 @@ type session struct {
 	closed bool
 }
 
+var (
+	_ domain.VolumeSetter = (*session)(nil)
+	_ domain.InputLister  = (*session)(nil)
+	_ domain.Notifier     = (*session)(nil)
+	_ domain.AppLister    = (*session)(nil)
+)
+
 func (s *session) Info() domain.DeviceInfo { return s.info }
 
 func (s *session) State() domain.State {

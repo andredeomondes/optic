@@ -12,6 +12,7 @@ let size = { w: 820, h: 880 }
 let maximised = false
 let muted = false
 const ROKU_HOST = '192.168.0.50'
+const WEBOS_HOST = '192.168.0.40'
 let host = ''
 const pushState = () =>
   emit('state', host === ROKU_HOST ? { on: true, volume: 0, volumeMax: 0, muted: false } : { on: true, volume, volumeMax: 100, muted })
@@ -114,8 +115,20 @@ w.go = {
         await wait(300)
         emit('trace', '>', `wol ${ip}`)
       },
-      async StartPairing() {
-        return 'UnionTV'
+      async StartPairing(ip: string) {
+        return ip === WEBOS_HOST ? { name: 'LG Sala', mode: 'prompt' } : { name: 'UnionTV', mode: 'code' }
+      },
+      async Inputs() {
+        return [
+          { id: 'HDMI_1', name: 'HDMI 1' },
+          { id: 'HDMI_2', name: 'HDMI 2' },
+        ]
+      },
+      async SwitchInput(id: string) {
+        emit('trace', '>', `input ${id}`)
+      },
+      async Toast(msg: string) {
+        emit('trace', '>', `toast (${msg.length} caracteres)`)
       },
       async FinishPairing() {
         await wait(600)
