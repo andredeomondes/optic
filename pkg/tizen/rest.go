@@ -6,14 +6,17 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 )
 
+var infoTimeout = 3 * time.Second
+
 const (
-	infoPort     = ":8001"
+	infoPort     = "8001"
 	maxInfoBytes = 1 << 20
 )
 
@@ -29,19 +32,19 @@ type Info struct {
 
 // GetInfo reads GET {base}/api/v2/. base is "http://host:8001", or just the
 // host (then http and port 8001 are assumed). The client should have a
-// timeout; GetInfo also never follows redirects (on a copy of client) and
+// timeout; GetInfo caps it at 3s, never follows redirects (on a copy of client) and
 // reads at most 1 MiB.
 func GetInfo(ctx context.Context, client *http.Client, base string) (Info, error) {
 	if !strings.Contains(base, "://") {
-		base = "http://" + base + infoPort
+		base = "http://" + net.JoinHostPort(base, infoPort)
 	}
 	if client == nil {
 		client = &http.Client{}
 	}
 	cl := *client
 	cl.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	if cl.Timeout <= 0 {
-		cl.Timeout = 5 * time.Second
+	if cl.Timeout <= 0 || cl.Timeout > infoTimeout {
+		cl.Timeout = infoTimeout
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(base, "/")+"/api/v2/", nil)
 	if err != nil {

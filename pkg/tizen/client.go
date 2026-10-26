@@ -27,8 +27,8 @@ var (
 const (
 	remoteName   = "T1BUSUM=" // base64("OPTIC"), the name the TV shows in the prompt
 	remotePath   = "/api/v2/channels/samsung.remote.control"
-	secureAddr   = ":8002"
-	plainAddr    = ":8001"
+	securePort   = "8002"
+	plainPort    = "8001"
 	maxFrameSize = 4 << 20
 )
 
@@ -78,6 +78,11 @@ func Dial(ctx context.Context, host, token string, secure bool, opt Options) (*C
 	if opt.Timeout <= 0 {
 		opt.Timeout = 5 * time.Second
 	}
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, opt.Timeout)
+		defer cancel()
+	}
 	u := buildURL(host, token, secure, opt.URL)
 	d := &websocket.Dialer{
 		HandshakeTimeout: opt.Timeout,
@@ -87,9 +92,11 @@ func Dial(ctx context.Context, host, token string, secure bool, opt Options) (*C
 	}
 	dctx, cancel := context.WithTimeout(ctx, opt.Timeout)
 	ws, _, err := d.DialContext(dctx, u, nil)
+	dialExpired := dctx.Err() != nil
 	cancel()
 	if err != nil {
-		if ctx.Err() != nil {
+		var ne net.Error
+		if ctx.Err() != nil || dialExpired || (errors.As(err, &ne) && ne.Timeout()) {
 			return nil, "", ErrTimeout
 		}
 		return nil, "", dialError(err, u)
@@ -103,37 +110,43 @@ func Dial(ctx context.Context, host, token string, secure bool, opt Options) (*C
 	}
 	go c.readLoop()
 
+	var m message
 	select {
-	case m := <-c.first:
-		switch m.Event {
-		case "ms.channel.connect":
-			var d struct {
-				Token string `json:"token"`
-			}
-			_ = json.Unmarshal(m.Data, &d)
-			return c, d.Token, nil
-		case "ms.channel.unauthorized":
-			c.Close()
-			return nil, "", ErrUnauthorized
-		default: // ms.channel.timeOut
-			c.Close()
-			return nil, "", ErrTimeout
-		}
+	case m = <-c.first:
 	case <-ctx.Done():
 		c.Close()
 		return nil, "", ErrTimeout
 	case <-c.done:
+		// The TV may answer and close at once; the answer wins over the drop.
+		select {
+		case m = <-c.first:
+		default:
+			c.Close()
+			return nil, "", errors.New("tizen: conexão encerrada")
+		}
+	}
+	switch m.Event {
+	case "ms.channel.connect":
+		var d struct {
+			Token string `json:"token"`
+		}
+		_ = json.Unmarshal(m.Data, &d)
+		return c, d.Token, nil
+	case "ms.channel.unauthorized":
 		c.Close()
-		return nil, "", errors.New("tizen: conexão encerrada")
+		return nil, "", ErrUnauthorized
+	default: // ms.channel.timeOut
+		c.Close()
+		return nil, "", ErrTimeout
 	}
 }
 
 // buildURL composes the ws URL; the token travels in the query, so the URL
 // must never reach an error string or a trace.
 func buildURL(host, token string, secure bool, override string) string {
-	scheme, addr := "ws", host+plainAddr
+	scheme, addr := "ws", net.JoinHostPort(host, plainPort)
 	if secure {
-		scheme, addr = "wss", host+secureAddr
+		scheme, addr = "wss", net.JoinHostPort(host, securePort)
 	}
 	if override != "" {
 		if ou, err := url.Parse(override); err == nil && ou.Host != "" {
@@ -170,7 +183,10 @@ func (c *Conn) trace(dir, line string) {
 }
 
 func (c *Conn) readLoop() {
-	defer close(c.done)
+	defer func() {
+		c.ws.Close() // a dead reader means a dead connection
+		close(c.done)
+	}()
 	for {
 		var m message
 		if err := c.ws.ReadJSON(&m); err != nil {
@@ -184,7 +200,7 @@ func (c *Conn) readLoop() {
 		if m.Event == "" {
 			continue
 		}
-		c.trace("←", "event "+m.Event)
+		c.trace("←", "event "+truncate(m.Event, 64))
 		switch m.Event {
 		case "ms.channel.connect", "ms.channel.unauthorized", "ms.channel.timeOut":
 			select {
@@ -348,4 +364,12 @@ func (c *Conn) Close() error {
 	var err error
 	c.closeFn.Do(func() { err = c.ws.Close() })
 	return err
+}
+
+// truncate shortens s to at most n runes.
+func truncate(s string, n int) string {
+	if r := []rune(s); len(r) > n {
+		return string(r[:n])
+	}
+	return s
 }

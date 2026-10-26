@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -27,7 +28,10 @@ func fakeTV(t *testing.T, h func(ws *websocket.Conn)) fake {
 	t.Helper()
 	f := fake{query: make(chan string, 4)}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		f.query <- r.URL.Path + "?" + r.URL.RawQuery
+		select {
+		case f.query <- r.URL.Path + "?" + r.URL.RawQuery:
+		default:
+		}
 		ws, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			return
@@ -524,5 +528,122 @@ func TestGetInfoBadStatusAndJSON(t *testing.T) {
 	junk := infoServer(t, func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("nope")) })
 	if _, err := GetInfo(context.Background(), &http.Client{}, junk); err == nil {
 		t.Error("expected json error")
+	}
+}
+
+func TestDialUnauthorizedThenCloseIsDeterministic(t *testing.T) {
+	f := fakeTV(t, func(ws *websocket.Conn) {
+		ws.WriteJSON(map[string]any{"event": "ms.channel.unauthorized"})
+	})
+	for i := 0; i < 50; i++ {
+		_, _, err := Dial(context.Background(), "ignored", "", true, Options{URL: f.url})
+		if !errors.Is(err, ErrUnauthorized) {
+			t.Fatalf("iteration %d: err = %v", i, err)
+		}
+	}
+}
+
+func TestDialConnectThenCloseIsDeterministic(t *testing.T) {
+	f := fakeTV(t, func(ws *websocket.Conn) { connectEvent(ws, "tk") })
+	for i := 0; i < 50; i++ {
+		c, tok, err := Dial(context.Background(), "ignored", "", true, Options{URL: f.url})
+		if err != nil || tok != "tk" {
+			t.Fatalf("iteration %d: tok=%q err=%v", i, tok, err)
+		}
+		c.Close()
+	}
+}
+
+func TestDialDefaultDeadlineWithoutCtxDeadline(t *testing.T) {
+	f := fakeTV(t, func(ws *websocket.Conn) { ws.ReadMessage() })
+	start := time.Now()
+	_, _, err := Dial(context.Background(), "ignored", "", true, Options{URL: f.url, Timeout: 100 * time.Millisecond})
+	if !errors.Is(err, ErrTimeout) {
+		t.Fatalf("err = %v", err)
+	}
+	if time.Since(start) > 2*time.Second {
+		t.Error("took too long")
+	}
+}
+
+func TestDialHandshakeStallIsErrTimeout(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			defer c.Close() // never answers the upgrade
+		}
+	}()
+	_, _, err = Dial(context.Background(), "ignored", "", true,
+		Options{URL: "ws://" + ln.Addr().String(), Timeout: 100 * time.Millisecond})
+	if !errors.Is(err, ErrTimeout) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestBuildURLIPv6(t *testing.T) {
+	if u := buildURL("fe80::1", "t", true, ""); !strings.HasPrefix(u, "wss://[fe80::1]:8002/") {
+		t.Errorf("url = %q", u)
+	}
+	if u := buildURL("fe80::1", "", false, ""); !strings.HasPrefix(u, "ws://[fe80::1]:8001/") {
+		t.Errorf("url = %q", u)
+	}
+}
+
+func TestTraceTruncatesEventName(t *testing.T) {
+	long := strings.Repeat("x", 500)
+	f := fakeTV(t, func(ws *websocket.Conn) {
+		connectEvent(ws, "")
+		ws.WriteJSON(map[string]any{"event": long})
+		ws.ReadMessage()
+	})
+	tl := &traceLog{}
+	dial(t, f, "", tl.fn)
+	deadline := time.Now().Add(2 * time.Second)
+	for !strings.Contains(tl.all(), "xxxx") && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if strings.Contains(tl.all(), strings.Repeat("x", 100)) || !strings.Contains(tl.all(), "xxxx") {
+		t.Errorf("trace = %q", tl.all())
+	}
+}
+
+func TestGetInfoCapsClientTimeout(t *testing.T) {
+	old := infoTimeout
+	infoTimeout = 100 * time.Millisecond
+	defer func() { infoTimeout = old }()
+	release := make(chan struct{})
+	base := infoServer(t, func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case <-release:
+		case <-r.Context().Done():
+		}
+	})
+	defer close(release)
+	start := time.Now()
+	_, err := GetInfo(context.Background(), &http.Client{Timeout: time.Hour}, base)
+	if err == nil {
+		t.Fatal("expected timeout")
+	}
+	if time.Since(start) > 2*time.Second {
+		t.Errorf("client timeout not capped: %v", time.Since(start))
+	}
+}
+
+func TestGetInfoIPv6Host(t *testing.T) {
+	// A bare host with a colon must be bracketed, not split as host:port.
+	_, err := GetInfo(context.Background(), &http.Client{Timeout: 200 * time.Millisecond}, "::1")
+	if err == nil {
+		t.Skip("unexpected listener on [::1]:8001")
+	}
+	if strings.Contains(err.Error(), "invalid port") || strings.Contains(err.Error(), "endereço inválido") {
+		t.Errorf("err = %v", err)
 	}
 }
