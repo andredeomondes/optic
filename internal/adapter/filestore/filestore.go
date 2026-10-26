@@ -87,7 +87,7 @@ func (s Store) SavePrefs(p Prefs) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.path(prefsFile), b, 0o600)
+	return writeAtomic(s.path(prefsFile), b)
 }
 
 // knownMu serializes read-modify-write of known_tvs.json across Store copies.

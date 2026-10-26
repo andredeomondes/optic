@@ -27,7 +27,7 @@ var hotkeyActions = []hotkeyAction{
 	{"volume_down", "Volume −", "VOLUME_DOWN"},
 	{"mute", "Mudo", "MUTE"},
 	{"home", "Início", "HOME"},
-	{"palette", "Comando rápido", ""},
+	{"palette", "Comandos rápidos", ""},
 }
 
 // mediaActions use the keyboard's own media keys; the accelerator is fixed.
@@ -81,16 +81,16 @@ func validateHotkeys(in, current map[string]string) (map[string]string, error) {
 	return out, nil
 }
 
-// hotkeyBindings turns prefs into registrations: nothing when disabled,
-// media keys only when asked. Saved values that no longer parse are skipped.
+// hotkeyBindings turns prefs into registrations: the five actions only when
+// Enabled, the media keys whenever Media is on. Saved values that no longer
+// parse are skipped.
 func hotkeyBindings(p filestore.HotkeyPrefs) []hotkey.Binding {
-	if !p.Enabled {
-		return nil
-	}
 	var out []hotkey.Binding
-	for _, a := range hotkeyActions {
-		if acc, err := hotkey.Parse(p.Bindings[a.ID]); err == nil {
-			out = append(out, hotkey.Binding{ID: a.ID, Accel: acc})
+	if p.Enabled {
+		for _, a := range hotkeyActions {
+			if acc, err := hotkey.Parse(p.Bindings[a.ID]); err == nil {
+				out = append(out, hotkey.Binding{ID: a.ID, Accel: acc})
+			}
 		}
 	}
 	if p.Media {
@@ -108,7 +108,7 @@ func buildHotkeyState(supported bool, p filestore.HotkeyPrefs, errs map[string]s
 	for _, a := range hotkeyActions {
 		st.Bindings = append(st.Bindings, HotkeyBinding{ID: a.ID, Accel: p.Bindings[a.ID], Error: errs[a.ID]})
 	}
-	if p.Enabled && p.Media {
+	if p.Media {
 		for _, m := range mediaActions {
 			st.Bindings = append(st.Bindings, HotkeyBinding{ID: m.ID, Accel: m.Accel, Error: errs[m.ID]})
 		}

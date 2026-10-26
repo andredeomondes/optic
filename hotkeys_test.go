@@ -19,23 +19,39 @@ func TestHotkeyBindingsDisabledIsEmpty(t *testing.T) {
 	}
 }
 
-func TestHotkeyBindingsEnabledAndMedia(t *testing.T) {
+func ids(bs []hotkey.Binding) []string {
+	var out []string
+	for _, b := range bs {
+		out = append(out, b.ID)
+	}
+	return out
+}
+
+func TestHotkeyBindingsCombinations(t *testing.T) {
+	actions := []string{"volume_up", "volume_down", "mute", "home", "palette"}
+	media := []string{"media_play_pause", "media_next", "media_prev", "media_stop"}
+	cases := []struct {
+		name           string
+		enabled, media bool
+		want           []string
+	}{
+		{"none", false, false, nil},
+		{"enabled only", true, false, actions},
+		{"media only", false, true, media},
+		{"both", true, true, append(append([]string{}, actions...), media...)},
+	}
+	for _, c := range cases {
+		p := defaultHK()
+		p.Enabled, p.Media = c.enabled, c.media
+		got := hotkeyBindings(p)
+		if !reflect.DeepEqual(ids(got), c.want) {
+			t.Errorf("%s: got %v want %v", c.name, ids(got), c.want)
+		}
+	}
 	p := defaultHK()
-	p.Enabled = true
-	if n := len(hotkeyBindings(p)); n != 5 {
-		t.Fatalf("want 5, got %d", n)
-	}
 	p.Media = true
-	got := hotkeyBindings(p)
-	if len(got) != 9 {
-		t.Fatalf("want 9, got %d", len(got))
-	}
-	if got[5].ID != "media_play_pause" || got[5].Accel.Key != "MediaPlayPause" {
-		t.Fatalf("media binding: %+v", got[5])
-	}
-	p.Enabled = false
-	if len(hotkeyBindings(p)) != 0 {
-		t.Fatal("media keys must not register while disabled")
+	if got := hotkeyBindings(p); got[0].Accel.Key != "MediaPlayPause" {
+		t.Fatalf("media binding: %+v", got[0])
 	}
 }
 
@@ -87,6 +103,11 @@ func TestBuildHotkeyState(t *testing.T) {
 	p.Media = false
 	if n := len(buildHotkeyState(true, p, nil).Bindings); n != 5 {
 		t.Fatalf("want 5, got %d", n)
+	}
+	p.Enabled, p.Media = false, true
+	st = buildHotkeyState(true, p, map[string]string{"media_next": "Em uso por outro programa"})
+	if len(st.Bindings) != 9 || st.Bindings[6].ID != "media_next" || st.Bindings[6].Error == "" {
+		t.Fatalf("media without enabled: %+v", st.Bindings)
 	}
 }
 
@@ -151,5 +172,43 @@ func TestDispatchOtherErrorAndUnknown(t *testing.T) {
 	}
 	if sent, _, ev := runDispatch("nope", nil, true); len(sent) != 0 || len(ev) != 0 {
 		t.Fatal("unknown id must do nothing")
+	}
+}
+
+type fakeHK struct {
+	sets   [][]hotkey.Binding
+	closed bool
+}
+
+func (f *fakeHK) Set(b []hotkey.Binding) []hotkey.Result {
+	f.sets = append(f.sets, b)
+	return nil
+}
+func (f *fakeHK) Close() { f.closed = true }
+
+func TestSuspendHotkeys(t *testing.T) {
+	store := filestore.Store{Dir: t.TempDir()}
+	s := newShell(store, nil)
+	fake := &fakeHK{}
+	s.hk = fake
+	p := store.LoadPrefs()
+	p.Hotkeys.Enabled = true
+	if err := store.SavePrefs(p); err != nil {
+		t.Fatal(err)
+	}
+
+	s.SuspendHotkeys(true)
+	s.SuspendHotkeys(true)
+	if len(fake.sets) != 1 || fake.sets[0] != nil {
+		t.Fatalf("suspend must register nothing, once: %v", fake.sets)
+	}
+	s.SuspendHotkeys(false)
+	s.SuspendHotkeys(false)
+	if len(fake.sets) != 2 || len(fake.sets[1]) != 5 {
+		t.Fatalf("resume must re-apply prefs, once: %v", fake.sets)
+	}
+	s.SuspendHotkeys(false) // never suspended again: no-op
+	if len(fake.sets) != 2 {
+		t.Fatalf("resume is idempotent: %v", fake.sets)
 	}
 }

@@ -42,6 +42,7 @@ type Shell struct {
 	hkMu   sync.Mutex // guards hk, hkErrs and the prefs read-modify-write
 	hk     hotkey.Manager
 	hkErrs map[string]string
+	hkOff  bool // registrations dropped while the UI captures a new key
 }
 
 func newShell(store filestore.Store, icon []byte) *Shell {
@@ -115,8 +116,26 @@ func (s *Shell) SetHotkeys(enabled, media bool, bindings map[string]string) (Hot
 	}
 	if s.hk != nil {
 		s.hkErrs = hotkeyErrors(s.hk.Set(hotkeyBindings(prefs.Hotkeys)))
+		s.hkOff = false
 	}
 	return buildHotkeyState(hotkey.Supported(), prefs.Hotkeys, s.hkErrs), nil
+}
+
+// SuspendHotkeys drops every registration while the UI captures a new
+// shortcut (so the keys do not fire on the TV), and restores them from the
+// saved prefs when on is false. Repeated calls do nothing.
+func (s *Shell) SuspendHotkeys(on bool) {
+	s.hkMu.Lock()
+	defer s.hkMu.Unlock()
+	if s.hk == nil || s.hkOff == on {
+		return
+	}
+	s.hkOff = on
+	if on {
+		s.hk.Set(nil)
+		return
+	}
+	s.hkErrs = hotkeyErrors(s.hk.Set(hotkeyBindings(s.store.LoadPrefs().Hotkeys)))
 }
 
 // beforeClose turns the close button (and Alt+F4) into "hide to tray" when
