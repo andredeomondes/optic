@@ -11,7 +11,7 @@
 Open source desktop remote for **Android TV, Google TV, Roku, LG webOS and Samsung Tizen**, talking straight to the TV over your local network: the Android TV Remote protocol v2, implemented from scratch in Go, Roku's official protocol (ECP), LG's (SSAP) and Samsung's network remote.
 
 [**Download**](https://github.com/andredeomondes/optic/releases/latest) ·
-[**Install and usage guide**](https://andredeomondes.github.io/optic/en/index.html) ·
+[**Install and usage guide**](https://andredeomondes.github.io/optic/en/) ·
 [Architecture](docs/ARCHITECTURE.md) ·
 [Protocol](docs/PROTOCOL.md)
 
@@ -70,12 +70,12 @@ Download from [**Releases**](https://github.com/andredeomondes/optic/releases/la
 | macOS 11+ (Intel and Apple Silicon) | `OPTIC-macos-universal.dmg` | Drag OPTIC to Applications. First time: right-click › **Open**. |
 | Linux (x64) | `OPTIC-linux-amd64.tar.gz` | Extract and run `./install.sh` (installs for your user, no root). |
 
-The step by step, including the SmartScreen and Gatekeeper warnings (the binaries are not signed yet), is in the [**guide**](https://andredeomondes.github.io/optic/en/index.html).
+The step by step, including the SmartScreen and Gatekeeper warnings (the binaries are not signed yet), is in the [**guide**](https://andredeomondes.github.io/optic/en/).
 
 ## First use
 
 1. PC and TV on the **same network** (Wi-Fi or cable).
-2. Open OPTIC: the TV shows up under **TVs on the network** (or use **Add TV** with its IP).
+2. Open OPTIC: the TV shows up under **TVs on network** (or use **Add TV** with its IP).
 3. Click it. The TV shows a **6-character code**: type it in OPTIC.
 4. Done. Next time OPTIC reconnects by itself.
 
