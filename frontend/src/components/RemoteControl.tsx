@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef } from 'react'
+import { useI18n } from '../hooks/useI18n'
 import { useRemote } from '../hooks/useRemote'
 import { can } from '../lib/capabilities'
 import { SHORTCUTS } from '../lib/shortcuts'
@@ -17,6 +18,7 @@ const WHEEL_THROTTLE_MS = 120
  */
 export function RemoteControl({ compact = false }: { compact?: boolean }) {
   const { info, connected, press } = useRemote()
+  const { t } = useI18n()
   // One gate per panel, so its window survives re-renders.
   const wheelGate = useMemo(() => createThrottle(WHEEL_THROTTLE_MS), [])
 
@@ -58,7 +60,7 @@ export function RemoteControl({ compact = false }: { compact?: boolean }) {
         <>
           {can(info, 'text') && (
             <>
-              <div className="section-label">Digitar na TV</div>
+              <div className="section-label">{t('remote.typeOnTv')}</div>
               <TextInput />
             </>
           )}
@@ -69,8 +71,19 @@ export function RemoteControl({ compact = false }: { compact?: boolean }) {
   )
 }
 
+// Footer hints: SHORTCUTS label (pt, used as id) -> translated lowercase text.
+const HINT_KEY = {
+  Navegar: 'remote.hint.navigate',
+  OK: 'remote.hint.ok',
+  Voltar: 'remote.hint.back',
+  Início: 'remote.hint.home',
+  Mudo: 'remote.hint.mute',
+  'Comandos rápidos': 'remote.hint.quick',
+} as const
+
 function ShortcutHints() {
-  const shown = SHORTCUTS.filter((s) => ['Navegar', 'OK', 'Voltar', 'Início', 'Mudo', 'Comandos rápidos'].includes(s.label))
+  const { t } = useI18n()
+  const shown = SHORTCUTS.filter((s) => s.label in HINT_KEY)
   return (
     <div className="hint">
       {shown.map((s, i) => (
@@ -79,7 +92,7 @@ function ShortcutHints() {
           {s.keys.map((k) => (
             <kbd key={k}>{k}</kbd>
           ))}{' '}
-          {s.label.toLowerCase()}
+          {t(HINT_KEY[s.label as keyof typeof HINT_KEY])}
         </Fragment>
       ))}
     </div>

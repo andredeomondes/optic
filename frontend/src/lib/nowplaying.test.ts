@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { appLabel, nowPlayingText, playingLabel } from './nowplaying.ts'
+import { appLabel, nowPlayingText, playingKey } from './nowplaying.ts'
 
 const catalog = [{ pkg: 'com.netflix.ninja', name: 'Netflix' }]
 const installed = [
@@ -33,23 +33,23 @@ test('appLabel: empty id', () => {
   assert.equal(appLabel('', ctx), '')
 })
 
-test('playingLabel', () => {
-  assert.equal(playingLabel('playing'), 'Tocando')
-  assert.equal(playingLabel('paused'), 'Pausado')
-  assert.equal(playingLabel(''), '')
-  assert.equal(playingLabel('x'), '')
+test('playingKey', () => {
+  assert.equal(playingKey('playing'), 'now.playing')
+  assert.equal(playingKey('paused'), 'now.paused')
+  assert.equal(playingKey(''), '')
+  assert.equal(playingKey('x'), '')
 })
 
 test('nowPlayingText: roku and webos use the app label', () => {
-  assert.equal(nowPlayingText('YouTube', 'playing', 'roku', { installed: [{ id: '837', name: 'YouTube' }], catalog }), 'YouTube · Tocando')
+  assert.equal(nowPlayingText('YouTube', 'Tocando', 'roku', { installed: [{ id: '837', name: 'YouTube' }], catalog }), 'YouTube · Tocando')
   assert.equal(nowPlayingText('com.webos.app.livetv', '', 'webos', { installed: [], catalog }), 'Livetv')
 })
 
 test('nowPlayingText: androidtv only for catalog apps', () => {
-  assert.equal(nowPlayingText('com.netflix.ninja', 'paused', 'androidtv', { installed: [], catalog }), 'Netflix · Pausado')
+  assert.equal(nowPlayingText('com.netflix.ninja', 'Pausado', 'androidtv', { installed: [], catalog }), 'Netflix · Pausado')
   assert.equal(nowPlayingText('com.google.android.tvlauncher', '', 'androidtv', { installed: [], catalog }), '')
 })
 
 test('nowPlayingText: empty id', () => {
-  assert.equal(nowPlayingText('', 'playing', 'roku', ctx), '')
+  assert.equal(nowPlayingText('', 'Tocando', 'roku', ctx), '')
 })

@@ -1,14 +1,16 @@
 import { FormEvent, useState } from 'react'
 import { Keyboard, LoaderCircle, Send, X } from 'lucide-react'
+import { useI18n } from '../hooks/useI18n'
 import { useRemote } from '../hooks/useRemote'
 import { OWN_KEYBOARD_APPS } from '../lib/apps'
 
 export const TEXT_INPUT_ID = 'tv-text-input'
 
-/** "Digitar na TV": type with the PC keyboard, Enter sends. */
+/** "Type on the TV": type with the PC keyboard, Enter sends. */
 export function TextInput() {
   const { connected, sendText, feedback, tvState } = useRemote()
   const [text, setText] = useState('')
+  const { t } = useI18n()
   const fb = feedback.text
 
   const submit = async (e: FormEvent) => {
@@ -21,10 +23,10 @@ export function TextInput() {
   const hint = !connected
     ? null
     : ownKeyboard
-      ? { kind: 'warn', text: `${ownKeyboard} usa teclado próprio: digite com as setas e OK.` }
+      ? { kind: 'warn', text: t('text.ownKeyboard', { app: ownKeyboard }) }
       : tvState?.keyboard
-        ? { kind: 'ok', text: 'Teclado da TV aberto. O texto substitui o que está no campo.' }
-        : { kind: 'info', text: 'Abra um campo de texto na TV (ex.: busca) antes de enviar.' }
+        ? { kind: 'ok', text: t('text.keyboardOpen') }
+        : { kind: 'info', text: t('text.openField') }
 
   return (
     <>
@@ -41,18 +43,18 @@ export function TextInput() {
             e.stopPropagation()
           }
         }}
-        placeholder={connected ? 'Digite na TV…' : 'Conecte uma TV para digitar'}
+        placeholder={connected ? t('text.placeholder') : t('text.placeholderOff')}
         disabled={!connected}
         spellCheck={false}
         autoComplete="off"
-        aria-label="Texto para enviar à TV"
+        aria-label={t('text.aria')}
       />
       {text && (
-        <button type="button" className="icon-btn" onClick={() => setText('')} aria-label="Limpar" title="Limpar · Esc">
+        <button type="button" className="icon-btn" onClick={() => setText('')} aria-label={t('text.clear')} title={t('text.clearTitle')}>
           <X size={14} />
         </button>
       )}
-      <button type="submit" className="send-btn" disabled={!connected || !text.trim() || fb === 'pending'} aria-label="Enviar" title="Enviar · Enter">
+      <button type="submit" className="send-btn" disabled={!connected || !text.trim() || fb === 'pending'} aria-label={t('text.send')} title={t('text.sendTitle')}>
         {fb === 'pending' ? <LoaderCircle size={16} className="spin" /> : <Send size={16} />}
       </button>
     </form>

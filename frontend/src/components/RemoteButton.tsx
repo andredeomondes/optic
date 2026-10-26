@@ -1,4 +1,5 @@
 import { ReactNode } from 'react'
+import { useI18n } from '../hooks/useI18n'
 import { useRemote } from '../hooks/useRemote'
 import { KEY_HINT } from '../lib/shortcuts'
 
@@ -15,7 +16,9 @@ type Props = {
 export function RemoteButton({ tvKey, label, children, className = '', showHint }: Props) {
   const { press, pressedKey, feedback, connected } = useRemote()
   const fb = feedback[`key:${tvKey}`]
-  const hint = KEY_HINT[tvKey]
+  const { t } = useI18n()
+  // KEY_HINT is key names; only the space bar has a word to translate.
+  const hint = tvKey === 'MEDIA_PLAY_PAUSE' ? t('remote.keySpace') : KEY_HINT[tvKey]
 
   return (
     <button

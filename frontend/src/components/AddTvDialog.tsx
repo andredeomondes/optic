@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react'
 import { MonitorPlay } from 'lucide-react'
+import { useI18n } from '../hooks/useI18n'
 import { Modal } from './Modal'
 
 const IPV4 = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/
@@ -8,12 +9,13 @@ const IPV4 = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/
 export function AddTvDialog({ onAdd, onClose }: { onAdd: (ip: string) => void; onClose: () => void }) {
   const [ip, setIp] = useState('')
   const [err, setErr] = useState('')
+  const { t } = useI18n()
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
     const v = ip.trim()
     if (!IPV4.test(v)) {
-      setErr('Digite um IP válido, como 192.168.0.18.')
+      setErr(t('addTv.invalidIp'))
       return
     }
     onAdd(v)
@@ -21,11 +23,11 @@ export function AddTvDialog({ onAdd, onClose }: { onAdd: (ip: string) => void; o
   }
 
   return (
-    <Modal title="Adicionar TV" icon={<MonitorPlay size={20} />} onClose={onClose}>
+    <Modal title={t('addTv.title')} icon={<MonitorPlay size={20} />} onClose={onClose}>
       <form className="dialog-body" onSubmit={submit}>
-        <p>Use quando a TV não aparece na busca. Ela precisa estar ligada e com o Google TV ativo.</p>
+        <p>{t('addTv.help')}</p>
         <label className="field">
-          <span>Endereço IP</span>
+          <span>{t('addTv.ipLabel')}</span>
           <input
             autoFocus
             value={ip}
@@ -41,10 +43,10 @@ export function AddTvDialog({ onAdd, onClose }: { onAdd: (ip: string) => void; o
         {err && <div className="err">{err}</div>}
         <div className="actions">
           <button type="button" className="btn" onClick={onClose}>
-            Cancelar
+            {t('common.cancel')}
           </button>
           <button type="submit" className="btn primary">
-            Conectar
+            {t('addTv.connect')}
           </button>
         </div>
       </form>

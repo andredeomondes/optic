@@ -3,6 +3,7 @@ import type { Release } from '../../wailsjs/go/main/App'
 import * as api from '../lib/backend'
 import { load, save } from '../lib/storage'
 import { isNewer } from '../lib/version'
+import { useI18n } from './useI18n'
 import { useRemote } from './useRemote'
 
 const KEY = 'optic.updates.v1'
@@ -31,6 +32,9 @@ export interface Updates {
 /** Looks up the latest GitHub release (once a day while open) and remembers the user's choices. */
 export function useUpdates(): Updates {
   const { notify } = useRemote()
+  const { t } = useI18n()
+  const tRef = useRef(t)
+  tRef.current = t
   const [prefs, setPrefs] = useState<Prefs>(() => ({ auto: true, skipped: null, lastChecked: null, ...load<Partial<Prefs>>(KEY, {}) }))
   const [release, setRelease] = useState<Release | null>(null)
   const [checking, setChecking] = useState(false)
@@ -64,7 +68,7 @@ export function useUpdates(): Updates {
           })
       }
       const ok = await inflight.current
-      if (!ok && manual) notify('err', 'Não foi possível verificar atualizações.')
+      if (!ok && manual) notify('err', tRef.current('update.checkFailed'))
     },
     [notify, update],
   )

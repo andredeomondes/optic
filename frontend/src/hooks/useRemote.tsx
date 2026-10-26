@@ -3,6 +3,7 @@
 // so buttons can animate the result.
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import * as api from '../lib/backend'
+import { useI18n } from './useI18n'
 import { cleanPaste } from '../lib/paste'
 import { load, save } from '../lib/storage'
 import type { DeviceInfo, Feedback, LogLine, Status, Toast, TV, TVState } from '../lib/types'
@@ -15,6 +16,13 @@ const TRAY_KEYS = ['VOLUME_UP', 'VOLUME_DOWN', 'MUTE']
 let seq = 0
 
 function useRemoteState() {
+  // t and lang change with the language; callbacks read them through refs so
+  // their identity (and the effects that depend on it) stays stable.
+  const { t, lang } = useI18n()
+  const tRef = useRef(t)
+  tRef.current = t
+  const langRef = useRef(lang)
+  langRef.current = lang
   const [devices, setDevices] = useState<TV[]>([])
   const [manual, setManual] = useState<string[]>(() => load(MANUAL_KEY, []))
   const [scanning, setScanning] = useState(false)
@@ -39,7 +47,7 @@ function useRemoteState() {
   const connected = status === 'connected'
 
   const addLog = useCallback((dir: string, text: string) => {
-    const time = new Date().toLocaleTimeString('pt-BR')
+    const time = new Date().toLocaleTimeString(langRef.current)
     setLog((l) => [...l.slice(-300), { id: ++seq, dir, text, time }])
   }, [])
 
@@ -92,7 +100,7 @@ function useRemoteState() {
         setInfo(i)
         setStatus('connected')
         setConnectedAt(Date.now())
-        addLog('•', `conectado em ${ip}`)
+        addLog('•', tRef.current('log.connected', { ip }))
       } catch (e) {
         if (pairRun.current !== attempt) return
         const msg = api.errText(e)
@@ -103,12 +111,12 @@ function useRemoteState() {
             setPairingMode(p.mode)
             setStatus('pairing')
             if (p.mode === 'prompt') {
-              addLog('•', 'aguardando confirmação na TV')
+              addLog('•', tRef.current('log.waitingConfirm'))
               api.FinishPairing('').then(
                 () => {
                   if (pairRun.current !== attempt) return
-                  addLog('•', 'pareado com sucesso')
-                  notify('ok', 'TV pareada')
+                  addLog('•', tRef.current('log.paired'))
+                  notify('ok', tRef.current('toast.paired'))
                   connectRef.current(ip)
                 },
                 (fe) => {
@@ -118,7 +126,7 @@ function useRemoteState() {
                 },
               )
             } else {
-              addLog('•', 'TV mostrando código de pareamento')
+              addLog('•', tRef.current('log.showingCode'))
             }
           } catch (pe) {
             setError(api.errText(pe))
@@ -170,8 +178,8 @@ function useRemoteState() {
   const finishPairing = useCallback(
     async (code: string) => {
       await api.FinishPairing(code)
-      addLog('•', 'pareado com sucesso')
-      notify('ok', 'TV pareada')
+      addLog('•', tRef.current('log.paired'))
+      notify('ok', tRef.current('toast.paired'))
       await connect(host)
     },
     [addLog, notify, connect, host],
@@ -199,7 +207,7 @@ function useRemoteState() {
       api.onEvent('tray:key', (key: string) => {
         if (!TRAY_KEYS.includes(key)) return
         if (!connected) {
-          notify('info', 'Conecte uma TV primeiro')
+          notify('info', tRef.current('toast.connectFirst'))
           return
         }
         press(key)
@@ -209,24 +217,24 @@ function useRemoteState() {
 
   const launch = useCallback(
     (id: string, link: string, name: string) =>
-      run(`app:${id}`, () => api.LaunchApp(link), `Abrindo ${name} na TV…`),
+      run(`app:${id}`, () => api.LaunchApp(link), tRef.current('toast.launching', { name })),
     [run],
   )
 
   const inputs = useCallback(() => api.Inputs(), [])
 
   const switchInput = useCallback(
-    (id: string, name: string) => run('input', () => api.SwitchInput(id), `Entrada: ${name}`),
+    (id: string, name: string) => run('input', () => api.SwitchInput(id), tRef.current('toast.input', { name })),
     [run],
   )
 
   const sendText = useCallback(
-    (text: string) => run('text', () => api.SendText(text), 'Texto enviado para a TV'),
+    (text: string) => run('text', () => api.SendText(text), tRef.current('toast.textSent')),
     [run],
   )
 
   const sendToast = useCallback(
-    (text: string) => run('toast', () => api.Toast(text), 'Mensagem enviada para a TV'),
+    (text: string) => run('toast', () => api.Toast(text), tRef.current('toast.messageSent')),
     [run],
   )
 
@@ -240,7 +248,7 @@ function useRemoteState() {
       return false
     }
     if (!text) {
-      notify('info', 'Área de transferência vazia')
+      notify('info', tRef.current('toast.clipboardEmpty'))
       return false
     }
     return sendText(text)
@@ -248,7 +256,7 @@ function useRemoteState() {
 
   const powerOn = useCallback(
     async (ip: string) => {
-      const ok = await run(`power:${ip}`, () => api.PowerOn(ip), 'Ligando a TV…')
+      const ok = await run(`power:${ip}`, () => api.PowerOn(ip), tRef.current('toast.poweringOn'))
       // Rescan once the TV has had time to boot so its card refreshes.
       if (ok) {
         window.clearTimeout(rescanTimer.current)
@@ -260,7 +268,7 @@ function useRemoteState() {
   )
 
   const setVolume = useCallback(
-    (level: number) => run('volume', () => api.SetVolume(level), `Volume ${level}`),
+    (level: number) => run('volume', () => api.SetVolume(level), tRef.current('toast.volume', { level })),
     [run],
   )
 
@@ -270,9 +278,9 @@ function useRemoteState() {
       api.onEvent('trace', (dir: string, text: string) => addLog(dir, text)),
       api.onEvent('disconnected', () => {
         setStatus('error')
-        setError('Conexão com a TV caiu.')
+        setError(tRef.current('error.connectionLost'))
         setConnectedAt(null)
-        addLog('•', 'desconectado')
+        addLog('•', tRef.current('log.disconnected'))
       }),
     ]
     if (api.hasRuntime()) {

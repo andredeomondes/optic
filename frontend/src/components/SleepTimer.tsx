@@ -1,14 +1,16 @@
 import { Moon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useI18n } from '../hooks/useI18n'
 import { useNow } from '../hooks/useNow'
 import { useRemote } from '../hooks/useRemote'
 import { useSleepTimer } from '../hooks/useSleepTimer'
 import { remaining, SLEEP_PRESETS } from '../lib/sleep'
 
-/** Moon button with a preset menu; shows "Desliga em N min" while a timer is armed. */
+/** Moon button with a preset menu; shows "Turns off in N min" while a timer is armed. */
 export function SleepTimer() {
   const { connected } = useRemote()
   const { deadline, start, cancel } = useSleepTimer()
+  const { t } = useI18n()
   useNow(60_000) // re-render each minute; the value itself is read fresh below
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
@@ -49,14 +51,14 @@ export function SleepTimer() {
 
   return (
     <div className="sleep" ref={root}>
-      {deadline !== null && <span className="chip sleep-chip">Desliga em {remaining(deadline, Date.now())} min</span>}
+      {deadline !== null && <span className="chip sleep-chip">{t('sleep.chip', { n: remaining(deadline, Date.now()) })}</span>}
       <button
         ref={moon}
         className={`btn sm ghost ${deadline !== null ? 'active' : ''}`}
         onClick={() => setOpen((o) => !o)}
-        aria-label="Timer para desligar"
+        aria-label={t('sleep.aria')}
         aria-expanded={open}
-        title="Desligar a TV depois de um tempo"
+        title={t('sleep.title')}
         disabled={!connected && deadline === null}
       >
         <Moon size={16} strokeWidth={1.8} />
@@ -65,12 +67,12 @@ export function SleepTimer() {
         <div className="sleep-menu" role="menu">
           {SLEEP_PRESETS.map((m) => (
             <button key={m} role="menuitem" onClick={() => pick(() => start(m))}>
-              {m} min
+              {t('sleep.preset', { n: m })}
             </button>
           ))}
           {deadline !== null && (
             <button role="menuitem" className="danger" onClick={() => pick(cancel)}>
-              Cancelar timer
+              {t('sleep.cancel')}
             </button>
           )}
         </div>

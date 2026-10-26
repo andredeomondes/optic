@@ -1,4 +1,5 @@
 import { LoaderCircle, Power, Tv, X } from 'lucide-react'
+import { useI18n } from '../hooks/useI18n'
 import { since, useNow } from '../hooks/useNow'
 import { useRemote } from '../hooks/useRemote'
 import { PLATFORM_LABEL, canConnect, canPowerOn, isSupported } from '../lib/capabilities'
@@ -8,6 +9,7 @@ import type { TV } from '../lib/types'
 export function DeviceCard({ tv, index }: { tv: TV; index: number }) {
   const { host, status, pairingMode, info, connectedAt, connect, removeManual, powerOn, feedback } = useRemote()
   const now = useNow()
+  const { t } = useI18n()
   const selected = tv.ip === host
   const live = selected && status === 'connected'
   const busy = selected && (status === 'connecting' || status === 'pairing')
@@ -18,14 +20,14 @@ export function DeviceCard({ tv, index }: { tv: TV; index: number }) {
   const waking = feedback[`power:${tv.ip}`] === 'pending'
 
   const state = !supported
-    ? 'Suporte em breve'
+    ? t('device.soon')
     : live
-    ? `Conectado${connectedAt ? ` ${since(connectedAt, now)}` : ''}`
+    ? `${t('common.connected')}${connectedAt ? ` ${since(connectedAt, now, t)}` : ''}`
     : busy
-      ? status === 'pairing' ? (pairingMode === 'prompt' ? 'Confirme na TV' : 'Aguardando código') : 'Conectando…'
+      ? status === 'pairing' ? (pairingMode === 'prompt' ? t('common.confirmOnTv') : t('device.waitingCode')) : t('common.connecting')
       : selected && status === 'error'
-        ? 'Desconectado'
-        : tv.manual ? 'Adicionada manualmente' : 'Disponível'
+        ? t('device.disconnected')
+        : tv.manual ? t('device.manual') : t('device.available')
 
   return (
     <div className={`device-wrap pop ${selected ? 'selected' : ''}`} style={{ animationDelay: `${index * 60}ms` }}>
@@ -33,7 +35,7 @@ export function DeviceCard({ tv, index }: { tv: TV; index: number }) {
         className={`device ${selected ? 'active' : ''} ${live ? 'live' : ''}`}
         onClick={() => connect(tv.ip)}
         disabled={!connectable || busy}
-        title={!supported ? 'Suporte em breve' : !connectable ? 'Sem suporte ao Remote v2' : `Conectar em ${tv.name}`}
+        title={!supported ? t('device.soon') : !connectable ? t('device.noRemoteV2') : t('device.connect', { name: tv.name })}
       >
         <div className="ic">
           <Tv size={16} strokeWidth={1.8} />
@@ -44,7 +46,7 @@ export function DeviceCard({ tv, index }: { tv: TV; index: number }) {
             {tv.ip}
             {live && info?.version && info.platform === 'androidtv' ? ` · Android ${info.version}` : ''}
           </span>
-          <span className="chip platform">{PLATFORM_LABEL[tv.platform]}</span>
+          <span className="chip platform">{tv.platform ? PLATFORM_LABEL[tv.platform] : t('device.platformUnknown')}</span>
           <span className={`state ${live ? 'on' : selected && status === 'error' ? 'bad' : ''}`}>{state}</span>
         </div>
         {busy ? (
@@ -54,13 +56,13 @@ export function DeviceCard({ tv, index }: { tv: TV; index: number }) {
         )}
       </button>
       {canWake && (
-        <button className="device-wake" onClick={() => powerOn(tv.ip)} disabled={waking} title={tv.platform === 'roku' ? 'Ligar a TV pela rede' : 'Ligar a TV (Wake-on-LAN)'}>
+        <button className="device-wake" onClick={() => powerOn(tv.ip)} disabled={waking} title={tv.platform === 'roku' ? t('device.wakeRoku') : t('device.wakeWol')}>
           {waking ? <LoaderCircle size={12} className="spin" /> : <Power size={12} />}
-          Ligar
+          {t('device.wake')}
         </button>
       )}
       {tv.manual && !selected && (
-        <button className="device-remove" onClick={() => removeManual(tv.ip)} aria-label={`Remover ${tv.ip}`} title="Remover">
+        <button className="device-remove" onClick={() => removeManual(tv.ip)} aria-label={t('device.removeIp', { ip: tv.ip })} title={t('device.remove')}>
           <X size={12} />
         </button>
       )}
