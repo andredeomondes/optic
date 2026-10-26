@@ -3,10 +3,15 @@
 // The page works fully without this file.
 
 const REL = 'https://github.com/andredeomondes/optic/releases/latest/download/'
+// Page language comes from <html lang>; the English guide lives in en/.
+const en = document.documentElement.lang.startsWith('en')
+const T = en
+  ? { windows: 'Download for Windows', macos: 'Download for macOS', linux: 'Download for Linux', hint: 'Free and open source · <a href="https://github.com/andredeomondes/optic/releases/latest">other systems</a>', open: 'Open menu', close: 'Close menu' }
+  : { windows: 'Baixar para Windows', macos: 'Baixar para macOS', linux: 'Baixar para Linux', hint: 'Grátis e open source · <a href="https://github.com/andredeomondes/optic/releases/latest">outros sistemas</a>', open: 'Abrir menu', close: 'Fechar menu' }
 const DOWNLOADS = {
-  windows: { file: 'OPTIC-windows-amd64-setup.exe', label: 'Baixar para Windows' },
-  macos: { file: 'OPTIC-macos-universal.dmg', label: 'Baixar para macOS' },
-  linux: { file: 'OPTIC-linux-amd64.tar.gz', label: 'Baixar para Linux' },
+  windows: { file: 'OPTIC-windows-amd64-setup.exe', label: T.windows },
+  macos: { file: 'OPTIC-macos-universal.dmg', label: T.macos },
+  linux: { file: 'OPTIC-linux-amd64.tar.gz', label: T.linux },
 }
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -44,8 +49,7 @@ if (os) {
   const btn = document.getElementById('dl-primary')
   btn.href = REL + DOWNLOADS[os].file
   btn.textContent = DOWNLOADS[os].label
-  document.getElementById('dl-hint').innerHTML =
-    'Grátis e open source · <a href="https://github.com/andredeomondes/optic/releases/latest">outros sistemas</a>'
+  document.getElementById('dl-hint').innerHTML = T.hint
 }
 selectTab(os || 'windows')
 
@@ -55,7 +59,7 @@ const menu = nav.querySelector('.menu')
 const setMenu = (open) => {
   nav.classList.toggle('open', open)
   menu.setAttribute('aria-expanded', String(open))
-  menu.setAttribute('aria-label', open ? 'Fechar menu' : 'Abrir menu')
+  menu.setAttribute('aria-label', open ? T.close : T.open)
 }
 menu.addEventListener('click', () => setMenu(!nav.classList.contains('open')))
 nav.querySelectorAll('nav a').forEach((a) => a.addEventListener('click', () => setMenu(false)))

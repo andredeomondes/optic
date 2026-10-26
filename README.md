@@ -1,5 +1,7 @@
 <div align="center">
 
+**Português** · [English](README.en.md)
+
 <img src="frontend/src/assets/raster/optic-symbol-256.webp" width="112" alt="OPTIC" />
 
 # OPTIC

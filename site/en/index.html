@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OPTIC — control your TV from your computer</title>
+  <meta name="description" content="Free, open source desktop remote for Android TV, Google TV, Roku, LG webOS and Samsung Tizen. Windows, macOS and Linux. Install and usage guide." />
+  <meta property="og:title" content="OPTIC — control your TV from your computer" />
+  <meta property="og:description" content="Desktop remote for Android TV and Google TV. No extra hardware, no cloud." />
+  <meta property="og:image" content="../assets/main.png" />
+  <link rel="alternate" hreflang="pt-BR" href="../index.html" />
+  <link rel="icon" href="../assets/optic-symbol.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../style.css" />
+  <script>document.documentElement.classList.replace('no-js', 'js')</script>
+</head>
+<body>
+  <div class="glow g1"></div>
+  <div class="glow g2"></div>
+
+  <header class="nav">
+    <a class="brand" href="#top"><img src="../assets/optic-symbol.svg" width="28" height="28" alt="" /> OPTIC</a>
+    <button class="menu" aria-label="Open menu" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span></span></button>
+    <nav id="site-nav">
+      <a href="#install">Install</a>
+      <a href="#use">Use</a>
+      <a href="#shortcuts">Shortcuts</a>
+      <a href="#help">Help</a>
+      <a class="lang" href="../index.html" hreflang="pt-BR" lang="pt-BR" aria-label="Versão em português">PT</a>
+      <a class="gh" href="https://github.com/andredeomondes/optic">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <!-- hero -->
+    <section class="hero" data-hero>
+      <div class="hero-text">
+        <p class="eyebrow">Android TV · Google TV · Roku · LG · Samsung</p>
+        <h1>Control your TV<br /><span class="grad">from your computer.</span></h1>
+        <p class="lead">OPTIC is a remote control for your PC. Navigate, open apps, change the volume and type on the TV with your keyboard. No extra hardware, no cloud, no account.</p>
+        <div class="cta">
+          <a id="dl-primary" class="btn primary" href="https://github.com/andredeomondes/optic/releases/latest">Download OPTIC</a>
+          <a class="btn ghost" href="#install">How to install</a>
+        </div>
+        <p class="fine" id="dl-hint">Free and open source · Windows, macOS and Linux</p>
+      </div>
+      <figure class="hero-shot">
+        <img src="../assets/main.png" alt="OPTIC window connected to a TV" />
+      </figure>
+    </section>
+
+    <!-- features -->
+    <section class="features">
+      <article><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16v10H4z"/><path d="M9 21h6M12 17v4"/><path d="M8 3l4 4 4-4"/></svg></span><h3>Finds your TV</h3><p>Open the app and the TV shows up in the list. Pair once with the code shown on the screen.</p></article>
+      <article><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 4v3M12 17v3M4 12h3M17 12h3"/></svg></span><h3>Every remote button</h3><p>Arrows, OK, back, home, volume, channels, media and power, with keyboard shortcuts.</p></article>
+      <article><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></svg></span><h3>Apps in one click</h3><p>YouTube, Netflix, Prime Video, Disney+ and Spotify open straight from OPTIC.</p></article>
+      <article><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg></span><h3>Type on the TV</h3><p>Write searches with your PC keyboard instead of picking letters one by one.</p></article>
+      <article><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1"/></svg></span><h3>Compact mode</h3><p>A small window that stays on top, next to whatever you are doing.</p></article>
+      <article><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span><h3>100% local</h3><p>Your PC talks straight to the TV on your network. Nothing goes through servers.</p></article>
+    </section>
+
+    <!-- install -->
+    <section id="install" class="block">
+      <h2>Install</h2>
+      <p class="sub">Pick your system.</p>
+
+      <div class="tabs" role="tablist">
+        <button role="tab" data-os="windows" aria-selected="true">Windows</button>
+        <button role="tab" data-os="macos" aria-selected="false">macOS</button>
+        <button role="tab" data-os="linux" aria-selected="false">Linux</button>
+      </div>
+
+      <div class="panel" data-panel="windows">
+        <ol class="steps">
+          <li>
+            <h4>Download the installer</h4>
+            <p><a class="btn small primary" href="https://github.com/andredeomondes/optic/releases/latest/download/OPTIC-windows-amd64-setup.exe">OPTIC-windows-amd64-setup.exe</a> <span class="muted">Windows 10 or 11, 64-bit</span></p>
+          </li>
+          <li>
+            <h4>Open the downloaded file</h4>
+            <p>If you see <b>"Windows protected your PC"</b> (SmartScreen), click <b>More info › Run anyway</b>. This happens because the app does not have a paid digital signature yet.</p>
+          </li>
+          <li>
+            <h4>Follow the installer</h4>
+            <p>Next, Install, Finish. OPTIC gets a shortcut in the <b>Start menu</b> and on the <b>desktop</b>, like any program.</p>
+          </li>
+          <li>
+            <h4>Pin to the taskbar (optional)</h4>
+            <p>With OPTIC open, right-click its taskbar icon › <b>Pin to taskbar</b>.</p>
+          </li>
+        </ol>
+        <details class="note">
+          <summary>"An Application Control policy blocked this file"</summary>
+          <p>This is <b>Smart App Control</b> in Windows 11, which blocks apps that are unsigned and have no reputation yet. Download the latest version (each version is evaluated again) or use the portable version <code>OPTIC-windows-amd64-portable.exe</code> from the same downloads page. Turning Smart App Control off fixes it, but lowers your PC's protection and often cannot be turned back on without reinstalling Windows.</p>
+        </details>
+        <p class="muted small">To uninstall: Settings › Apps › OPTIC › Uninstall.</p>
+      </div>
+
+      <div class="panel" data-panel="macos" hidden>
+        <ol class="steps">
+          <li>
+            <h4>Download the disk image</h4>
+            <p><a class="btn small primary" href="https://github.com/andredeomondes/optic/releases/latest/download/OPTIC-macos-universal.dmg">OPTIC-macos-universal.dmg</a> <span class="muted">macOS 11+, Intel and Apple Silicon</span></p>
+          </li>
+          <li>
+            <h4>Drag to Applications</h4>
+            <p>Open the <code>.dmg</code> and drag the OPTIC icon to the <b>Applications</b> folder.</p>
+          </li>
+          <li>
+            <h4>First launch</h4>
+            <p>In Applications, <b>right-click</b> OPTIC › <b>Open</b> › <b>Open</b>. Only the first time: Gatekeeper asks for this for apps not notarized by Apple. After that it opens normally from Launchpad or Spotlight.</p>
+          </li>
+          <li>
+            <h4>Allow local network access</h4>
+            <p>If macOS asks whether OPTIC can <b>find devices on the local network</b>, click <b>Allow</b>. That is how it finds the TV.</p>
+          </li>
+        </ol>
+        <details class="note">
+          <summary>"OPTIC is damaged and can't be opened"</summary>
+          <p>This is Gatekeeper with files downloaded from the internet. In Terminal, run <code>xattr -dr com.apple.quarantine /Applications/OPTIC.app</code> and open it again.</p>
+        </details>
+        <p class="muted small">To uninstall: drag OPTIC from Applications to the Trash.</p>
+      </div>
+
+      <div class="panel" data-panel="linux" hidden>
+        <ol class="steps">
+          <li>
+            <h4>Download the package</h4>
+            <p><a class="btn small primary" href="https://github.com/andredeomondes/optic/releases/latest/download/OPTIC-linux-amd64.tar.gz">OPTIC-linux-amd64.tar.gz</a> <span class="muted">x64, needs GTK 3 and WebKitGTK</span></p>
+          </li>
+          <li>
+            <h4>Install the dependencies (if missing)</h4>
+            <pre><code># Ubuntu / Debian
+sudo apt install libgtk-3-0 libwebkit2gtk-4.0-37
+# Fedora
+sudo dnf install gtk3 webkit2gtk4.0</code></pre>
+          </li>
+          <li>
+            <h4>Extract and install</h4>
+            <pre><code>tar -xzf OPTIC-linux-amd64.tar.gz
+cd OPTIC && ./install.sh</code></pre>
+            <p>Installs for your user only, without <code>sudo</code>. OPTIC shows up in the <b>applications menu</b>.</p>
+          </li>
+        </ol>
+        <p class="muted small">To uninstall: delete <code>~/.local/bin/optic-desktop</code> and <code>~/.local/share/applications/optic.desktop</code>.</p>
+      </div>
+    </section>
+
+    <!-- use -->
+    <section id="use" class="block">
+      <h2>First use</h2>
+      <p class="sub">It takes less than a minute.</p>
+      <div class="use">
+        <ol class="steps">
+          <li><h4>Same network</h4><p>Keep the PC and the TV on the same network (Wi-Fi or cable). The TV must be on.</p></li>
+          <li><h4>Pick the TV</h4><p>Open OPTIC: the TV appears under <b>TVs on the network</b>. Not there? Click <b>search</b> or <b>Add TV</b> and type its IP (on the TV: Settings › Network).</p></li>
+          <li><h4>Enter the code</h4><p>The TV shows a 6-character code. Type it in OPTIC. Only needed the first time.</p></li>
+          <li><h4>Done</h4><p>Use the buttons, the keyboard or <kbd>Ctrl</kbd> <kbd>K</kbd>. Next time OPTIC reconnects by itself.</p></li>
+        </ol>
+        <figure class="shot-sm"><img src="../assets/compact.png" alt="OPTIC compact mode" /><figcaption>Compact mode: the button next to minimize</figcaption></figure>
+      </div>
+
+      <div class="duo" tabindex="0" aria-label="Screenshots">
+        <figure><img src="../assets/quick-command.png" alt="Quick commands" /><figcaption><kbd>Ctrl</kbd> <kbd>K</kbd>: type "netflix", "volume 20", "type cake recipe"…</figcaption></figure>
+        <figure><img src="../assets/settings.png" alt="Settings" /><figcaption>Settings › Window: closing hides it in the tray</figcaption></figure>
+      </div>
+
+      <h3 class="h3">Window and tray (Windows)</h3>
+      <ul class="bullets">
+        <li><b>Close (X)</b> hides OPTIC in the hidden icons area (the small arrow next to the clock). Click the icon to bring it back.</li>
+        <li><b>Minimize</b> works as usual, to the taskbar.</li>
+        <li><b>Quit completely:</b> right-click the tray icon › <b>Quit</b>.</li>
+        <li>Opening OPTIC again does not create another window: it brings back the one already open.</li>
+        <li><kbd>F11</kbd> toggles full screen.</li>
+      </ul>
+    </section>
+
+    <!-- shortcuts -->
+    <section id="shortcuts" class="block">
+      <h2>Keyboard shortcuts</h2>
+      <p class="sub">With the OPTIC window focused and outside a text field.</p>
+      <div class="keys">
+        <div><span><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></span>Navigate</div>
+        <div><span><kbd>Enter</kbd></span>OK</div>
+        <div><span><kbd>Esc</kbd></span>Back</div>
+        <div><span><kbd>H</kbd></span>Home</div>
+        <div><span><kbd>M</kbd></span>Mute</div>
+        <div><span><kbd>+</kbd><kbd>-</kbd></span>Volume</div>
+        <div><span><kbd>Space</kbd></span>Play / pause</div>
+        <div><span><kbd>Ctrl</kbd><kbd>K</kbd></span>Quick commands</div>
+        <div><span><kbd>Ctrl</kbd><kbd>T</kbd></span>Type on the TV</div>
+        <div><span><kbd>F11</kbd></span>Full screen</div>
+      </div>
+    </section>
+
+    <!-- help -->
+    <section id="help" class="block">
+      <h2>Help</h2>
+      <div class="faq">
+        <details><summary>Which TVs work?</summary><p>TVs with <b>Android TV</b> or <b>Google TV</b> (TCL, Sony, Philips, Xiaomi, Chromecast with Google TV, Android TV boxes and others) that have Google's remote control service, the same one the Google TV phone app uses. <b>Roku</b> TVs (Philco, AOC, TCL Roku and others) also work, without pairing, as do <b>LG</b> TVs with webOS and <b>Samsung</b> TVs with Tizen (2016 and later). On those two, just accept "Allow" on the TV.</p></details>
+        <details><summary>The TV does not show up in the list</summary><p>Check that the TV is on and on the same network. Guest networks and some routers isolate devices: use <b>Add TV</b> with the TV's IP. On Windows, allow OPTIC in the firewall when asked.</p></details>
+        <details><summary>I typed but the text did not arrive</summary><p>Open the text field on the TV <b>after</b> connecting OPTIC. Netflix and Prime Video use their own keyboard, which does not receive text through this protocol: use the arrows and OK, or the TV's global search.</p></details>
+        <details><summary>The TV asked for the code again</summary><p>This happens if the TV was reset or if you removed OPTIC from its list of remotes. Just enter the new code.</p></details>
+        <details><summary>Is it safe?</summary><p>OPTIC only talks to your TV, over your network, with an encrypted connection (TLS). There is no account, telemetry or server. The code is open: <a href="https://github.com/andredeomondes/optic">github.com/andredeomondes/optic</a>.</p></details>
+        <details><summary>Where does OPTIC keep its data?</summary><p>The pairing certificate, last TV and preferences are in <code>%APPDATA%\optic</code> (Windows), <code>~/Library/Application Support/optic</code> (macOS) or <code>~/.config/optic</code> (Linux).</p></details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <img src="../assets/optic-symbol.svg" width="22" height="22" alt="" />
+    <span>OPTIC · open source, MIT license</span>
+    <a href="https://github.com/andredeomondes/optic">GitHub</a>
+    <a href="https://github.com/andredeomondes/optic/releases">Releases</a>
+    <a href="https://github.com/andredeomondes/optic/issues">Report an issue</a>
+  </footer>
+
+  <script src="../app.js"></script>
+</body>
+</html>
