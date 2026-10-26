@@ -1,4 +1,5 @@
 import { Copy, Maximize, Minimize, Minus, PictureInPicture2, Pin, PinOff, Square, X } from 'lucide-react'
+import { useI18n } from '../hooks/useI18n'
 import { useRemote } from '../hooks/useRemote'
 import { Quit, WindowMinimise } from '../lib/backend'
 
@@ -20,32 +21,33 @@ type Props = {
  */
 export function TitleBar(p: Props) {
   const { compact, pinned, maximised, fullscreen } = p
+  const { t } = useI18n()
   return (
     <header className={`titlebar ${compact ? 'compact' : ''}`}>
       {compact ? <CompactTitle /> : <span className="title">OPTIC</span>}
       <div className="win">
         {compact && (
-          <WinBtn label="Sempre no topo" onClick={p.onTogglePin} className={pinned ? 'on' : ''} pressed={pinned}>
+          <WinBtn label={t('window.pin')} onClick={p.onTogglePin} className={pinned ? 'on' : ''} pressed={pinned}>
             {pinned ? <Pin size={13} /> : <PinOff size={13} />}
           </WinBtn>
         )}
         {!compact && (
-          <WinBtn label={fullscreen ? 'Sair da tela cheia (F11)' : 'Tela cheia (F11)'} onClick={p.onToggleFullscreen}>
+          <WinBtn label={fullscreen ? t('window.exitFullscreen') : t('window.fullscreen')} onClick={p.onToggleFullscreen}>
             {fullscreen ? <Minimize size={13} /> : <Maximize size={13} />}
           </WinBtn>
         )}
-        <WinBtn label={compact ? 'Janela normal' : 'Modo compacto'} onClick={p.onToggleCompact} className={compact ? 'on' : ''}>
+        <WinBtn label={compact ? t('window.normal') : t('window.compact')} onClick={p.onToggleCompact} className={compact ? 'on' : ''}>
           <PictureInPicture2 size={14} />
         </WinBtn>
-        <WinBtn label="Minimizar" onClick={WindowMinimise}>
+        <WinBtn label={t('window.minimize')} onClick={WindowMinimise}>
           <Minus size={14} />
         </WinBtn>
         {!compact && !fullscreen && (
-          <WinBtn label={maximised ? 'Restaurar' : 'Maximizar'} onClick={p.onToggleMaximise}>
+          <WinBtn label={maximised ? t('window.restore') : t('window.maximize')} onClick={p.onToggleMaximise}>
             {maximised ? <Copy size={12} /> : <Square size={11} />}
           </WinBtn>
         )}
-        <WinBtn label="Fechar" onClick={Quit} className="close">
+        <WinBtn label={t('window.close')} onClick={Quit} className="close">
           <X size={14} />
         </WinBtn>
       </div>

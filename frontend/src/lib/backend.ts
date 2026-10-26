@@ -19,6 +19,7 @@ export {
   SetCloseToTray,
   SetCompactMode,
   SetHotkeys,
+  SetLanguage,
   SetVolume,
   StartPairing,
   SuspendHotkeys,

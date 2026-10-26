@@ -271,6 +271,7 @@ w.go = {
         return hotkeyState()
       },
       async SetCompactMode() {},
+      async SetLanguage() {},
       async ResizeWindow(_minW: number, _minH: number, w: number, h: number) {
         size = { w, h }
       },

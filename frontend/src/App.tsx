@@ -10,6 +10,7 @@ import { TitleBar } from './components/TitleBar'
 import { ToastHost } from './components/Toast'
 import { UpdateBanner } from './components/UpdateBanner'
 import { useApps } from './hooks/useApps'
+import { useI18n } from './hooks/useI18n'
 import { RemoteProvider, useRemote } from './hooks/useRemote'
 import { SleepTimerProvider, useSleepTimer } from './hooks/useSleepTimer'
 import { useShortcuts } from './hooks/useShortcuts'
@@ -17,6 +18,7 @@ import { useUpdates } from './hooks/useUpdates'
 import { useWindowMode } from './hooks/useWindowMode'
 import { appsForPlatform, launchLink } from './lib/apps'
 import * as api from './lib/backend'
+import { translateError } from './lib/errors'
 import { matchInput } from './lib/tvapps'
 import type { Command } from './lib/commands'
 
@@ -31,6 +33,7 @@ export default function App() {
 }
 
 function Shell() {
+  const { t, lang } = useI18n()
   const remote = useRemote()
   const sleep = useSleepTimer()
   const apps = useApps()
@@ -42,7 +45,7 @@ function Shell() {
   const togglePalette = useCallback(() => setPalette((p) => !p), [])
   // Global shortcuts: the palette key opens the quick command, failures become toasts.
   useEffect(() => api.onEvent('hotkey:palette', () => setPalette(true)), [])
-  useEffect(() => api.onEvent('hotkey:error', (msg: string) => remote.notify('err', msg)), [remote.notify])
+  useEffect(() => api.onEvent('hotkey:error', (msg: string) => remote.notify('err', translateError(msg, lang))), [remote.notify, lang])
   useShortcuts({ connected: remote.connected, press: remote.press, togglePalette, paste: remote.pasteToTV })
 
   const runCommand = (c: Command) => {
@@ -53,28 +56,28 @@ function Shell() {
       if (a.target === 'focus-text') setTimeout(() => document.getElementById(TEXT_INPUT_ID)?.focus(), 50)
       if (a.target === 'paste') {
         if (remote.connected) remote.pasteToTV()
-        else remote.notify('err', 'Conecte uma TV primeiro.')
+        else remote.notify('err', t('toast.connectFirst'))
       }
       return
     }
     if (a.type === 'sleep' && a.minutes === 0) {
       if (sleep.deadline === null) {
-        remote.notify('info', 'Nenhum timer ativo')
+        remote.notify('info', t('app.noTimer'))
       } else {
         sleep.cancel()
-        remote.notify('ok', 'Timer cancelado')
+        remote.notify('ok', t('sleep.cancelled'))
       }
       return
     }
     if (!remote.connected) {
-      remote.notify('err', 'Conecte uma TV primeiro.')
+      remote.notify('err', t('toast.connectFirst'))
       return
     }
     if (a.type === 'sleep') {
       sleep.start(a.minutes)
-      remote.notify('ok', `A TV desliga em ${a.minutes} min`)
+      remote.notify('ok', t('sleep.started', { n: a.minutes }))
     }
-    if (a.type === 'key') remote.press(a.key).then((ok) => ok && remote.notify('ok', `Comando enviado: ${c.title}`))
+    if (a.type === 'key') remote.press(a.key).then((ok) => ok && remote.notify('ok', t('app.commandSent', { title: c.title })))
     if (a.type === 'launch') remote.launch(a.app.id, launchLink(a.app), a.app.name)
     if (a.type === 'link') remote.launch('link', a.url, a.label)
     if (a.type === 'volume') remote.setVolume(a.level)
@@ -86,9 +89,9 @@ function Shell() {
         .then((list) => {
           const hit = matchInput(list, a.query)
           if (hit) remote.switchInput(hit.id, hit.name)
-          else remote.notify('err', 'Entrada não encontrada')
+          else remote.notify('err', t('input.notFound'))
         })
-        .catch(() => remote.notify('err', 'Não foi possível listar as entradas'))
+        .catch(() => remote.notify('err', t('input.listFailed')))
     }
   }
 

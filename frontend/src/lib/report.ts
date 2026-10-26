@@ -1,5 +1,6 @@
 import { PLATFORM_LABEL } from './capabilities.ts'
-import type { DeviceInfo, LogLine, TV } from './types.ts'
+import { type Key, type Lang, translate } from './i18n.ts'
+import type { DeviceInfo, LogLine, Platform, TV } from './types.ts'
 
 const MAX_LOG_LINES = 200
 
@@ -10,6 +11,8 @@ export type ReportInput = {
   info: DeviceInfo | null
   host: string
   log: LogLine[]
+  /** Report language; defaults to pt-BR. */
+  lang?: Lang
 }
 
 const MASKED_MAC = '**:**:**:**:**:**'
@@ -45,9 +48,9 @@ const PACKAGE_NAME = /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/
  * every quoted string is replaced, except Android package names, which help diagnosis.
  * Fails closed: an unterminated string is redacted up to the end of the line.
  */
-function redactStrings(text: string): string {
+function redactStrings(text: string, rawOmitted: string): string {
   // Undecodable frames are dumped as hex, which can spell out typed text.
-  return text.replace(/<raw[^>]*>?/g, '<raw omitido>').replace(/"((?:[^"\\]|\\.|\\$)*)(?:"|$)/g, (_m, body: string) =>
+  return text.replace(/<raw[^>]*>?/g, rawOmitted).replace(/"((?:[^"\\]|\\.|\\$)*)(?:"|$)/g, (_m, body: string) =>
     PACKAGE_NAME.test(body) && _m.endsWith('"') ? `"${body}"` : '"[redacted]"',
   )
 }
@@ -56,40 +59,42 @@ function redactStrings(text: string): string {
 const cell = (v: string) => v.replace(/\|/g, '\\|')
 
 /** Markdown diagnostic report, ready to paste into a GitHub issue. */
-export function buildReport({ version, userAgent, tvs, info, host, log }: ReportInput): string {
-  const out: string[] = ['### OPTIC', '', `- Versão: ${version}`, `- Ambiente: ${userAgent}`, '']
+export function buildReport({ version, userAgent, tvs, info, host, log, lang = 'pt-BR' }: ReportInput): string {
+  const t = (k: Key) => translate(lang, k)
+  const platform = (p: Platform) => p === '' ? t('device.platformUnknown') : (PLATFORM_LABEL[p] ?? p)
+  const out: string[] = ['### OPTIC', '', `- ${t('report.version')}: ${version}`, `- ${t('report.env')}: ${userAgent}`, '']
 
-  out.push('### TVs encontradas', '')
+  out.push(`### ${t('report.tvsFound')}`, '')
   if (tvs.length === 0) {
-    out.push('Nenhuma TV encontrada.')
+    out.push(t('sidebar.empty'))
   } else {
-    out.push('| Nome | IP | Plataforma |', '| --- | --- | --- |')
-    for (const t of tvs) {
-      out.push(`| ${cell(t.name)} | ${cell(t.ip)} | ${PLATFORM_LABEL[t.platform] ?? t.platform} |`)
+    out.push(`| ${t('report.colName')} | IP | ${t('report.colPlatform')} |`, '| --- | --- | --- |')
+    for (const tv of tvs) {
+      out.push(`| ${cell(tv.name)} | ${cell(tv.ip)} | ${platform(tv.platform)} |`)
     }
-    const macs = tvs.filter((t) => t.mac).map((t) => `${t.name}: ${maskMac(t.mac!)}`)
+    const macs = tvs.filter((v) => v.mac).map((v) => `${v.name}: ${maskMac(v.mac!)}`)
     if (macs.length) out.push('', ...macs.map((m) => `- MAC ${m}`))
   }
   out.push('')
 
-  out.push('### TV conectada', '')
+  out.push(`### ${t('report.connected')}`, '')
   if (!info) {
-    out.push('Nenhuma TV conectada.')
+    out.push(t('report.noneConnected'))
   } else {
     out.push(
       `- IP: ${host || '—'}`,
-      `- Plataforma: ${PLATFORM_LABEL[info.platform] ?? info.platform}`,
-      `- Fabricante: ${info.vendor || '—'}`,
-      `- Modelo: ${info.model || '—'}`,
-      `- Sistema: ${info.version || '—'}`,
-      `- Serviço remoto: ${info.appVersion || '—'}`,
-      `- Recursos: ${Object.entries(info.capabilities ?? {}).map(([k, v]) => `${k}=${v ? 'sim' : 'não'}`).join(', ') || '—'}`,
+      `- ${t('report.colPlatform')}: ${platform(info.platform)}`,
+      `- ${t('diag.vendor')}: ${info.vendor || '—'}`,
+      `- ${t('diag.model')}: ${info.model || '—'}`,
+      `- ${t('diag.system')}: ${info.version || '—'}`,
+      `- ${t('diag.service')}: ${info.appVersion || '—'}`,
+      `- ${t('report.features')}: ${Object.entries(info.capabilities ?? {}).map(([k, v]) => `${k}=${v ? t('report.yes') : t('report.no')}`).join(', ') || '—'}`,
     )
   }
   out.push('')
 
   out.push('### Log', '', '```')
-  out.push(...log.slice(-MAX_LOG_LINES).map((l) => `${l.time} ${l.dir} ${redactStrings(l.text)}`))
+  out.push(...log.slice(-MAX_LOG_LINES).map((l) => `${l.time} ${l.dir} ${redactStrings(l.text, t('report.rawOmitted'))}`))
   out.push('```', '')
   // One pass over everything: names, models, user agent and log may all embed a MAC.
   return maskMacsIn(out.join('\n'))

@@ -1,5 +1,7 @@
 <div align="center">
 
+**Português** · [English](README.en.md)
+
 <img src="frontend/src/assets/raster/optic-symbol-256.webp" width="112" alt="OPTIC" />
 
 # OPTIC
@@ -44,6 +46,7 @@ Controle remoto desktop open source para **Android TV, Google TV, Roku, LG webOS
 - **Modo compacto** 360×520 que pode ficar sempre no topo, ao lado do que você estiver fazendo.
 - **Bandeja do sistema** (Windows): fechar esconde o app na área de ícones ocultos; abrir de novo traz a mesma janela.
 - **Tela cheia** com `F11` e janela maximizável.
+- **Português e inglês:** segue o idioma do sistema; troque em Configurações › Janela › Idioma.
 - **100% local:** o controle não passa por servidores. O certificado do pareamento fica só no seu PC.
 
 > Para ligar a TV pela rede, a opção **Ligar pela rede** (ou *Network standby*) precisa estar ativa na TV.

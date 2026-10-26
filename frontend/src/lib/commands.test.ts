@@ -98,3 +98,73 @@ test('input command is hidden without inputs', () => {
   assert.ok(!suggest('hdmi 2', CATALOG).some((c) => c.action.type === 'input'))
   assert.ok(!suggest('entrada tv', CATALOG, { inputs: false }).some((c) => c.action.type === 'input'))
 })
+
+// English and Portuguese keywords work in both UI languages; only titles follow the UI.
+for (const lang of ['pt-BR', 'en'] as const) {
+  const ctx = { lang, toast: true, inputs: true }
+  const first = (q: string) => suggest(q, CATALOG, ctx)[0]
+  const ids = (q: string) => suggest(q, CATALOG, ctx).map((c) => c.id)
+
+  test(`bilingual keywords (UI ${lang})`, () => {
+    assert.deepEqual(first('volume 20').action, { type: 'volume', level: 20 })
+    assert.deepEqual(first('type hello').action, { type: 'text', text: 'hello' })
+    assert.deepEqual(first('digitar ola').action, { type: 'text', text: 'ola' })
+    assert.deepEqual(first('turn off in 30 min').action, { type: 'sleep', minutes: 30 })
+    assert.deepEqual(first('desligar em 30 min').action, { type: 'sleep', minutes: 30 })
+    assert.deepEqual(first('timer 45').action, { type: 'sleep', minutes: 45 })
+    assert.ok(suggest('cancel timer', CATALOG, ctx).some((c) => c.action.type === 'sleep' && c.action.minutes === 0))
+    assert.ok(suggest('cancelar timer', CATALOG, ctx).some((c) => c.action.type === 'sleep' && c.action.minutes === 0))
+    assert.deepEqual(first('hdmi 2').action, { type: 'input', query: 'hdmi 2' })
+    assert.deepEqual(first('input tv').action, { type: 'input', query: 'tv' })
+    assert.deepEqual(first('entrada tv').action, { type: 'input', query: 'tv' })
+    assert.deepEqual(first('notify tv hi').action, { type: 'toast', text: 'hi' })
+    assert.deepEqual(first('avisar na tv oi').action, { type: 'toast', text: 'oi' })
+    assert.equal(first('open netflix').app?.id, 'netflix')
+    assert.equal(first('abrir netflix').app?.id, 'netflix')
+    for (const q of ['mute', 'mudo']) assert.ok(ids(q).includes('mute'), q)
+    for (const q of ['home', 'início']) assert.ok(ids(q).includes('home'), q)
+    for (const q of ['back', 'voltar']) assert.ok(ids(q).includes('back'), q)
+  })
+}
+
+test('titles follow the UI language', () => {
+  const title = (q: string, lang: 'pt-BR' | 'en') => suggest(q, CATALOG, { lang, toast: true, inputs: true })[0].title
+  assert.equal(title('mute', 'en'), 'Mute')
+  assert.equal(title('mute', 'pt-BR'), 'Mudo')
+  assert.equal(title('open netflix', 'en'), 'Open Netflix')
+  assert.equal(title('open netflix', 'pt-BR'), 'Abrir Netflix')
+  assert.equal(title('turn off in 30 min', 'en'), 'Turn the TV off in 30 min')
+  assert.equal(title('timer 30', 'pt-BR'), 'Desligar a TV em 30 min')
+  assert.equal(title('type hello', 'en'), 'Type “hello”')
+  assert.equal(title('digitar oi', 'pt-BR'), 'Digitar “oi”')
+  assert.equal(title('notify tv hi', 'en'), 'Show on the TV: “hi”')
+  assert.equal(title('input tv', 'en'), 'Switch to input tv')
+  assert.equal(title('volume 20', 'en'), 'Volume 20')
+})
+
+test('english search link', () => {
+  const c = suggest('search cats on youtube', CATALOG, { lang: 'en' })[0]
+  assert.ok(c.action.type === 'link' && c.action.url.endsWith('search_query=cats'))
+})
+
+test('sleep timer phrasings', () => {
+  for (const q of ['turn off tv in 30', 'turn the tv off in 30', 'turn tv off in 30', 'turn off in 30', 'sleep 30', 'sleep in 30', 'desligar em 30']) {
+    assert.deepEqual(suggest(q, CATALOG)[0].action, { type: 'sleep', minutes: 30 }, q)
+  }
+})
+
+test('"type" and "input" alone suggest the static commands, not a parsed action', () => {
+  const ctx = { inputs: true, toast: true }
+  const t = suggest('type', CATALOG, ctx)
+  assert.ok(!t.some((c) => c.action.type === 'text'))
+  assert.deepEqual(t.find((c) => c.id === 'type')?.action, { type: 'ui', target: 'focus-text' })
+  const i = suggest('input', CATALOG, ctx)
+  assert.ok(!i.some((c) => c.action.type === 'input'))
+  assert.deepEqual(i.find((c) => c.id === 'input')?.action, { type: 'key', key: 'TV_INPUT' })
+})
+
+for (const lang of ['pt-BR', 'en'] as const) {
+  test(`"settings" ranks OPTIC settings first (UI ${lang})`, () => {
+    assert.equal(suggest('settings', CATALOG, { lang })[0].id, 'settings')
+  })
+}

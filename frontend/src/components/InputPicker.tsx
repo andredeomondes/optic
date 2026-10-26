@@ -1,12 +1,14 @@
 import { Cable } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useI18n } from '../hooks/useI18n'
 import { useRemote } from '../hooks/useRemote'
 import { can } from '../lib/capabilities'
 import type { TVInput } from '../lib/types'
 
-/** "Entrada" button with a menu of the TV's inputs (Roku, LG). */
+/** "Input" button with a menu of the TV's inputs (Roku, LG). */
 export function InputPicker() {
   const { connected, info, inputs, switchInput, notify } = useRemote()
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const [list, setList] = useState<TVInput[]>([])
   const root = useRef<HTMLDivElement>(null)
@@ -71,7 +73,7 @@ export function InputPicker() {
       setList(l)
       setOpen(true)
     } catch {
-      if (req.current === mine) notify('err', 'Não foi possível listar as entradas')
+      if (req.current === mine) notify('err', t('input.listFailed'))
     } finally {
       if (req.current === mine) fetching.current = false
     }
@@ -89,10 +91,10 @@ export function InputPicker() {
         ref={trigger}
         className="btn sm ghost"
         onClick={toggle}
-        aria-label="Entrada"
+        aria-label={t('input.label')}
         aria-expanded={open}
         aria-haspopup="menu"
-        title="Trocar a entrada da TV"
+        title={t('input.title')}
         disabled={!connected}
       >
         <Cable size={16} strokeWidth={1.8} />
@@ -100,7 +102,7 @@ export function InputPicker() {
       {open && (
         <div className="input-menu" role="menu">
           {list.length === 0 ? (
-            <span className="input-empty">Nenhuma entrada</span>
+            <span className="input-empty">{t('input.none')}</span>
           ) : (
             list.map((i) => (
               <button key={i.id} role="menuitem" onClick={() => pick(i)}>

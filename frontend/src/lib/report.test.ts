@@ -108,3 +108,19 @@ test('truncated raw line is omitted', () => {
   assert.ok(!r.includes('68690a0b'))
   assert.ok(r.includes('<raw omitido>'))
 })
+
+test('english headings and labels; masking and redaction unchanged', () => {
+  const info = { model: 'M1', vendor: 'Acme', version: '12', appVersion: '1.2', platform: 'androidtv' as const,
+    capabilities: { text: true, appList: false, absoluteVolume: true, powerOn: false, inputs: false, pointer: false, toast: false } }
+  const r = buildReport({ ...base, lang: 'en', host: '10.0.0.2', info,
+    tvs: [tv({ name: 'Living', mac: 'aa:bb:cc:dd:ee:ff' }), tv({ name: 'Other', platform: '' as const })],
+    log: [{ id: 1, dir: '<', text: '3: "secret" <raw 68690a0b>', time: '00:00' }] })
+  for (const s of ['- Version: 1.0.2', '- Environment: x', '### TVs found', '| Name | IP | Platform |', '| Living | 10.0.0.2 | Android TV |',
+    '| Other | 10.0.0.2 | Unknown |', '### Connected TV', '- Vendor: Acme', '- Model: M1', '- System: 12', '- Remote service: 1.2',
+    '- Features: text=yes, appList=no', 'aa:bb:cc:**:**:**', '3: "[redacted]"', '<raw omitted>']) {
+    assert.ok(r.includes(s), s)
+  }
+  assert.ok(!/secret|dd:ee:ff|68690a0b|Versão|Nenhuma/.test(r))
+  const empty = buildReport({ ...base, lang: 'en' })
+  assert.ok(empty.includes('No TVs found.') && empty.includes('No TV connected.'))
+})

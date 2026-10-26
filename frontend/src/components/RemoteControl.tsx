@@ -1,7 +1,9 @@
 import { Fragment, useEffect, useMemo, useRef } from 'react'
+import { useI18n } from '../hooks/useI18n'
 import { useRemote } from '../hooks/useRemote'
 import { can } from '../lib/capabilities'
-import { SHORTCUTS } from '../lib/shortcuts'
+import type { Key } from '../lib/i18n'
+import { FOOTER_HINTS, SHORTCUTS } from '../lib/shortcuts'
 import { createThrottle, wheelVolumeStep } from '../lib/throttle'
 import { ConnectionStatus } from './ConnectionStatus'
 import { DPad } from './DPad'
@@ -17,6 +19,7 @@ const WHEEL_THROTTLE_MS = 120
  */
 export function RemoteControl({ compact = false }: { compact?: boolean }) {
   const { info, connected, press } = useRemote()
+  const { t } = useI18n()
   // One gate per panel, so its window survives re-renders.
   const wheelGate = useMemo(() => createThrottle(WHEEL_THROTTLE_MS), [])
 
@@ -58,7 +61,7 @@ export function RemoteControl({ compact = false }: { compact?: boolean }) {
         <>
           {can(info, 'text') && (
             <>
-              <div className="section-label">Digitar na TV</div>
+              <div className="section-label">{t('remote.typeOnTv')}</div>
               <TextInput />
             </>
           )}
@@ -69,17 +72,28 @@ export function RemoteControl({ compact = false }: { compact?: boolean }) {
   )
 }
 
+// Footer hints: shortcut id -> translated lowercase text.
+const HINT_KEY: Record<(typeof FOOTER_HINTS)[number], Key> = {
+  navigate: 'remote.hint.navigate',
+  ok: 'remote.hint.ok',
+  back: 'remote.hint.back',
+  home: 'remote.hint.home',
+  mute: 'remote.hint.mute',
+  palette: 'remote.hint.quick',
+}
+
 function ShortcutHints() {
-  const shown = SHORTCUTS.filter((s) => ['Navegar', 'OK', 'Voltar', 'Início', 'Mudo', 'Comandos rápidos'].includes(s.label))
+  const { t } = useI18n()
+  const shown = FOOTER_HINTS.map((id) => SHORTCUTS.find((s) => s.id === id)).filter((s): s is (typeof SHORTCUTS)[number] => !!s)
   return (
     <div className="hint">
       {shown.map((s, i) => (
-        <Fragment key={s.label}>
+        <Fragment key={s.id}>
           {i > 0 && ' · '}
           {s.keys.map((k) => (
             <kbd key={k}>{k}</kbd>
           ))}{' '}
-          {s.label.toLowerCase()}
+          {t(HINT_KEY[s.id as (typeof FOOTER_HINTS)[number]])}
         </Fragment>
       ))}
     </div>

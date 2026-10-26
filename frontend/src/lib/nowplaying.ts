@@ -1,3 +1,4 @@
+import type { Key } from './i18n.ts'
 import type { Platform, TVApp } from './types.ts'
 
 type Ctx = { installed: TVApp[]; catalog: { pkg: string; name: string }[] }
@@ -14,20 +15,21 @@ export function appLabel(id: string, ctx: Ctx): string {
   return last.charAt(0).toUpperCase() + last.slice(1)
 }
 
-export function playingLabel(p: string): string {
-  if (p === 'playing') return 'Tocando'
-  if (p === 'paused') return 'Pausado'
+/** i18n key for the playback state, or '' when there is none to show. */
+export function playingKey(p: string): Key | '' {
+  if (p === 'playing') return 'now.playing'
+  if (p === 'paused') return 'now.paused'
   return ''
 }
 
 /**
- * Status-line text: "App · Tocando". Android TV reports raw package names,
- * so it shows a line only for apps in the catalog.
+ * Status-line text: "App · <state>". `state` is the already translated
+ * playback label. Android TV reports raw package names, so it shows a line
+ * only for apps in the catalog.
  */
-export function nowPlayingText(id: string, playing: string, platform: Platform | undefined, ctx: Ctx): string {
+export function nowPlayingText(id: string, state: string, platform: Platform | undefined, ctx: Ctx): string {
   if (!id) return ''
   if (platform === 'androidtv' && !ctx.catalog.some((c) => c.pkg === id)) return ''
   const name = appLabel(id, ctx)
-  const p = playingLabel(playing)
-  return p ? `${name} · ${p}` : name
+  return state ? `${name} · ${state}` : name
 }

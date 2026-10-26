@@ -1,5 +1,6 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { decideAtDeadline } from '../lib/sleep'
+import { useI18n } from './useI18n'
 import { useRemote } from './useRemote'
 
 export type SleepTimer = {
@@ -14,12 +15,13 @@ const Ctx = createContext<SleepTimer | null>(null)
 /** Single shared timer: one setTimeout to the deadline, in memory only. */
 export function SleepTimerProvider({ children }: { children: ReactNode }) {
   const { connected, host, tvState, press, notify } = useRemote()
+  const { t } = useI18n()
   const [deadline, setDeadline] = useState<number | null>(null)
   const timer = useRef<number | undefined>(undefined)
 
   // The timeout fires long after it was armed: read the freshest state then.
-  const latest = useRef({ connected, host, tvOn: tvState?.on === true, press, notify })
-  latest.current = { connected, host, tvOn: tvState?.on === true, press, notify }
+  const latest = useRef({ connected, host, tvOn: tvState?.on === true, press, notify, t })
+  latest.current = { connected, host, tvOn: tvState?.on === true, press, notify, t }
   // The TV the timer was armed for; it never powers another one.
   const armedHost = useRef('')
 
@@ -45,11 +47,11 @@ export function SleepTimerProvider({ children }: { children: ReactNode }) {
         const s = latest.current
         const d = decideAtDeadline({ ...s, armedHost: armedHost.current })
         if (d === 'power') {
-          s.press('POWER').then((ok) => ok && s.notify('ok', 'TV desligada pelo timer'))
+          s.press('POWER').then((ok) => ok && s.notify('ok', s.t('sleep.firedOff')))
         } else if (d === 'changed') {
-          s.notify('info', 'Timer cancelado: a TV conectada mudou')
+          s.notify('info', s.t('sleep.cancelledChanged'))
         } else {
-          s.notify('info', 'Timer cancelado: a TV já estava desligada ou desconectada')
+          s.notify('info', s.t('sleep.cancelledOff'))
         }
       }, minutes * 60_000)
     },
@@ -62,7 +64,7 @@ export function SleepTimerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (deadline !== null && host !== armedHost.current) {
       cancel()
-      latest.current.notify('info', 'Timer cancelado: a TV conectada mudou')
+      latest.current.notify('info', latest.current.t('sleep.cancelledChanged'))
     }
   }, [host, deadline, cancel])
 
