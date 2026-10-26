@@ -251,7 +251,13 @@ func (s *Service) FinishPairing(code string) error {
 	if errors.Is(err, domain.ErrCodeTypo) {
 		return err
 	}
-	s.CancelPairing()
+	// Only end our own pairing: a newer one may have started while Finish blocked.
+	s.mu.Lock()
+	if s.pairing == p {
+		s.pairing = nil
+	}
+	s.mu.Unlock()
+	p.Close()
 	return err
 }
 

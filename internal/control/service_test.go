@@ -714,3 +714,58 @@ func TestToastValidation(t *testing.T) {
 		t.Fatalf("runes=%d toasts[1]=%q", n, rs.toasts[1])
 	}
 }
+
+// blockingPairing blocks Finish until release is closed.
+type blockingPairing struct {
+	fakePairing
+	release chan struct{}
+	mu      sync.Mutex
+	shut    bool
+}
+
+func (p *blockingPairing) Finish(string) error { <-p.release; return nil }
+func (p *blockingPairing) Close() error        { p.mu.Lock(); p.shut = true; p.mu.Unlock(); return nil }
+func (p *blockingPairing) isClosed() bool      { p.mu.Lock(); defer p.mu.Unlock(); return p.shut }
+
+type seqPairer struct {
+	list []domain.PairingSession
+	n    int
+}
+
+func (f *seqPairer) StartPairing(context.Context, string) (domain.PairingSession, error) {
+	p := f.list[f.n]
+	f.n++
+	return p, nil
+}
+
+func TestFinishPairingDoesNotCloseNewerPairing(t *testing.T) {
+	a := &blockingPairing{release: make(chan struct{})}
+	b := &blockingPairing{release: make(chan struct{})}
+	close(b.release)
+	s, _, _ := newService(nil, &seqPairer{list: []domain.PairingSession{a, b}})
+	if _, err := s.StartPairing(context.Background(), "x"); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- s.FinishPairing("") }()
+	time.Sleep(50 * time.Millisecond) // let Finish(A) block
+	if _, err := s.StartPairing(context.Background(), "x"); err != nil {
+		t.Fatal(err)
+	}
+	a.mu.Lock()
+	a.shut = false // StartPairing(B) closed A; only B matters from here
+	a.mu.Unlock()
+	close(a.release)
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if b.isClosed() {
+		t.Fatal("newer pairing was closed")
+	}
+	if err := s.FinishPairing(""); err != nil {
+		t.Fatalf("finish B: %v", err)
+	}
+	if !b.isClosed() {
+		t.Error("B not closed after its own finish")
+	}
+}
