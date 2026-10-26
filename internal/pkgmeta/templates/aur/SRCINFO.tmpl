@@ -6,10 +6,11 @@ pkgbase = optic-bin
 	arch = x86_64
 	license = {{.License}}
 	depends = gtk3
-	depends = webkit2gtk
+	depends = webkit2gtk-4.1
+	options = !strip
 	provides = optic
 	conflicts = optic
-	source = optic-{{.Version}}.tar.gz::{{.Tarball.URL}}
-	sha256sums = {{.Tarball.SHA256}}
+	source = optic-{{.Version}}.tar.gz::{{.Tarball41.URL}}
+	sha256sums = {{.Tarball41.SHA256}}
 
 pkgname = optic-bin

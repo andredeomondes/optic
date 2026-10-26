@@ -1,10 +1,8 @@
-# Needs a Linux binary built with Wails `-tags webkit2_41` (WebKitGTK 4.1),
-# which the current release tarball is not: it links WebKitGTK 4.0
-# (libwebkit2gtk-4.0), absent from the GNOME runtimes. This manifest is ready
-# for when CI publishes such a build.
+# Uses the WebKitGTK 4.1 build of OPTIC (Wails -tags webkit2_41), which the
+# GNOME runtimes ship. Flathub may ask for a build from source instead.
 app-id: {{.AppID}}
 runtime: org.gnome.Platform
-runtime-version: '49'
+runtime-version: '50'
 sdk: org.gnome.Sdk
 command: optic-desktop
 finish-args:
@@ -24,8 +22,8 @@ modules:
       - install -Dm644 {{.AppID}}.metainfo.xml /app/share/metainfo/{{.AppID}}.metainfo.xml
     sources:
       - type: archive
-        url: {{.Tarball.URL}}
-        sha256: {{.Tarball.SHA256}}
+        url: {{.Tarball41.URL}}
+        sha256: {{.Tarball41.SHA256}}
         strip-components: 1
       - type: file
         path: {{.AppID}}.metainfo.xml

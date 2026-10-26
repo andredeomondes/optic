@@ -1,10 +1,8 @@
-# Needs a Linux binary built with Wails `-tags webkit2_41` (WebKitGTK 4.1),
-# which the current release tarball is not: it links WebKitGTK 4.0
-# (libwebkit2gtk-4.0), absent from the GNOME runtimes. This manifest is ready
-# for when CI publishes such a build.
+# Uses the WebKitGTK 4.1 build of OPTIC (Wails -tags webkit2_41), which the
+# GNOME runtimes ship. Flathub may ask for a build from source instead.
 app-id: io.github.andredeomondes.optic
 runtime: org.gnome.Platform
-runtime-version: '49'
+runtime-version: '50'
 sdk: org.gnome.Sdk
 command: optic-desktop
 finish-args:
@@ -24,8 +22,8 @@ modules:
       - install -Dm644 io.github.andredeomondes.optic.metainfo.xml /app/share/metainfo/io.github.andredeomondes.optic.metainfo.xml
     sources:
       - type: archive
-        url: https://github.com/andredeomondes/optic/releases/download/v1.2.3/OPTIC-linux-amd64.tar.gz
-        sha256: dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+        url: https://github.com/andredeomondes/optic/releases/download/v1.2.3/OPTIC-linux-amd64-webkit41.tar.gz
+        sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
         strip-components: 1
       - type: file
         path: io.github.andredeomondes.optic.metainfo.xml

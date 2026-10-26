@@ -19,10 +19,11 @@ import (
 
 // Release asset names, as uploaded by the release workflow.
 const (
-	AssetSetup    = "OPTIC-windows-amd64-setup.exe"
-	AssetPortable = "OPTIC-windows-amd64-portable.exe"
-	AssetDMG      = "OPTIC-macos-universal.dmg"
-	AssetTarball  = "OPTIC-linux-amd64.tar.gz"
+	AssetSetup     = "OPTIC-windows-amd64-setup.exe"
+	AssetPortable  = "OPTIC-windows-amd64-portable.exe"
+	AssetDMG       = "OPTIC-macos-universal.dmg"
+	AssetTarball   = "OPTIC-linux-amd64.tar.gz"
+	AssetTarball41 = "OPTIC-linux-amd64-webkit41.tar.gz" // built with -tags webkit2_41
 )
 
 const (
@@ -117,6 +118,7 @@ type data struct {
 	Portable    asset
 	DMG         asset
 	Tarball     asset
+	Tarball41   asset
 }
 
 type asset struct {
@@ -145,7 +147,7 @@ func newData(in Input) (*data, error) {
 	for _, a := range []struct {
 		dst  *asset
 		name string
-	}{{&d.Setup, AssetSetup}, {&d.Portable, AssetPortable}, {&d.DMG, AssetDMG}, {&d.Tarball, AssetTarball}} {
+	}{{&d.Setup, AssetSetup}, {&d.Portable, AssetPortable}, {&d.DMG, AssetDMG}, {&d.Tarball, AssetTarball}, {&d.Tarball41, AssetTarball41}} {
 		sum, ok := in.Sums[a.name]
 		if !ok {
 			return nil, fmt.Errorf("missing checksum for %s", a.name)

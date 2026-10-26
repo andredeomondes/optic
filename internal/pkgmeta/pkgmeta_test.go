@@ -18,15 +18,17 @@ const (
 	hexSetup    = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	hexPortable = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 	hexDMG      = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+	hexTar41    = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
 	hexTar      = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
 )
 
 func fakeSums() map[string]string {
 	return map[string]string{
-		AssetSetup:    hexSetup,
-		AssetPortable: hexPortable,
-		AssetDMG:      hexDMG,
-		AssetTarball:  hexTar,
+		AssetSetup:     hexSetup,
+		AssetPortable:  hexPortable,
+		AssetDMG:       hexDMG,
+		AssetTarball:   hexTar,
+		AssetTarball41: hexTar41,
 	}
 }
 
@@ -143,8 +145,41 @@ func TestWingetScopeIsMachine(t *testing.T) {
 	}
 }
 
+func TestWingetInstallerEntries(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(renderTemp(t), "winget", "andredeomondes.OPTIC.installer.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"ProductCode: OPTICOPTIC", "AppsAndFeaturesEntries:", "Publisher: OPTIC", "DisplayName: OPTIC", "ElevationRequirement: elevatesSelf"} {
+		if !strings.Contains(string(data), want) {
+			t.Errorf("installer missing %q: %s", want, data)
+		}
+	}
+}
+
+func TestLinuxManifestsUseWebkit41(t *testing.T) {
+	out := renderTemp(t)
+	for rel, want := range map[string]string{
+		"aur/PKGBUILD": "webkit2gtk-4.1",
+		"aur/.SRCINFO": "webkit2gtk-4.1",
+	} {
+		data, _ := os.ReadFile(filepath.Join(out, filepath.FromSlash(rel)))
+		if !strings.Contains(string(data), want) || !strings.Contains(string(data), AssetTarball41) {
+			t.Errorf("%s must use the webkit 4.1 tarball and dependency", rel)
+		}
+	}
+	data, _ := os.ReadFile(filepath.Join(out, "aur", "PKGBUILD"))
+	if !strings.Contains(string(data), "options=('!strip')") {
+		t.Error("PKGBUILD needs options=('!strip')")
+	}
+	fp, _ := os.ReadFile(filepath.Join(out, "flatpak", "io.github.andredeomondes.optic.yml"))
+	if !strings.Contains(string(fp), AssetTarball41) || !strings.Contains(string(fp), "runtime-version: '50'") {
+		t.Errorf("flatpak must use the webkit41 tarball and runtime 50: %s", fp)
+	}
+}
+
 func TestRenderMissingAssetWritesNothing(t *testing.T) {
-	for _, asset := range []string{AssetSetup, AssetPortable, AssetDMG, AssetTarball} {
+	for _, asset := range []string{AssetSetup, AssetPortable, AssetDMG, AssetTarball, AssetTarball41} {
 		in := fakeInput()
 		delete(in.Sums, asset)
 		out := filepath.Join(t.TempDir(), "out")
@@ -274,9 +309,9 @@ func TestChecksumsLandInManifests(t *testing.T) {
 	want := map[string]string{
 		"scoop/optic.json":  hexPortable,
 		"homebrew/optic.rb": hexDMG,
-		"aur/PKGBUILD":      hexTar,
-		"aur/.SRCINFO":      hexTar,
-		"flatpak/io.github.andredeomondes.optic.yml": hexTar,
+		"aur/PKGBUILD":      hexTar41,
+		"aur/.SRCINFO":      hexTar41,
+		"flatpak/io.github.andredeomondes.optic.yml": hexTar41,
 	}
 	for rel, hash := range want {
 		data, err := os.ReadFile(filepath.Join(out, filepath.FromSlash(rel)))

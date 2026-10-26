@@ -3,10 +3,16 @@ PackageIdentifier: andredeomondes.OPTIC
 PackageVersion: 1.2.3
 InstallerType: nullsoft
 Scope: machine
+ElevationRequirement: elevatesSelf
 UpgradeBehavior: install
+ProductCode: OPTICOPTIC
 Installers:
   - Architecture: x64
     InstallerUrl: https://github.com/andredeomondes/optic/releases/download/v1.2.3/OPTIC-windows-amd64-setup.exe
     InstallerSha256: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    AppsAndFeaturesEntries:
+      - Publisher: OPTIC
+        DisplayName: OPTIC
+        ProductCode: OPTICOPTIC
 ManifestType: installer
 ManifestVersion: 1.6.0

@@ -6,11 +6,12 @@ pkgdesc="{{.DescEN}}"
 arch=('x86_64')
 url="{{.Homepage}}"
 license=('{{.License}}')
-depends=('gtk3' 'webkit2gtk')
+depends=('gtk3' 'webkit2gtk-4.1')
+options=('!strip')
 provides=('optic')
 conflicts=('optic')
-source=("optic-${pkgver}.tar.gz::{{.Homepage}}/releases/download/v${pkgver}/{{.Tarball.Name}}")
-sha256sums=('{{.Tarball.SHA256}}')
+source=("optic-${pkgver}.tar.gz::{{.Homepage}}/releases/download/v${pkgver}/{{.Tarball41.Name}}")
+sha256sums=('{{.Tarball41.SHA256}}')
 
 package() {
   cd "${srcdir}/OPTIC"

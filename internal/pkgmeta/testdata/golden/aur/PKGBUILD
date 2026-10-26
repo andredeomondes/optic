@@ -6,11 +6,12 @@ pkgdesc="Control your TV from your PC"
 arch=('x86_64')
 url="https://github.com/andredeomondes/optic"
 license=('MIT')
-depends=('gtk3' 'webkit2gtk')
+depends=('gtk3' 'webkit2gtk-4.1')
+options=('!strip')
 provides=('optic')
 conflicts=('optic')
-source=("optic-${pkgver}.tar.gz::https://github.com/andredeomondes/optic/releases/download/v${pkgver}/OPTIC-linux-amd64.tar.gz")
-sha256sums=('dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd')
+source=("optic-${pkgver}.tar.gz::https://github.com/andredeomondes/optic/releases/download/v${pkgver}/OPTIC-linux-amd64-webkit41.tar.gz")
+sha256sums=('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
 
 package() {
   cd "${srcdir}/OPTIC"

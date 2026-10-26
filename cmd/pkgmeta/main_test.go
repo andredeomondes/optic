@@ -12,6 +12,7 @@ const sums = `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  
 bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb  OPTIC-windows-amd64-portable.exe
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc  OPTIC-macos-universal.dmg
 dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd  OPTIC-linux-amd64.tar.gz
+eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee  OPTIC-linux-amd64-webkit41.tar.gz
 `
 
 func TestRunWritesFiles(t *testing.T) {
