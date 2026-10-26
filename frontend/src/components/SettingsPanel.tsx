@@ -7,6 +7,7 @@ import { platformOSLabel } from '../lib/capabilities'
 import { buildReport } from '../lib/report'
 import { SHORTCUTS } from '../lib/shortcuts'
 import { safeReleaseURL } from '../lib/version'
+import { HotkeySettings } from './HotkeySettings'
 import { Modal } from './Modal'
 
 // Wails on Windows opens target=_blank links in a bare in-app window, so go through the runtime.
@@ -47,6 +48,15 @@ function TabBtn({ id, tab, setTab, icon, label }: { id: Tab; tab: Tab; setTab: (
 }
 
 function Shortcuts() {
+  return (
+    <div className="tab-scroll">
+      <HotkeySettings />
+      <ShortcutList />
+    </div>
+  )
+}
+
+function ShortcutList() {
   return (
     <ul className="shortcut-list">
       {SHORTCUTS.map((s) => (

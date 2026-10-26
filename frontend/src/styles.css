@@ -407,6 +407,15 @@ kbd + kbd { margin-left: 2px; }
 .shell.compact .b2 { width: 220px; height: 220px; }
 .shell.compact .b3 { display: none; }
 
+/* ── settings: global shortcuts ───────────────────────── */
+.tab-scroll { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; min-height: 0; }
+.tab-scroll .shortcut-list { overflow: visible; }
+.shortcut-list li.stack { flex-direction: column; align-items: stretch; gap: 4px; }
+.hk-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.hk-ctl { display: flex; align-items: center; gap: 10px; }
+.hk-accel { font-size: 11px; padding: 2px 8px; }
+.hk-capture { color: var(--text); border-color: rgba(139, 92, 246, 0.8); animation: fade 0.2s var(--ease); }
+
 /* ── settings: switch (input.* to win over .dialog input) ─ */
 .pref { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; cursor: pointer; }
 input.switch {

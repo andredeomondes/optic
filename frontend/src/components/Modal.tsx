@@ -18,7 +18,8 @@ type Props = {
 export function Modal({ title, icon, onClose, children, className = '' }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      // A key-capture field inside the dialog owns Esc (it cancels the capture only).
+      if (e.key === 'Escape' && !document.querySelector('[data-capturing]')) {
         e.stopPropagation()
         onClose()
       }
