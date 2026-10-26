@@ -1,7 +1,7 @@
 // Run with: npm test (Node's built-in test runner + type stripping).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { PLATFORM_LABEL, can, canConnect, canPowerOn, isSupported } from './capabilities.ts'
+import { PLATFORM_LABEL, can, platformOSLabel, canConnect, canPowerOn, isSupported } from './capabilities.ts'
 import type { DeviceInfo, TV } from './types.ts'
 
 test('isSupported', () => {
@@ -43,4 +43,14 @@ test('platform labels mirror the backend', () => {
   assert.equal(PLATFORM_LABEL.webos, 'LG webOS')
   assert.equal(PLATFORM_LABEL.roku, 'Roku')
   assert.equal(PLATFORM_LABEL[''], 'Desconhecida')
+})
+
+test('platformOSLabel never leaves a trailing space', () => {
+  assert.equal(platformOSLabel('tizen', '2018'), 'Tizen 2018')
+  assert.equal(platformOSLabel('tizen', ''), 'Tizen')
+  assert.equal(platformOSLabel('tizen'), 'Tizen')
+  assert.equal(platformOSLabel('roku', '12.5'), 'Roku OS 12.5')
+  assert.equal(platformOSLabel('webos', '6'), 'webOS 6')
+  assert.equal(platformOSLabel('androidtv', '13'), 'Android 13')
+  assert.equal(platformOSLabel(undefined, ''), 'Android')
 })

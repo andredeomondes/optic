@@ -9,6 +9,12 @@ export const PLATFORM_LABEL: Record<Platform, string> = {
   '': 'Desconhecida',
 }
 
+/** OS name and version for chips and the settings list; no trailing space when the version is unknown. */
+export function platformOSLabel(platform: Platform | undefined, version?: string): string {
+  const os = platform === 'roku' ? 'Roku OS' : platform === 'webos' ? 'webOS' : platform === 'tizen' ? 'Tizen' : 'Android'
+  return version ? `${os} ${version}` : os
+}
+
 /** Platforms OPTIC can control today; the rest are only listed. */
 export function isSupported(p: Platform): boolean {
   return p === 'androidtv' || p === '' || p === 'roku' || p === 'webos' || p === 'tizen'
