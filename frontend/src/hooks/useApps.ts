@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { allApps, AppDef, loadApps, makeCustomApp, saveApps } from '../lib/apps'
+import { allApps, AppDef, loadApps, makeCustomApp, makeTVApp, saveApps } from '../lib/apps'
 
 /** Favorite app shortcuts: add, remove, reorder, custom packages. Persisted. */
 export function useApps() {
@@ -31,6 +31,13 @@ export function useApps() {
         f.splice(to, 0, item)
         return { ...s, favorites: f }
       }),
+    addTV: (tv: { id: string; name: string }) => {
+      const app = makeTVApp(tv)
+      update((s) => ({
+        custom: s.custom.some((c) => c.id === app.id) ? s.custom : [...s.custom, app],
+        favorites: s.favorites.includes(app.id) ? s.favorites : [...s.favorites, app.id],
+      }))
+    },
     addCustom: (name: string, pkg: string) => {
       const app = makeCustomApp(name, pkg)
       update((s) => ({

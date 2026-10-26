@@ -1,4 +1,4 @@
-import { load, save } from './storage'
+import { load, save } from './storage.ts'
 
 export type AppDef = {
   id: string
@@ -32,7 +32,8 @@ export const CATALOG: AppDef[] = [
   { id: 'steamlink', name: 'Steam Link', pkg: 'com.valvesoftware.steamlink', brand: '#171A21' },
 ]
 
-export const launchLink = (app: AppDef) => `market://launch?id=${app.pkg}`
+/** Apps picked from the TV's own list use the raw TV app id; the rest are Android packages. */
+export const launchLink = (app: AppDef) => (app.id.startsWith('tv:') ? app.pkg : `market://launch?id=${app.pkg}`)
 
 type Stored = { favorites: string[]; custom: AppDef[] }
 const KEY = 'optic.apps.v1'
@@ -53,6 +54,11 @@ export function allApps(custom: AppDef[]): AppDef[] {
 
 export function makeCustomApp(name: string, pkg: string): AppDef {
   return { id: `custom:${pkg}`, name, pkg, brand: '#7C5CFF', custom: true }
+}
+
+/** Favorite built from an app the TV reported (Roku/LG); pkg holds the TV app id. */
+export function makeTVApp(app: { id: string; name: string }): AppDef {
+  return { id: `tv:${app.id}`, name: app.name, pkg: app.id, brand: '#8B5CF6', custom: true }
 }
 
 /** Android package names: dot-separated identifiers, at least two parts. */

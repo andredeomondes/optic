@@ -1,9 +1,12 @@
 import { FormEvent, useState } from 'react'
-import { Check, LayoutGrid, Pencil, Plus, X } from 'lucide-react'
+import { Check, LayoutGrid, Pencil, Plus, Star, X } from 'lucide-react'
 import { AppIcon } from '../BrandLogos'
 import type { AppsApi } from '../hooks/useApps'
 import { useRemote } from '../hooks/useRemote'
+import { useTVApps } from '../hooks/useTVApps'
 import { AppDef, isPackageName, launchLink } from '../lib/apps'
+import { can } from '../lib/capabilities'
+import { filterApps } from '../lib/tvapps'
 import { Modal } from './Modal'
 
 /** Favorite app shortcuts. Edit mode removes and drag-reorders them. */
@@ -79,10 +82,78 @@ export function AppLauncher({ apps }: { apps: AppsApi }) {
   )
 }
 
+/** The TV's own installed apps: search, launch in one click, star to favorite. */
+function TVAppsSection({ apps }: { apps: AppsApi }) {
+  const { host, info, connected, launch, feedback } = useRemote()
+  const { apps: tvApps, loading, error, reload } = useTVApps(host || null, can(info, 'appList'))
+  const [query, setQuery] = useState('')
+  const shown = filterApps(tvApps, query)
+
+  return (
+    <div className="tv-apps">
+      <span className="label">Apps da TV</span>
+      <input
+        placeholder="Buscar app…"
+        value={query}
+        spellCheck={false}
+        onChange={(e) => setQuery(e.target.value)}
+        aria-label="Buscar app"
+      />
+      {loading ? (
+        <div className="tv-apps-list" aria-busy="true">
+          <div className="skeleton" style={{ height: 40 }} />
+          <div className="skeleton" style={{ height: 40 }} />
+          <span className="note">Carregando apps da TV…</span>
+        </div>
+      ) : error ? (
+        <div className="tv-apps-state">
+          <span className="err">Não foi possível carregar os apps da TV</span>
+          <button type="button" className="btn" onClick={reload}>Tentar de novo</button>
+        </div>
+      ) : shown.length === 0 ? (
+        <div className="note">Nenhum app encontrado</div>
+      ) : (
+        <div className="tv-apps-list">
+          {shown.map((a) => {
+            const favId = `tv:${a.id}`
+            const fav = apps.favorites.some((f) => f.id === favId)
+            const fb = feedback[`app:${favId}`]
+            return (
+              <div key={a.id} className={`tv-app ${fb ? `fb-${fb}` : ''}`} style={{ ['--brand' as any]: '#8B5CF6' }}>
+                <button
+                  type="button"
+                  className="tv-app-open"
+                  onClick={() => launch(favId, a.id, a.name)}
+                  disabled={!connected}
+                  title={`Abrir ${a.name}`}
+                >
+                  <AppIcon id={favId} name={a.name} brand="#8B5CF6" size={16} />
+                  <span>{a.name}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`tv-app-star ${fav ? 'on' : ''}`}
+                  onClick={() => (fav ? apps.remove(favId) : apps.addTV(a))}
+                  aria-pressed={fav}
+                  aria-label={fav ? `Remover ${a.name} dos favoritos` : `Adicionar ${a.name} aos favoritos`}
+                  title={fav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                >
+                  <Star size={14} fill={fav ? 'currentColor' : 'none'} />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function AddAppDialog({ apps, onClose }: { apps: AppsApi; onClose: () => void }) {
   const [name, setName] = useState('')
   const [pkg, setPkg] = useState('')
   const [err, setErr] = useState('')
+  const { info } = useRemote()
   const available = apps.catalog.filter((a) => !apps.favorites.some((f) => f.id === a.id))
 
   const addCustom = (e: FormEvent) => {
@@ -96,6 +167,7 @@ function AddAppDialog({ apps, onClose }: { apps: AppsApi; onClose: () => void })
   return (
     <Modal title="Adicionar app" icon={<LayoutGrid size={20} />} onClose={onClose} className="wide">
       <div className="dialog-body">
+        {can(info, 'appList') && <TVAppsSection apps={apps} />}
         {available.length > 0 && (
           <>
             <span className="label">Sugestões</span>
