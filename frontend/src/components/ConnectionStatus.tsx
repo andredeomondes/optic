@@ -4,7 +4,7 @@ import { useRemote } from '../hooks/useRemote'
 import { useTVApps } from '../hooks/useTVApps'
 import { CATALOG } from '../lib/apps'
 import { can } from '../lib/capabilities'
-import { appLabel, playingLabel } from '../lib/nowplaying'
+import { nowPlayingText } from '../lib/nowplaying'
 import { InputPicker } from './InputPicker'
 import { RemoteButton } from './RemoteButton'
 import { SleepTimer } from './SleepTimer'
@@ -16,9 +16,10 @@ export function ConnectionStatus() {
   const { status, pairingMode, host, info, tvs, error, connectedAt, connect, tvState } = useRemote()
   const now = useNow()
   const { apps: installed } = useTVApps(host || null, can(info, 'appList'))
-  const playing = playingLabel(tvState?.playing ?? '')
-  const appName =
-    status === 'connected' && tvState?.on !== false ? appLabel(tvState?.app ?? '', { installed, catalog: CATALOG_NAMES }) : ''
+  const nowText =
+    status === 'connected' && tvState?.on !== false
+      ? nowPlayingText(tvState?.app ?? '', tvState?.playing ?? '', info?.platform || undefined, { installed, catalog: CATALOG_NAMES })
+      : ''
   const name = info ? `${info.vendor} ${info.model}` : tvs.find((t) => t.ip === host)?.name || host
 
   return (
@@ -45,10 +46,10 @@ export function ConnectionStatus() {
           {status === 'error' && (error || 'Erro')}
           {status === 'idle' && 'Selecione uma TV na lista ao lado'}
         </small>
-        {appName && (
-          <div className="now-playing" title={playing ? `${appName} · ${playing}` : appName}>
-            {tvState?.playing === 'paused' ? <Pause size={12} /> : <Play size={12} />}
-            <span>{playing ? `${appName} · ${playing}` : appName}</span>
+        {nowText && (
+          <div className="now-playing" title={nowText}>
+            {tvState?.playing === 'playing' ? <Play size={12} /> : tvState?.playing === 'paused' ? <Pause size={12} /> : null}
+            <span>{nowText}</span>
           </div>
         )}
       </div>

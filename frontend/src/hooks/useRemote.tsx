@@ -88,11 +88,13 @@ function useRemoteState() {
       setStatus('connecting')
       try {
         const i = await api.Connect(ip)
+        if (pairRun.current !== attempt) return // a newer connect took over
         setInfo(i)
         setStatus('connected')
         setConnectedAt(Date.now())
         addLog('•', `conectado em ${ip}`)
       } catch (e) {
+        if (pairRun.current !== attempt) return
         const msg = api.errText(e)
         if (msg.includes('NOT_PAIRED')) {
           try {

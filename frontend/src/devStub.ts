@@ -21,7 +21,7 @@ const pushState = () =>
   emit(
     'state',
     host === ROKU_HOST
-      ? { on: true, volume: 0, volumeMax: 0, muted: false, app: '837', playing: rokuPlaying }
+      ? { on: true, volume: 0, volumeMax: 0, muted: false, app: 'YouTube', playing: rokuPlaying }
       : host === WEBOS_HOST
         ? { on: true, volume: webosVolume, volumeMax: 100, muted, app: 'netflix', playing: '' }
         : { on: true, volume, volumeMax: 100, muted, playing: '' },

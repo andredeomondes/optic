@@ -15,7 +15,7 @@ import { SleepTimerProvider, useSleepTimer } from './hooks/useSleepTimer'
 import { useShortcuts } from './hooks/useShortcuts'
 import { useUpdates } from './hooks/useUpdates'
 import { useWindowMode } from './hooks/useWindowMode'
-import { launchLink } from './lib/apps'
+import { appsForPlatform, launchLink } from './lib/apps'
 import { matchInput } from './lib/tvapps'
 import type { Command } from './lib/commands'
 
@@ -124,7 +124,7 @@ function Shell() {
 
       <ToastHost />
 
-      {palette && <QuickCommand apps={apps.catalog} onRun={runCommand} onClose={() => setPalette(false)} />}
+      {palette && <QuickCommand apps={appsForPlatform(apps.catalog, remote.info?.platform || undefined)} onRun={runCommand} onClose={() => setPalette(false)} />}
       {settings && <SettingsPanel updates={updates} onClose={() => setSettings(false)} />}
       {remote.status === 'pairing' && <PairDialog mode={remote.pairingMode} onSubmit={remote.finishPairing} onCancel={remote.cancelPairing} />}
     </div>

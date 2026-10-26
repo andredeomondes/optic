@@ -1,4 +1,5 @@
 import { load, save } from './storage.ts'
+import type { Platform } from './types.ts'
 
 export type AppDef = {
   id: string
@@ -7,6 +8,8 @@ export type AppDef = {
   pkg: string
   brand: string
   custom?: boolean
+  /** Set on favorites picked from a TV's own list; they belong to that platform only. */
+  platform?: Platform
 }
 
 /** Known Android TV apps. Future: merge with apps reported by the TV. */
@@ -57,8 +60,13 @@ export function makeCustomApp(name: string, pkg: string): AppDef {
 }
 
 /** Favorite built from an app the TV reported (Roku/LG); pkg holds the TV app id. */
-export function makeTVApp(app: { id: string; name: string }): AppDef {
-  return { id: `tv:${app.id}`, name: app.name, pkg: app.id, brand: '#8B5CF6', custom: true }
+export function makeTVApp(app: { id: string; name: string }, platform: Platform): AppDef {
+  return { id: `tv:${app.id}`, name: app.name, pkg: app.id, brand: '#8B5CF6', custom: true, platform }
+}
+
+/** Drops apps tied to another platform; apps without a platform are kept. */
+export function appsForPlatform(apps: AppDef[], platform: Platform | undefined): AppDef[] {
+  return apps.filter((a) => !a.platform || a.platform === platform)
 }
 
 /** Android package names: dot-separated identifiers, at least two parts. */
