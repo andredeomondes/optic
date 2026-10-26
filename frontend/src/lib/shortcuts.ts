@@ -1,3 +1,5 @@
+import type { Key } from './i18n.ts'
+
 /** Physical keys that map straight to a TV key while connected. */
 export const KEYMAP: Record<string, string> = {
   ArrowUp: 'DPAD_UP',
@@ -17,20 +19,23 @@ export const KEYMAP: Record<string, string> = {
   ' ': 'MEDIA_PLAY_PAUSE',
 }
 
-/** Shown in the footer, tooltips and Settings › Atalhos. */
-export const SHORTCUTS: { id: string; keys: string[]; label: string }[] = [
-  { id: 'navigate', keys: ['↑', '↓', '←', '→'], label: 'Navegar' },
-  { id: 'ok', keys: ['Enter'], label: 'OK' },
-  { id: 'back', keys: ['Esc'], label: 'Voltar' },
-  { id: 'home', keys: ['H'], label: 'Início' },
-  { id: 'mute', keys: ['M'], label: 'Mudo' },
-  { id: 'volume', keys: ['+', '−'], label: 'Volume' },
-  { id: 'wheel', keys: ['Roda do mouse'], label: 'Volume pela roda' },
-  { id: 'playPause', keys: ['Espaço'], label: 'Play / pause' },
-  { id: 'palette', keys: ['Ctrl', 'K'], label: 'Comandos rápidos' },
-  { id: 'type', keys: ['Ctrl', 'T'], label: 'Digitar na TV' },
-  { id: 'paste', keys: ['Ctrl', 'V'], label: 'Colar na TV' },
+/** Shown in the footer, tooltips and Settings › Shortcuts. Key tokens in NAMED_KEYS are translated. */
+export const SHORTCUTS: { id: string; keys: string[]; labelKey: Key }[] = [
+  { id: 'navigate', keys: ['↑', '↓', '←', '→'], labelKey: 'shortcut.navigate' },
+  { id: 'ok', keys: ['Enter'], labelKey: 'shortcut.ok' },
+  { id: 'back', keys: ['Esc'], labelKey: 'shortcut.back' },
+  { id: 'home', keys: ['H'], labelKey: 'shortcut.home' },
+  { id: 'mute', keys: ['M'], labelKey: 'shortcut.mute' },
+  { id: 'volume', keys: ['+', '−'], labelKey: 'shortcut.volume' },
+  { id: 'wheel', keys: ['Wheel'], labelKey: 'shortcut.wheel' },
+  { id: 'playPause', keys: ['Space'], labelKey: 'shortcut.playPause' },
+  { id: 'palette', keys: ['Ctrl', 'K'], labelKey: 'shortcut.palette' },
+  { id: 'type', keys: ['Ctrl', 'T'], labelKey: 'shortcut.type' },
+  { id: 'paste', keys: ['Ctrl', 'V'], labelKey: 'shortcut.paste' },
 ]
+
+/** Key tokens that have a word instead of a symbol. */
+export const NAMED_KEYS: Record<string, Key> = { Wheel: 'shortcut.keyWheel', Space: 'remote.keySpace' }
 
 /** Shortcut ids shown in the remote's footer hints, in order. */
 export const FOOTER_HINTS = ['navigate', 'ok', 'back', 'home', 'mute', 'palette'] as const

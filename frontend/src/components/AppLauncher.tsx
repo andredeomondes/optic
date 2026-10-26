@@ -2,8 +2,10 @@ import { FormEvent, useState } from 'react'
 import { Check, LayoutGrid, Pencil, Plus, Star, X } from 'lucide-react'
 import { AppIcon } from '../BrandLogos'
 import type { AppsApi } from '../hooks/useApps'
+import { useI18n } from '../hooks/useI18n'
 import { useRemote } from '../hooks/useRemote'
 import { useTVApps } from '../hooks/useTVApps'
+import type { Key } from '../lib/i18n'
 import { AppDef, appsForPlatform, isPackageName, launchLink } from '../lib/apps'
 import { can } from '../lib/capabilities'
 import { filterApps } from '../lib/tvapps'
@@ -11,6 +13,7 @@ import { Modal } from './Modal'
 
 /** Favorite app shortcuts. Edit mode removes and drag-reorders them. */
 export function AppLauncher({ apps }: { apps: AppsApi }) {
+  const { t } = useI18n()
   const { connected, launch, feedback, info } = useRemote()
   const favorites = appsForPlatform(apps.favorites, info?.platform || undefined)
   const [editing, setEditing] = useState(false)
@@ -21,10 +24,10 @@ export function AppLauncher({ apps }: { apps: AppsApi }) {
   return (
     <section className="side-section launcher">
       <div className="label-row">
-        <span className="label">Apps</span>
+        <span className="label">{t('apps.title')}</span>
         <button className="link" onClick={() => setEditing((e) => !e)}>
           {editing ? <Check size={12} /> : <Pencil size={12} />}
-          {editing ? 'pronto' : 'editar'}
+          {editing ? t('apps.done') : t('apps.edit')}
         </button>
       </div>
 
@@ -57,13 +60,13 @@ export function AppLauncher({ apps }: { apps: AppsApi }) {
                 className={`app-tile ${fb ? `fb-${fb}` : ''}`}
                 onClick={() => !editing && launch(app.id, launchLink(app), app.name)}
                 disabled={!editing && !connected}
-                title={editing ? 'Arraste para reorganizar' : `Abrir ${app.name}`}
+                title={editing ? t('apps.dragReorder') : t('apps.open', { name: app.name })}
               >
                 <AppIcon id={app.id} name={app.name} brand={app.brand} size={32} />
               </button>
               <span className="app-label">{app.name}</span>
               {editing && (
-                <button className="tile-remove" onClick={() => apps.remove(app.id)} aria-label={`Remover ${app.name}`}>
+                <button className="tile-remove" onClick={() => apps.remove(app.id)} aria-label={t('apps.remove', { name: app.name })}>
                   <X size={10} strokeWidth={3} />
                 </button>
               )}
@@ -71,10 +74,10 @@ export function AppLauncher({ apps }: { apps: AppsApi }) {
           )
         })}
         <div className="app-tile-wrap">
-          <button className="app-tile add" onClick={() => setAdding(true)} title="Adicionar app" aria-label="Adicionar app">
+          <button className="app-tile add" onClick={() => setAdding(true)} title={t('apps.add')} aria-label={t('apps.add')}>
             <Plus size={18} />
           </button>
-          <span className="app-label">Adicionar</span>
+          <span className="app-label">{t('apps.addShort')}</span>
         </div>
       </div>
 
@@ -85,6 +88,7 @@ export function AppLauncher({ apps }: { apps: AppsApi }) {
 
 /** The TV's own installed apps: search, launch in one click, star to favorite. */
 function TVAppsSection({ apps }: { apps: AppsApi }) {
+  const { t } = useI18n()
   const { host, info, connected, launch, feedback } = useRemote()
   const { apps: tvApps, loading, error, reload } = useTVApps(host || null, can(info, 'appList'))
   const [query, setQuery] = useState('')
@@ -94,27 +98,27 @@ function TVAppsSection({ apps }: { apps: AppsApi }) {
 
   return (
     <div className="tv-apps">
-      <span className="label">Apps da TV</span>
+      <span className="label">{t('apps.tvApps')}</span>
       <input
-        placeholder="Buscar app…"
+        placeholder={t('apps.searchPlaceholder')}
         value={query}
         spellCheck={false}
         onChange={(e) => setQuery(e.target.value)}
-        aria-label="Buscar app"
+        aria-label={t('apps.searchAria')}
       />
       {loading ? (
         <div className="tv-apps-list" aria-busy="true">
           <div className="skeleton" style={{ height: 40 }} />
           <div className="skeleton" style={{ height: 40 }} />
-          <span className="note">Carregando apps da TV…</span>
+          <span className="note">{t('apps.loadingTv')}</span>
         </div>
       ) : error ? (
         <div className="tv-apps-state">
-          <span className="err">Não foi possível carregar os apps da TV</span>
-          <button type="button" className="btn" onClick={reload}>Tentar de novo</button>
+          <span className="err">{t('apps.loadFailed')}</span>
+          <button type="button" className="btn" onClick={reload}>{t('apps.retry')}</button>
         </div>
       ) : shown.length === 0 ? (
-        <div className="note">Nenhum app encontrado</div>
+        <div className="note">{t('apps.none')}</div>
       ) : (
         <div className="tv-apps-list">
           {shown.map((a) => {
@@ -128,7 +132,7 @@ function TVAppsSection({ apps }: { apps: AppsApi }) {
                   className="tv-app-open"
                   onClick={() => launch(favId, a.id, a.name)}
                   disabled={!connected}
-                  title={`Abrir ${a.name}`}
+                  title={t('apps.open', { name: a.name })}
                 >
                   <AppIcon id={favId} name={a.name} brand="#8B5CF6" size={16} />
                   <span>{a.name}</span>
@@ -138,8 +142,8 @@ function TVAppsSection({ apps }: { apps: AppsApi }) {
                   className={`tv-app-star ${fav ? 'on' : ''}`}
                   onClick={() => (fav ? apps.remove(favId) : apps.addTV(a, info?.platform || 'roku'))}
                   aria-pressed={fav}
-                  aria-label={fav ? `Remover ${a.name} dos favoritos` : `Adicionar ${a.name} aos favoritos`}
-                  title={fav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                  aria-label={fav ? t('apps.unfavoriteNamed', { name: a.name }) : t('apps.favoriteNamed', { name: a.name })}
+                  title={fav ? t('apps.unfavorite') : t('apps.favorite')}
                 >
                   <Star size={14} fill={fav ? 'currentColor' : 'none'} />
                 </button>
@@ -155,7 +159,8 @@ function TVAppsSection({ apps }: { apps: AppsApi }) {
 function AddAppDialog({ apps, onClose }: { apps: AppsApi; onClose: () => void }) {
   const [name, setName] = useState('')
   const [pkg, setPkg] = useState('')
-  const [err, setErr] = useState('')
+  const [err, setErr] = useState<Key | ''>('')
+  const { t } = useI18n()
   const { info } = useRemote()
   const platform = info?.platform || undefined
   const favIds = appsForPlatform(apps.favorites, platform)
@@ -163,19 +168,19 @@ function AddAppDialog({ apps, onClose }: { apps: AppsApi; onClose: () => void })
 
   const addCustom = (e: FormEvent) => {
     e.preventDefault()
-    if (!name.trim()) return setErr('Dê um nome ao atalho.')
-    if (!isPackageName(pkg.trim())) return setErr('Pacote inválido. Exemplo: com.spotify.tv.android')
+    if (!name.trim()) return setErr('apps.nameRequired')
+    if (!isPackageName(pkg.trim())) return setErr('apps.badPackage')
     apps.addCustom(name.trim(), pkg.trim())
     onClose()
   }
 
   return (
-    <Modal title="Adicionar app" icon={<LayoutGrid size={20} />} onClose={onClose} className="wide">
+    <Modal title={t('apps.add')} icon={<LayoutGrid size={20} />} onClose={onClose} className="wide">
       <div className="dialog-body">
         {can(info, 'appList') && <TVAppsSection apps={apps} />}
         {available.length > 0 && (
           <>
-            <span className="label">Sugestões</span>
+            <span className="label">{t('apps.suggestions')}</span>
             <div className="catalog">
               {available.map((a: AppDef) => (
                 <button key={a.id} className="catalog-item" onClick={() => apps.add(a.id)} style={{ ['--brand' as any]: a.brand }}>
@@ -189,13 +194,13 @@ function AddAppDialog({ apps, onClose }: { apps: AppsApi; onClose: () => void })
         )}
 
         <form onSubmit={addCustom} className="custom-app">
-          <span className="label">Outro app (pelo pacote Android)</span>
+          <span className="label">{t('apps.other')}</span>
           <div className="field-row">
-            <input placeholder="Nome" value={name} onChange={(e) => { setName(e.target.value); setErr('') }} />
-            <input placeholder="com.exemplo.app" value={pkg} spellCheck={false} onChange={(e) => { setPkg(e.target.value); setErr('') }} />
-            <button type="submit" className="btn primary">Adicionar</button>
+            <input placeholder={t('apps.namePlaceholder')} value={name} onChange={(e) => { setName(e.target.value); setErr('') }} />
+            <input placeholder={t('apps.pkgPlaceholder')} value={pkg} spellCheck={false} onChange={(e) => { setPkg(e.target.value); setErr('') }} />
+            <button type="submit" className="btn primary">{t('apps.addShort')}</button>
           </div>
-          {err && <div className="err">{err}</div>}
+          {err && <div className="err">{t(err)}</div>}
         </form>
       </div>
     </Modal>

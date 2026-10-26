@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowRight, CornerDownLeft, Search } from 'lucide-react'
 import { AppIcon } from '../BrandLogos'
 import { AppDef } from '../lib/apps'
+import { useI18n } from '../hooks/useI18n'
 import { useRemote } from '../hooks/useRemote'
 import { can } from '../lib/capabilities'
 import { Command, suggest } from '../lib/commands'
@@ -18,11 +19,12 @@ export function QuickCommand({ apps, onRun, onClose }: Props) {
   const [query, setQuery] = useState('')
   const [index, setIndex] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
+  const { t, lang } = useI18n()
   const { info } = useRemote()
   const toast = can(info, 'toast')
   const inputs = can(info, 'inputs')
   const platform = info?.platform
-  const results = useMemo(() => suggest(query, apps, { toast, inputs, platform }), [query, apps, toast, inputs, platform])
+  const results = useMemo(() => suggest(query, apps, { toast, inputs, platform, lang }), [query, apps, toast, inputs, platform, lang])
 
   useEffect(() => setIndex(0), [query])
   useEffect(() => {
@@ -37,13 +39,13 @@ export function QuickCommand({ apps, onRun, onClose }: Props) {
 
   return (
     <div className="overlay palette-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="glass palette" role="dialog" aria-modal="true" aria-label="Comandos rápidos">
+      <div className="glass palette" role="dialog" aria-modal="true" aria-label={t('sidebar.quickCommands')}>
         <div className="palette-input">
           <Search size={16} />
           <input
             autoFocus
             value={query}
-            placeholder="Digite um comando… (abrir youtube, volume 30, mudo)"
+            placeholder={t('palette.placeholder')}
             spellCheck={false}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -67,7 +69,7 @@ export function QuickCommand({ apps, onRun, onClose }: Props) {
         </div>
 
         <div className="palette-list" ref={listRef} role="listbox">
-          {results.length === 0 && <div className="palette-empty">Nenhum comando para “{query}”.</div>}
+          {results.length === 0 && <div className="palette-empty">{t('palette.empty', { query })}</div>}
           {results.map((c, i) => (
             <button
               key={c.id}
@@ -90,9 +92,9 @@ export function QuickCommand({ apps, onRun, onClose }: Props) {
         </div>
 
         <div className="palette-foot">
-          <span><kbd>↑</kbd><kbd>↓</kbd> escolher</span>
-          <span><kbd>Enter</kbd> executar</span>
-          <span><kbd>Ctrl</kbd><kbd>K</kbd> abrir/fechar</span>
+          <span><kbd>↑</kbd><kbd>↓</kbd> {t('palette.choose')}</span>
+          <span><kbd>Enter</kbd> {t('palette.run')}</span>
+          <span><kbd>Ctrl</kbd><kbd>K</kbd> {t('palette.toggle')}</span>
         </div>
       </div>
     </div>

@@ -418,6 +418,7 @@ kbd + kbd { margin-left: 2px; }
 
 /* ── settings: switch (input.* to win over .dialog input) ─ */
 .pref { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; cursor: pointer; }
+.lang-select { height: 30px; border-radius: 10px; border: 1px solid var(--stroke); background: rgba(0, 0, 0, 0.25); color: var(--text); font: inherit; font-size: 12.5px; padding: 0 8px; outline: none; cursor: pointer; color-scheme: dark; }
 input.switch {
   appearance: none; padding: 0; min-width: 0; flex-shrink: 0; width: 36px; height: 20px; border-radius: 999px; cursor: pointer; position: relative;
   background: var(--glass-strong); border: 1px solid var(--stroke); transition: background 0.25s var(--ease), border-color 0.25s;
