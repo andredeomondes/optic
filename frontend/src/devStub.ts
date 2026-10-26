@@ -11,10 +11,13 @@ let closeToTray = true
 let size = { w: 820, h: 880 }
 let maximised = false
 let muted = false
+let webosPaired = false
+let webosVolume = 12
 const ROKU_HOST = '192.168.0.50'
+const WEBOS_HOST = '192.168.0.40'
 let host = ''
 const pushState = () =>
-  emit('state', host === ROKU_HOST ? { on: true, volume: 0, volumeMax: 0, muted: false } : { on: true, volume, volumeMax: 100, muted })
+  emit('state', host === ROKU_HOST ? { on: true, volume: 0, volumeMax: 0, muted: false } : { on: true, volume: host === WEBOS_HOST ? webosVolume : volume, volumeMax: 100, muted })
 
 const w = window as any
 
@@ -51,7 +54,7 @@ w.go = {
           { name: 'UnionTV', model: 'UnionTV', ip: '192.168.0.18', remotev2: true, platform: 'androidtv', mac: 'AA:BB:CC:DD:EE:FF' },
           { name: 'Quarto', model: 'Chromecast', ip: '192.168.0.71', remotev2: true, platform: 'androidtv' },
           { name: 'Sala Roku', model: 'TCL 43S5', ip: ROKU_HOST, remotev2: false, platform: 'roku' },
-          { name: 'LG Sala', model: 'OLED55C3', ip: '192.168.0.40', remotev2: false, platform: 'webos' },
+          { name: 'LG Sala', model: 'OLED55C1', ip: WEBOS_HOST, remotev2: false, platform: 'webos' },
         ]
       },
       async LastHost() {
@@ -66,6 +69,15 @@ w.go = {
           return {
             model: 'TCL 43S5', vendor: 'TCL', version: '12.5', appVersion: '', platform: 'roku',
             capabilities: { text: true, appList: true, absoluteVolume: false, powerOn: true, inputs: false, pointer: false, toast: false },
+          }
+        }
+        if (ip === WEBOS_HOST) {
+          if (!webosPaired) throw new Error('NOT_PAIRED')
+          emit('trace', '>', 'register')
+          setTimeout(pushState, 300)
+          return {
+            model: 'OLED55C1', vendor: 'LG', version: '6.0', appVersion: '', platform: 'webos',
+            capabilities: { text: true, appList: true, absoluteVolume: true, powerOn: false, inputs: true, pointer: false, toast: true },
           }
         }
         emit('trace', '<', `1 { 1: 639 2 { 1: "UnionTV" 2: "TCL" } }`)
@@ -89,7 +101,8 @@ w.go = {
       },
       async SetVolume(level: number) {
         await wait(300)
-        volume = level
+        if (host === WEBOS_HOST) webosVolume = level
+        else volume = level
         pushState()
       },
       async LaunchApp(id: string) {
@@ -114,11 +127,24 @@ w.go = {
         await wait(300)
         emit('trace', '>', `wol ${ip}`)
       },
-      async StartPairing() {
-        return 'UnionTV'
+      async StartPairing(ip: string) {
+        return ip === WEBOS_HOST ? { name: 'LG Sala', mode: 'prompt' } : { name: 'UnionTV', mode: 'code' }
+      },
+      async Inputs() {
+        return [
+          { id: 'HDMI_1', name: 'HDMI 1' },
+          { id: 'HDMI_2', name: 'HDMI 2' },
+        ]
+      },
+      async SwitchInput(id: string) {
+        emit('trace', '>', `input ${id}`)
+      },
+      async Toast(msg: string) {
+        emit('trace', '>', `toast (${msg.length} caracteres)`)
       },
       async FinishPairing() {
-        await wait(600)
+        await wait(1500)
+        webosPaired = true
       },
       async CancelPairing() {},
       async TrayAvailable() {

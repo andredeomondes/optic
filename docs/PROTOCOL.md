@@ -56,3 +56,25 @@ HTTP simples na porta **8060**, sem pareamento nem criptografia. Endpoints usado
 | GET | `/query/device-info` | nome, modelo, `power-mode`, MACs |
 
 A TV não envia eventos: o OPTIC consulta `device-info` e `active-app` a cada 3 s. **HTTP 403** significa que "Controle por apps móveis" está limitado ou desativado na TV.
+
+## LG webOS (SSAP)
+
+JSON por WebSocket em `wss://<ip>:3001` (certificado autoassinado; TVs antigas: `ws://<ip>:3000`).
+
+- **Registro:** `{"type":"register","payload":{"pairingType":"PROMPT","manifest":…}}`. A TV mostra "Permitir?"; ao aceitar, responde `registered` com a `client-key`, guardada em `webos_keys.json`. Nas próximas conexões a chave vai no registro; se a TV pedir confirmação de novo ou recusar, o OPTIC pareia outra vez.
+- **Requisições:** `{"type":"request","id":…,"uri":"ssap://…","payload":…}`; `subscribe` recebe atualizações com o mesmo id.
+
+| URI | Uso |
+|---|---|
+| `ssap://audio/getVolume` (subscribe) | volume, máximo e mudo |
+| `ssap://audio/setVolume` | volume exato |
+| `ssap://system/turnOff` | desligar |
+| `ssap://com.webos.service.ime/insertText` | texto no campo focado |
+| `ssap://com.webos.applicationManager/listLaunchPoints` | apps instalados |
+| `ssap://system.launcher/launch` | abrir app |
+| `ssap://com.webos.applicationManager/getForegroundAppInfo` (subscribe) | app em primeiro plano |
+| `ssap://tv/getExternalInputList`, `ssap://tv/switchInput` | entradas (HDMI…) |
+| `ssap://system.notifications/createToast` | mensagem na tela |
+| `ssap://com.webos.service.networkinput/getPointerInputSocket` | socket de ponteiro para teclas |
+
+**Teclas:** pelo socket de ponteiro (outro WebSocket no mesmo host), um frame de texto por tecla: `type:button\nname:UP\n\n`.

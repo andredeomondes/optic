@@ -6,7 +6,7 @@
 
 **Controle sua TV pelo computador.** Sem hardware extra, sem nuvem, sem conta.
 
-Controle remoto desktop open source para **Android TV, Google TV e Roku**, falando direto com a TV pela rede local: Android TV Remote protocol v2, implementado do zero em Go, e o protocolo oficial da Roku (ECP).
+Controle remoto desktop open source para **Android TV, Google TV, Roku e LG webOS**, falando direto com a TV pela rede local: Android TV Remote protocol v2, implementado do zero em Go, o protocolo oficial da Roku (ECP) e o da LG (SSAP).
 
 [**Baixar**](https://github.com/andredeomondes/optic/releases/latest) ·
 [**Guia de instalação e uso**](https://andredeomondes.github.io/optic/) ·
@@ -25,6 +25,7 @@ Controle remoto desktop open source para **Android TV, Google TV e Roku**, falan
 
 - **Encontra a TV sozinho** na rede (mDNS e SSDP) e pareia com o código de 6 caracteres que aparece na tela.
 - **TVs Roku** (Philco, AOC, TCL Roku…): sem pareamento; teclas, texto, apps do catálogo e ligar/desligar.
+- **TVs LG (webOS)**: aceite **Permitir** na TV uma vez; volume exato, texto, apps e mensagem na tela (`Ctrl+K` › "avisar na tv …").
 - **Liga a TV** pela rede (Wake-on-LAN), depois da primeira conexão com ela ligada.
 - **Controle completo:** D-pad, voltar, início, volume (com slider), canais, mídia e power.
 - **Abre apps** com um clique: YouTube, Netflix, Prime Video, Globoplay e qualquer outro pelo nome do pacote (na Roku, os apps do catálogo).
@@ -39,7 +40,7 @@ Controle remoto desktop open source para **Android TV, Google TV e Roku**, falan
 - **Tela cheia** com `F11` e janela maximizável.
 - **100% local:** o controle não passa por servidores. O certificado do pareamento fica só no seu PC.
 
-> Para ligar a TV pela rede, a opção **Ligar pela rede** (ou *Network standby*) precisa estar ativa na TV. Samsung e LG já aparecem na lista de TVs; o suporte a elas chega nas próximas versões.
+> Para ligar a TV pela rede, a opção **Ligar pela rede** (ou *Network standby*) precisa estar ativa na TV. Samsung já aparece na lista de TVs; o suporte chega nas próximas versões.
 
 <table>
   <tr>
@@ -71,6 +72,10 @@ O passo a passo, incluindo os avisos do SmartScreen e do Gatekeeper (os binário
 4. Pronto. Das próximas vezes o OPTIC reconecta sozinho.
 
 > Roku não responde? Na TV: Configurações › Sistema › Configurações avançadas do sistema › Controle por apps móveis › Acesso à rede: **Padrão**.
+
+> LG não liga pela rede? Ative na TV *LG Connect Apps* e *Ligar via Wi-Fi* (ou *Ligar com Mobile*), conforme o modelo.
+>
+> Suporte a LG testado com um simulador do protocolo; se algo não funcionar na sua TV, abra uma issue com o relatório de diagnóstico.
 
 > Netflix e Prime Video usam teclado próprio, que não recebe texto pelo protocolo. Use as setas e o OK, ou a busca global da TV.
 

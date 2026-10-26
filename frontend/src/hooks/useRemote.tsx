@@ -23,6 +23,7 @@ function useRemoteState() {
   const [info, setInfo] = useState<DeviceInfo | null>(null)
   const [tvState, setTvState] = useState<TVState | null>(null)
   const [error, setError] = useState('')
+  const [pairingMode, setPairingMode] = useState<'code' | 'prompt'>('code')
   const [connectedAt, setConnectedAt] = useState<number | null>(null)
   const [log, setLog] = useState<LogLine[]>([])
   const [feedback, setFeedback] = useState<Record<string, Feedback>>({})
@@ -30,6 +31,9 @@ function useRemoteState() {
   const [toast, setToast] = useState<Toast | null>(null)
   const toastTimer = useRef<number>()
   const rescanTimer = useRef<number>()
+  // Bumped on every connect/cancel so a late prompt-pairing result is ignored.
+  const pairRun = useRef(0)
+  const connectRef = useRef<(ip: string) => Promise<void>>(async () => {})
   const scanRef = useRef<() => Promise<void>>(async () => {})
 
   const connected = status === 'connected'
@@ -75,6 +79,7 @@ function useRemoteState() {
 
   const connect = useCallback(
     async (ip: string) => {
+      const attempt = ++pairRun.current
       setHost(ip)
       setError('')
       // Drop the previous TV's capabilities and live state while reconnecting.
@@ -91,9 +96,28 @@ function useRemoteState() {
         const msg = api.errText(e)
         if (msg.includes('NOT_PAIRED')) {
           try {
-            await api.StartPairing(ip)
+            const p = await api.StartPairing(ip)
+            if (pairRun.current !== attempt) return
+            setPairingMode(p.mode)
             setStatus('pairing')
-            addLog('•', 'TV mostrando código de pareamento')
+            if (p.mode === 'prompt') {
+              addLog('•', 'aguardando confirmação na TV')
+              api.FinishPairing('').then(
+                () => {
+                  if (pairRun.current !== attempt) return
+                  addLog('•', 'pareado com sucesso')
+                  notify('ok', 'TV pareada')
+                  connectRef.current(ip)
+                },
+                (fe) => {
+                  if (pairRun.current !== attempt) return
+                  setError(api.errText(fe))
+                  setStatus('error')
+                },
+              )
+            } else {
+              addLog('•', 'TV mostrando código de pareamento')
+            }
           } catch (pe) {
             setError(api.errText(pe))
             setStatus('error')
@@ -104,8 +128,9 @@ function useRemoteState() {
         }
       }
     },
-    [addLog],
+    [addLog, notify],
   )
+  connectRef.current = connect
 
   const scan = useCallback(async () => {
     setScanning(true)
@@ -151,6 +176,7 @@ function useRemoteState() {
   )
 
   const cancelPairing = useCallback(() => {
+    pairRun.current++
     api.CancelPairing()
     setStatus('idle')
   }, [])
@@ -187,6 +213,11 @@ function useRemoteState() {
 
   const sendText = useCallback(
     (text: string) => run('text', () => api.SendText(text), 'Texto enviado para a TV'),
+    [run],
+  )
+
+  const sendToast = useCallback(
+    (text: string) => run('toast', () => api.Toast(text), 'Mensagem enviada para a TV'),
     [run],
   )
 
@@ -258,8 +289,8 @@ function useRemoteState() {
   return {
     tvs, scanning, scan, addManual, removeManual,
     status, connected, host, info, tvState, error, connectedAt,
-    connect, finishPairing, cancelPairing,
-    press, pressedKey, launch, sendText, pasteToTV, setVolume, powerOn, run,
+    connect, finishPairing, cancelPairing, pairingMode,
+    press, pressedKey, launch, sendText, sendToast, pasteToTV, setVolume, powerOn, run,
     feedback, toast, dismissToast: () => setToast(null), notify,
     log, clearLog: () => setLog([]),
   }

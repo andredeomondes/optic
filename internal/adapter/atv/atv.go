@@ -123,6 +123,7 @@ func (s session) LaunchApp(nameOrURI string) error {
 
 type pairing struct{ p *atvremote.Pairing }
 
+func (p pairing) Mode() string       { return domain.PairingCode }
 func (p pairing) ServerName() string { return p.p.ServerName }
 func (p pairing) Close() error       { return p.p.Close() }
 func (p pairing) Finish(code string) error {

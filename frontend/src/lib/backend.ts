@@ -6,6 +6,7 @@ export {
   Connect,
   Discover,
   FinishPairing,
+  Inputs,
   InstalledApps,
   LastHost,
   LatestRelease,
@@ -18,6 +19,8 @@ export {
   SetCompactMode,
   SetVolume,
   StartPairing,
+  SwitchInput,
+  Toast,
   ToggleFullscreen,
   TrayAvailable,
 } from '../../wailsjs/go/main/App'

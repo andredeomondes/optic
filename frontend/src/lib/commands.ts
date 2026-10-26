@@ -2,12 +2,14 @@
 // for commands that take an argument. Add a command by appending to STATIC
 // or a parser to PARSERS.
 import type { AppDef } from './apps'
+import type { Platform } from './types'
 
 export type Action =
   | { type: 'key'; key: string }
   | { type: 'launch'; app: AppDef }
   | { type: 'volume'; level: number }
   | { type: 'text'; text: string }
+  | { type: 'toast'; text: string }
   /** minutes 0 cancels the timer. */
   | { type: 'sleep'; minutes: number }
   | { type: 'link'; url: string; label: string }
@@ -60,7 +62,10 @@ export const normalize = (s: string) =>
   s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
 
 /** input is normalized; raw keeps the user's casing and accents. */
-type Parser = (input: string, apps: AppDef[], raw: string) => Command[]
+type Parser = (input: string, apps: AppDef[], raw: string, ctx: Context) => Command[]
+
+/** What the connected TV can do; parsers for optional features check it. */
+export type Context = { toast?: boolean; platform?: Platform }
 
 const PARSERS: Parser[] = [
   // "volume 30", "vol 30", "volume em 30"
@@ -101,12 +106,20 @@ const PARSERS: Parser[] = [
     if (!m) return []
     return [{ id: 'type-text', title: `Digitar “${m[1]}”`, hint: 'envia para o campo de texto aberto', icon: 'text', action: { type: 'text', text: m[1] } }]
   },
+  // "avisar na tv a janta saiu", "mensagem oi" (only when the TV can show toasts)
+  (_input, _apps, raw, ctx) => {
+    if (!ctx.toast) return []
+    const m = raw.trim().match(/^(?:avisar\s+na\s+tv|mensagem)\s+(.+)$/i)
+    const text = m?.[1].trim()
+    if (!text) return []
+    return [{ id: 'toast', title: `Avisar na TV: “${text}”`, hint: 'mostra uma mensagem na tela', icon: 'text', action: { type: 'toast', text } }]
+  },
 ]
 
 /** Returns ranked suggestions for the palette. */
-export function suggest(raw: string, apps: AppDef[]): Command[] {
+export function suggest(raw: string, apps: AppDef[], ctx: Context = {}): Command[] {
   const input = normalize(raw)
-  const dynamic = input ? PARSERS.flatMap((p) => p(input, apps, raw)) : []
+  const dynamic = input ? PARSERS.flatMap((p) => p(input, apps, raw, ctx)) : []
 
   const appCommands: Command[] = apps.map((a) => ({
     id: `open-${a.id}`,
@@ -117,7 +130,9 @@ export function suggest(raw: string, apps: AppDef[]): Command[] {
     action: { type: 'launch', app: a },
   }))
 
-  const pool = [...STATIC, ...appCommands]
+  // LG has no input key; switching inputs is not offered there yet.
+  const statics = ctx.platform === 'webos' ? STATIC.filter((c) => c.id !== 'input') : STATIC
+  const pool = [...statics, ...appCommands]
   const matched = input
     ? pool.filter((c) => [c.title, ...(c.keywords ?? [])].some((k) => normalize(k).includes(input)))
     : pool

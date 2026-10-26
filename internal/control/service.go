@@ -26,6 +26,14 @@ const releaseTimeout = 5 * time.Second
 // back to Wake-on-LAN.
 const networkPowerTimeout = 3 * time.Second
 
+// volumeSetTimeout bounds an absolute volume change.
+const volumeSetTimeout = 5 * time.Second
+
+// maxToastRunes caps the message shown on the TV.
+const maxToastRunes = 200
+
+var errEmptyToast = errors.New("Mensagem vazia")
+
 // Deps are the ports the service needs.
 type Deps struct {
 	Discoverer domain.Discoverer
@@ -216,17 +224,18 @@ func (s *Service) Disconnect() {
 	}
 }
 
-// StartPairing makes the TV show a code and returns the TV's name.
-func (s *Service) StartPairing(ctx context.Context, host string) (string, error) {
+// StartPairing makes the TV show a code or a prompt and returns the TV's
+// name and the pairing mode.
+func (s *Service) StartPairing(ctx context.Context, host string) (domain.PairingInfo, error) {
 	s.CancelPairing()
 	p, err := s.d.Pairer.StartPairing(ctx, host)
 	if err != nil {
-		return "", err
+		return domain.PairingInfo{}, err
 	}
 	s.mu.Lock()
 	s.pairing = p
 	s.mu.Unlock()
-	return p.ServerName(), nil
+	return domain.PairingInfo{Name: p.ServerName(), Mode: p.Mode()}, nil
 }
 
 // FinishPairing submits the code shown on the TV. On domain.ErrCodeTypo the
@@ -242,7 +251,13 @@ func (s *Service) FinishPairing(code string) error {
 	if errors.Is(err, domain.ErrCodeTypo) {
 		return err
 	}
-	s.CancelPairing()
+	// Only end our own pairing: a newer one may have started while Finish blocked.
+	s.mu.Lock()
+	if s.pairing == p {
+		s.pairing = nil
+	}
+	s.mu.Unlock()
+	p.Close()
 	return err
 }
 
@@ -283,8 +298,9 @@ func (s *Service) LaunchApp(nameOrURI string) error {
 	return sess.LaunchApp(nameOrURI)
 }
 
-// SetVolume steps the volume to level with VOLUME_UP/DOWN presses: the
-// protocol reports the level but cannot set it directly.
+// SetVolume sets the volume to level: directly when the session can, else by
+// stepping with VOLUME_UP/DOWN presses (the protocol reports the level but
+// cannot set it).
 func (s *Service) SetVolume(level int) error {
 	sess, err := s.current()
 	if err != nil {
@@ -294,6 +310,15 @@ func (s *Service) SetVolume(level int) error {
 		return domain.ErrVolumeNotReported
 	}
 	st := sess.State()
+	if v, ok := sess.(domain.VolumeSetter); ok {
+		top := st.VolumeMax
+		if top == 0 {
+			top = 100
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), volumeSetTimeout)
+		defer cancel()
+		return v.SetVolume(ctx, max(0, min(level, top)))
+	}
 	if st.VolumeMax == 0 {
 		return domain.ErrVolumeUnknown
 	}
@@ -311,6 +336,52 @@ func (s *Service) SetVolume(level int) error {
 		}
 	}
 	return nil
+}
+
+// Inputs lists the external inputs of the connected TV.
+func (s *Service) Inputs(ctx context.Context) ([]domain.Input, error) {
+	sess, err := s.current()
+	if err != nil {
+		return nil, err
+	}
+	l, ok := sess.(domain.InputLister)
+	if !ok {
+		return nil, domain.ErrUnsupported{Platform: sess.Info().Platform}
+	}
+	return l.Inputs(ctx)
+}
+
+// SwitchInput changes the TV to the input with the given id.
+func (s *Service) SwitchInput(ctx context.Context, id string) error {
+	sess, err := s.current()
+	if err != nil {
+		return err
+	}
+	l, ok := sess.(domain.InputLister)
+	if !ok {
+		return domain.ErrUnsupported{Platform: sess.Info().Platform}
+	}
+	return l.SwitchInput(ctx, id)
+}
+
+// Toast shows msg on the TV, trimmed and capped at maxToastRunes.
+func (s *Service) Toast(ctx context.Context, msg string) error {
+	sess, err := s.current()
+	if err != nil {
+		return err
+	}
+	n, ok := sess.(domain.Notifier)
+	if !ok {
+		return domain.ErrUnsupported{Platform: sess.Info().Platform}
+	}
+	msg = strings.TrimSpace(msg)
+	if msg == "" {
+		return errEmptyToast
+	}
+	if r := []rune(msg); len(r) > maxToastRunes {
+		msg = string(r[:maxToastRunes])
+	}
+	return n.Toast(ctx, msg)
 }
 
 func (s *Service) current() (domain.Session, error) {

@@ -9,6 +9,15 @@ const CATALOG: AppDef[] = [
   { id: 'netflix', name: 'Netflix', pkg: 'com.netflix.ninja', brand: '#e50914' },
 ]
 
+test('toast command', () => {
+  const ctx = { toast: true }
+  assert.deepEqual(suggest('avisar na tv oi', CATALOG, ctx)[0].action, { type: 'toast', text: 'oi' })
+  assert.deepEqual(suggest('Mensagem  A Janta Saiu ', CATALOG, ctx)[0].action, { type: 'toast', text: 'A Janta Saiu' })
+  assert.ok(!suggest('mensagem   ', CATALOG, ctx).some((c) => c.action.type === 'toast'))
+  assert.ok(!suggest('avisar na tv', CATALOG, ctx).some((c) => c.action.type === 'toast'))
+  assert.ok(!suggest('avisar na tv oi', CATALOG).some((c) => c.action.type === 'toast'))
+})
+
 test('normalize strips accents and case', () => {
   assert.equal(normalize('  Início   DA TV '), 'inicio da tv')
 })
@@ -65,4 +74,11 @@ test('sleep timer rejects minutes outside 1-240', () => {
   for (const q of ['timer 0', 'timer 241', 'desligar em 500 min']) {
     assert.ok(!suggest(q, CATALOG).some((c) => c.action.type === 'sleep' && c.action.minutes > 0), q)
   }
+})
+
+test('input command is hidden on webos only', () => {
+  const has = (platform?: 'webos' | 'roku') => suggest('hdmi', CATALOG, { platform }).some((c) => c.id === 'input')
+  assert.ok(has())
+  assert.ok(has('roku'))
+  assert.ok(!has('webos'))
 })

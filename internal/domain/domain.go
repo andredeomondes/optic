@@ -93,6 +93,12 @@ type App struct {
 	Name string `json:"name"`
 }
 
+// Input is an external input (HDMI, AV...) a TV can switch to.
+type Input struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // State is the live state pushed by the TV.
 type State struct {
 	On        bool   `json:"on"`
@@ -164,8 +170,23 @@ type Connector interface {
 	Connect(ctx context.Context, host string, events SessionEvents) (Session, error)
 }
 
-// PairingSession is an in-progress pairing: the TV is showing a code.
+// Pairing modes: the TV shows a code to type, or a prompt to accept.
+const (
+	PairingCode   = "code"
+	PairingPrompt = "prompt"
+)
+
+// PairingInfo is what the UI needs once a pairing starts: the TV's name and
+// whether to ask for a code or tell the user to accept a prompt on the TV.
+type PairingInfo struct {
+	Name string `json:"name"`
+	Mode string `json:"mode"`
+}
+
+// PairingSession is an in-progress pairing: the TV is showing a code or a
+// prompt, as Mode says.
 type PairingSession interface {
+	Mode() string
 	ServerName() string
 	// Finish submits the code. ErrCodeTypo keeps the session usable.
 	Finish(code string) error
@@ -203,6 +224,22 @@ type WakeSender interface {
 // AppLister is implemented by sessions that can list installed apps.
 type AppLister interface {
 	Apps(ctx context.Context) ([]App, error)
+}
+
+// VolumeSetter is implemented by sessions that can set an absolute volume.
+type VolumeSetter interface {
+	SetVolume(ctx context.Context, level int) error
+}
+
+// InputLister is implemented by sessions that can list and switch inputs.
+type InputLister interface {
+	Inputs(ctx context.Context) ([]Input, error)
+	SwitchInput(ctx context.Context, id string) error
+}
+
+// Notifier is implemented by sessions that can show a message on the TV.
+type Notifier interface {
+	Toast(ctx context.Context, msg string) error
 }
 
 // NetworkPower turns a TV on over the network, without Wake-on-LAN.

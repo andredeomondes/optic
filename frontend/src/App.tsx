@@ -74,6 +74,7 @@ function Shell() {
     if (a.type === 'link') remote.launch('link', a.url, a.label)
     if (a.type === 'volume') remote.setVolume(a.level)
     if (a.type === 'text') remote.sendText(a.text)
+    if (a.type === 'toast') remote.sendToast(a.text)
   }
 
   return (
@@ -114,7 +115,7 @@ function Shell() {
 
       {palette && <QuickCommand apps={apps.catalog} onRun={runCommand} onClose={() => setPalette(false)} />}
       {settings && <SettingsPanel updates={updates} onClose={() => setSettings(false)} />}
-      {remote.status === 'pairing' && <PairDialog onSubmit={remote.finishPairing} onCancel={remote.cancelPairing} />}
+      {remote.status === 'pairing' && <PairDialog mode={remote.pairingMode} onSubmit={remote.finishPairing} onCancel={remote.cancelPairing} />}
     </div>
   )
 }

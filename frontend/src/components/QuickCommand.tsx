@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowRight, CornerDownLeft, Search } from 'lucide-react'
 import { AppIcon } from '../BrandLogos'
 import { AppDef } from '../lib/apps'
+import { useRemote } from '../hooks/useRemote'
+import { can } from '../lib/capabilities'
 import { Command, suggest } from '../lib/commands'
 import { CommandIcon } from './icons'
 
@@ -16,7 +18,10 @@ export function QuickCommand({ apps, onRun, onClose }: Props) {
   const [query, setQuery] = useState('')
   const [index, setIndex] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
-  const results = useMemo(() => suggest(query, apps), [query, apps])
+  const { info } = useRemote()
+  const toast = can(info, 'toast')
+  const platform = info?.platform
+  const results = useMemo(() => suggest(query, apps, { toast, platform }), [query, apps, toast, platform])
 
   useEffect(() => setIndex(0), [query])
   useEffect(() => {
