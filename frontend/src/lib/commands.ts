@@ -2,6 +2,7 @@
 // for commands that take an argument. Add a command by appending to STATIC
 // or a parser to PARSERS.
 import type { AppDef } from './apps'
+import type { Platform } from './types'
 
 export type Action =
   | { type: 'key'; key: string }
@@ -64,7 +65,7 @@ export const normalize = (s: string) =>
 type Parser = (input: string, apps: AppDef[], raw: string, ctx: Context) => Command[]
 
 /** What the connected TV can do; parsers for optional features check it. */
-export type Context = { toast?: boolean }
+export type Context = { toast?: boolean; platform?: Platform }
 
 const PARSERS: Parser[] = [
   // "volume 30", "vol 30", "volume em 30"
@@ -129,7 +130,9 @@ export function suggest(raw: string, apps: AppDef[], ctx: Context = {}): Command
     action: { type: 'launch', app: a },
   }))
 
-  const pool = [...STATIC, ...appCommands]
+  // LG has no input key; switching inputs is not offered there yet.
+  const statics = ctx.platform === 'webos' ? STATIC.filter((c) => c.id !== 'input') : STATIC
+  const pool = [...statics, ...appCommands]
   const matched = input
     ? pool.filter((c) => [c.title, ...(c.keywords ?? [])].some((k) => normalize(k).includes(input)))
     : pool

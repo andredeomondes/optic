@@ -20,7 +20,8 @@ export function QuickCommand({ apps, onRun, onClose }: Props) {
   const listRef = useRef<HTMLDivElement>(null)
   const { info } = useRemote()
   const toast = can(info, 'toast')
-  const results = useMemo(() => suggest(query, apps, { toast }), [query, apps, toast])
+  const platform = info?.platform
+  const results = useMemo(() => suggest(query, apps, { toast, platform }), [query, apps, toast, platform])
 
   useEffect(() => setIndex(0), [query])
   useEffect(() => {

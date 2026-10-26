@@ -1,4 +1,5 @@
 import { House, Pause, Play, Rewind, FastForward, Settings, SkipBack, SkipForward, Undo2 } from 'lucide-react'
+import { useRemote } from '../hooks/useRemote'
 import { RemoteButton } from './RemoteButton'
 
 const ICON = { size: 18, strokeWidth: 1.8 }
@@ -20,12 +21,17 @@ export function NavButtons() {
   )
 }
 
+/** LG has no previous/next keys, so those two are hidden on webOS. */
 export function MediaControls() {
+  const { info } = useRemote()
+  const skip = info?.platform !== 'webos'
   return (
-    <div className="media-row">
-      <RemoteButton tvKey="MEDIA_PREVIOUS" label="Anterior">
-        <SkipBack {...ICON} />
-      </RemoteButton>
+    <div className="media-row" style={skip ? undefined : { gridTemplateColumns: 'repeat(3, 1fr)' }}>
+      {skip && (
+        <RemoteButton tvKey="MEDIA_PREVIOUS" label="Anterior">
+          <SkipBack {...ICON} />
+        </RemoteButton>
+      )}
       <RemoteButton tvKey="MEDIA_REWIND" label="Retroceder">
         <Rewind {...ICON} />
       </RemoteButton>
@@ -38,9 +44,11 @@ export function MediaControls() {
       <RemoteButton tvKey="MEDIA_FAST_FORWARD" label="Avançar">
         <FastForward {...ICON} />
       </RemoteButton>
-      <RemoteButton tvKey="MEDIA_NEXT" label="Próximo">
-        <SkipForward {...ICON} />
-      </RemoteButton>
+      {skip && (
+        <RemoteButton tvKey="MEDIA_NEXT" label="Próximo">
+          <SkipForward {...ICON} />
+        </RemoteButton>
+      )}
     </div>
   )
 }

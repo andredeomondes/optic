@@ -75,3 +75,10 @@ test('sleep timer rejects minutes outside 1-240', () => {
     assert.ok(!suggest(q, CATALOG).some((c) => c.action.type === 'sleep' && c.action.minutes > 0), q)
   }
 })
+
+test('input command is hidden on webos only', () => {
+  const has = (platform?: 'webos' | 'roku') => suggest('hdmi', CATALOG, { platform }).some((c) => c.id === 'input')
+  assert.ok(has())
+  assert.ok(has('roku'))
+  assert.ok(!has('webos'))
+})
