@@ -21,12 +21,14 @@ var (
 	ErrPromptRejected = errors.New("A TV recusou a conexão. Tente de novo e escolha Permitir.")
 	// ErrPromptTimeout means nobody answered the prompt on the TV in time.
 	ErrPromptTimeout = errors.New("A TV não respondeu ao pedido: confirme 'Permitir' na tela.")
+	// ErrPairingLost means the connection dropped before the prompt was answered.
+	ErrPairingLost = errors.New("Conexão com a TV perdida durante o pareamento.")
 )
 
 const (
-	keysFile             = "webos_keys.json"
-	defaultPromptTimeout = 60 * time.Second
-	registerTimeout      = 10 * time.Second
+	keysFile               = "webos_keys.json"
+	defaultPromptTimeout   = 60 * time.Second
+	defaultRegisterTimeout = 10 * time.Second
 	// pairingLifetime bounds a pairing left open without Close.
 	pairingLifetime = 5 * time.Minute
 
@@ -55,8 +57,9 @@ var (
 type Adapter struct {
 	keys keyStore
 	// Dial opens the SSAP connection; nil uses webos.Dial (tests only).
-	Dial          func(ctx context.Context, host string, opt webos.Options) (*webos.Conn, error)
-	promptTimeout time.Duration
+	Dial            func(ctx context.Context, host string, opt webos.Options) (*webos.Conn, error)
+	promptTimeout   time.Duration
+	registerTimeout time.Duration
 }
 
 // New returns an adapter keeping the TVs' client keys in cfgDir.
@@ -83,12 +86,19 @@ func (a *Adapter) Connect(ctx context.Context, host string, ev domain.SessionEve
 	if err != nil {
 		return nil, err
 	}
-	rctx, cancel := context.WithTimeout(ctx, registerTimeout)
+	timeout := a.registerTimeout
+	if timeout <= 0 {
+		timeout = defaultRegisterTimeout
+	}
+	rctx, cancel := context.WithTimeout(ctx, timeout)
 	newKey, err := conn.Register(rctx, key)
 	cancel()
 	if err != nil {
 		conn.Close()
-		if errors.Is(err, webos.ErrRegisterRejected) {
+		// A revoked key is answered with an error, a new prompt, or silence
+		// until our deadline: in all cases pair again.
+		if errors.Is(err, webos.ErrRegisterRejected) || errors.Is(err, webos.ErrPromptShown) ||
+			(errors.Is(err, context.DeadlineExceeded) && ctx.Err() == nil) {
 			_ = a.keys.Delete(host)
 			return nil, domain.ErrNotPaired
 		}
@@ -109,6 +119,7 @@ func (a *Adapter) Connect(ctx context.Context, host string, ev domain.SessionEve
 		info:  readInfo(ctx, conn),
 		state: domain.State{On: true},
 	}
+	// Safe outside emitMu: the session is not shared yet.
 	ev.OnState(s.state)
 	if err := conn.Subscribe(ctx, uriVolume, s.onVolume); err != nil {
 		s.Close()
@@ -214,8 +225,10 @@ func (p *pairing) Finish(string) error {
 		switch {
 		case errors.Is(r.err, webos.ErrRegisterRejected):
 			p.final = ErrPromptRejected
+		case errors.Is(r.err, context.DeadlineExceeded):
+			p.final = ErrPromptTimeout
 		case r.err != nil:
-			p.final = r.err
+			p.final = ErrPairingLost
 		default:
 			p.final = p.keys.Put(p.host, r.key)
 		}
@@ -352,14 +365,18 @@ func (s *session) SendKey(name string) error {
 	}
 	s.ptrMu.Lock()
 	defer s.ptrMu.Unlock()
-	button, ok := lgButtons[n]
 	if n == "MEDIA_PLAY_PAUSE" {
-		button, ok = "PAUSE", true
+		button := "PAUSE"
 		if s.paused {
 			button = "PLAY"
 		}
+		if err := s.button(button); err != nil {
+			return err
+		}
 		s.paused = !s.paused
+		return nil
 	}
+	button, ok := lgButtons[n]
 	if !ok {
 		return fmt.Errorf("Tecla não suportada pela LG: %s", name)
 	}

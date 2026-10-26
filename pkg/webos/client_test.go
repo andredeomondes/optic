@@ -427,3 +427,21 @@ func TestPointerAfterCloseFails(t *testing.T) {
 		t.Fatal("expected error")
 	}
 }
+
+func TestRegisterWithKeyPromptShown(t *testing.T) {
+	url := fakeTV(t, func(ws *websocket.Conn) {
+		readMsg(t, ws)
+		ws.WriteJSON(map[string]any{"type": "response", "id": "register_0", "payload": map[string]any{"pairingType": "PROMPT"}})
+		ws.ReadMessage()
+	})
+	c := dial(t, url, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	_, err := c.Register(ctx, "stale")
+	if !errors.Is(err, ErrPromptShown) {
+		t.Fatalf("err = %v", err)
+	}
+	if ctx.Err() != nil {
+		t.Error("Register waited for the deadline")
+	}
+}

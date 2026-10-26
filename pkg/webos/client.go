@@ -19,6 +19,10 @@ import (
 // ErrRegisterRejected is returned when the TV refuses the pairing.
 var ErrRegisterRejected = errors.New("webos: registro recusado pela TV")
 
+// ErrPromptShown is returned by Register with a key when the TV asks the user
+// to allow the connection again: the key is no longer accepted.
+var ErrPromptShown = errors.New("webos: a TV pediu confirmação")
+
 const (
 	registerID = "register_0"
 	insertText = "ssap://com.webos.service.ime/insertText"
@@ -237,6 +241,10 @@ func (c *Conn) Register(ctx context.Context, key string) (string, error) {
 		}
 		switch m.Type {
 		case "response":
+			if key != "" && isPrompt(m.Payload) {
+				c.trace("←", "register pediu confirmação")
+				return "", ErrPromptShown
+			}
 			continue // PROMPT: waiting for the user
 		case "registered":
 			var p struct {
@@ -252,6 +260,13 @@ func (c *Conn) Register(ctx context.Context, key string) (string, error) {
 			return "", fmt.Errorf("%w: %s", ErrRegisterRejected, m.Error)
 		}
 	}
+}
+
+func isPrompt(payload json.RawMessage) bool {
+	var p struct {
+		PairingType string `json:"pairingType"`
+	}
+	return json.Unmarshal(payload, &p) == nil && p.PairingType == "PROMPT"
 }
 
 func (c *Conn) nextID() string {

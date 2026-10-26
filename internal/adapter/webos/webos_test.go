@@ -30,7 +30,9 @@ type fakeTV struct {
 	t   *testing.T
 	url string
 
-	register string         // "accept" (default), "prompt", "reject" or "silent"
+	// register is "accept" (default), "prompt", "promptonly" (PROMPT, never
+	// answered), "rotate" (issues "rotated"), "reject", "silent" or "drop".
+	register string
 	replies  map[string]any // request uri -> payload (default {"returnValue":true})
 	subs     map[string]any // subscription uri -> first payload
 
@@ -107,6 +109,12 @@ func (tv *fakeTV) serve(ws *websocket.Conn) {
 			tv.regs <- p
 			switch tv.register {
 			case "silent":
+			case "drop":
+				return
+			case "promptonly":
+				ws.WriteJSON(map[string]any{"type": "response", "id": id, "payload": map[string]any{"pairingType": "PROMPT"}})
+			case "rotate":
+				ws.WriteJSON(map[string]any{"type": "registered", "id": id, "payload": map[string]any{"client-key": "rotated"}})
 			case "reject":
 				ws.WriteJSON(map[string]any{"type": "error", "id": id, "error": "403 rejected"})
 			case "prompt":
@@ -307,6 +315,75 @@ func TestPairingTimeout(t *testing.T) {
 	if err := p.Finish(""); !errors.Is(err, ErrPromptTimeout) {
 		t.Fatalf("err = %v", err)
 	}
+	if a.keys.Get(host) != "" {
+		t.Error("key stored after timeout")
+	}
+}
+
+func TestPairingConnectionLost(t *testing.T) {
+	tv := newFakeTV(t)
+	tv.register = "drop"
+	a, _ := newAdapter(t, tv)
+	p, err := a.StartPairing(context.Background(), host)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.Close()
+	err = p.Finish("")
+	if !errors.Is(err, ErrPairingLost) || err.Error() != "Conexão com a TV perdida durante o pareamento." {
+		t.Fatalf("err = %v", err)
+	}
+	if a.keys.Get(host) != "" {
+		t.Error("key stored after drop")
+	}
+}
+
+func TestConnectStaleKeyPromptRepairs(t *testing.T) {
+	tv := newFakeTV(t)
+	tv.register = "promptonly"
+	a, _ := newAdapter(t, tv)
+	a.keys.Put(host, "stale")
+	start := time.Now()
+	_, err := a.Connect(context.Background(), host, newEvents())
+	if !errors.Is(err, domain.ErrNotPaired) {
+		t.Fatalf("err = %v", err)
+	}
+	if time.Since(start) > 2*time.Second {
+		t.Error("Connect waited for the register timeout")
+	}
+	if a.keys.Get(host) != "" {
+		t.Error("stale key kept")
+	}
+}
+
+func TestConnectRegisterTimeoutRepairs(t *testing.T) {
+	tv := newFakeTV(t)
+	tv.register = "silent"
+	a, _ := newAdapter(t, tv)
+	a.registerTimeout = 50 * time.Millisecond
+	a.keys.Put(host, "stale")
+	_, err := a.Connect(context.Background(), host, newEvents())
+	if !errors.Is(err, domain.ErrNotPaired) {
+		t.Fatalf("err = %v", err)
+	}
+	if a.keys.Get(host) != "" {
+		t.Error("stale key kept")
+	}
+}
+
+func TestConnectStoresRotatedKey(t *testing.T) {
+	tv := newFakeTV(t)
+	tv.register = "rotate"
+	a, _ := newAdapter(t, tv)
+	a.keys.Put(host, "k1")
+	s, err := a.Connect(context.Background(), host, newEvents())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if got := a.keys.Get(host); got != "rotated" {
+		t.Errorf("stored key = %q", got)
+	}
 }
 
 func TestConnectRevokedKeyDeletesIt(t *testing.T) {
@@ -410,11 +487,44 @@ func TestSendKeyMapsToPointer(t *testing.T) {
 func TestSendKeyUnsupported(t *testing.T) {
 	tv := newFakeTV(t)
 	s, _ := connect(t, tv)
-	err := s.SendKey("MEDIA_NEXT")
-	if err == nil || err.Error() != "Tecla não suportada pela LG: MEDIA_NEXT" {
-		t.Fatalf("err = %v", err)
+	for _, k := range []string{"MEDIA_NEXT", "MEDIA_PREVIOUS"} {
+		err := s.SendKey(k)
+		if err == nil || err.Error() != "Tecla não suportada pela LG: "+k {
+			t.Fatalf("err = %v", err)
+		}
 	}
 	tv.noIO(t)
+}
+
+func TestSendKeyReopensPointer(t *testing.T) {
+	tv := newFakeTV(t)
+	s, _ := connect(t, tv)
+	for len(tv.reqs) > 0 {
+		<-tv.reqs
+	}
+	s.ptr.Close() // as if the TV dropped it
+	if err := s.SendKey("MEDIA_PLAY_PAUSE"); err != nil {
+		t.Fatal(err)
+	}
+	if u := (<-tv.reqs)["uri"]; u != "ssap://com.webos.service.networkinput/getPointerInputSocket" {
+		t.Errorf("request = %v", u)
+	}
+	if b := tv.button(t); b != "PAUSE" {
+		t.Errorf("button = %s", b)
+	}
+}
+
+func TestPlayPauseFlipsOnlyOnSuccess(t *testing.T) {
+	tv := newFakeTV(t)
+	s, _ := connect(t, tv)
+	tv.replies["ssap://com.webos.service.networkinput/getPointerInputSocket"] = map[string]any{"returnValue": false, "errorText": "no"}
+	s.ptr.Close()
+	if err := s.SendKey("MEDIA_PLAY_PAUSE"); err == nil {
+		t.Fatal("want error")
+	}
+	if s.paused {
+		t.Error("paused flipped after a failed press")
+	}
 }
 
 func TestLaunchResolves(t *testing.T) {

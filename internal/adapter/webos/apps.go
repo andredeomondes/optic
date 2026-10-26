@@ -63,6 +63,7 @@ func resolveApp(target string, installed []domain.App) (string, error) {
 			return a.ID, nil
 		}
 	}
+	// A prefix can match several apps: the first in the TV's order wins.
 	lt := strings.ToLower(target)
 	for _, a := range installed {
 		if strings.HasPrefix(strings.ToLower(a.Name), lt) {
