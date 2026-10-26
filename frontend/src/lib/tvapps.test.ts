@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { filterApps, normalize, sortApps } from './tvapps.ts'
+import { filterApps, matchInput, normalize, sortApps } from './tvapps.ts'
 
 const apps = [
   { id: '837', name: 'YouTube' },
@@ -26,4 +26,25 @@ test('sortApps does not mutate the input', () => {
   const copy = [...apps]
   sortApps(apps)
   assert.deepEqual(apps, copy)
+})
+
+const inputs = [
+  { id: 'tv', name: 'TV' },
+  { id: 'h1', name: 'HDMI 1' },
+  { id: 'h2', name: 'HDMI 2' },
+  { id: 'av', name: 'AV' },
+]
+
+test('matchInput: exact, spacing-insensitive and prefix', () => {
+  assert.equal(matchInput(inputs, 'tv')?.id, 'tv')
+  assert.equal(matchInput(inputs, 'HDMI 2')?.id, 'h2')
+  assert.equal(matchInput(inputs, 'hdmi2')?.id, 'h2')
+  assert.equal(matchInput(inputs, '  hdmi   1 ')?.id, 'h1')
+  assert.equal(matchInput(inputs, 'hd')?.id, 'h1')
+})
+
+test('matchInput: no match or empty query', () => {
+  assert.equal(matchInput(inputs, 'vga'), undefined)
+  assert.equal(matchInput(inputs, '  '), undefined)
+  assert.equal(matchInput([], 'tv'), undefined)
 })

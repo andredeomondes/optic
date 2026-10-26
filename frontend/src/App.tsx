@@ -16,6 +16,7 @@ import { useShortcuts } from './hooks/useShortcuts'
 import { useUpdates } from './hooks/useUpdates'
 import { useWindowMode } from './hooks/useWindowMode'
 import { launchLink } from './lib/apps'
+import { matchInput } from './lib/tvapps'
 import type { Command } from './lib/commands'
 
 export default function App() {
@@ -75,6 +76,16 @@ function Shell() {
     if (a.type === 'volume') remote.setVolume(a.level)
     if (a.type === 'text') remote.sendText(a.text)
     if (a.type === 'toast') remote.sendToast(a.text)
+    if (a.type === 'input') {
+      remote
+        .inputs()
+        .then((list) => {
+          const hit = matchInput(list, a.query)
+          if (hit) remote.switchInput(hit.id, hit.name)
+          else remote.notify('err', 'Entrada não encontrada')
+        })
+        .catch(() => remote.notify('err', 'Não foi possível listar as entradas'))
+    }
   }
 
   return (

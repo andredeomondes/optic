@@ -1,6 +1,7 @@
 import { LoaderCircle, Power, RefreshCw } from 'lucide-react'
 import { since, useNow } from '../hooks/useNow'
 import { useRemote } from '../hooks/useRemote'
+import { InputPicker } from './InputPicker'
 import { RemoteButton } from './RemoteButton'
 import { SleepTimer } from './SleepTimer'
 
@@ -44,6 +45,7 @@ export function ConnectionStatus() {
         </div>
       ) : (
         <div className="top-actions">
+          <InputPicker />
           <SleepTimer />
           <RemoteButton tvKey="POWER" label="Ligar / desligar" className="power">
             <Power size={18} strokeWidth={1.8} />
