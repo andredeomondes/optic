@@ -68,10 +68,24 @@ Download from [**Releases**](https://github.com/andredeomondes/optic/releases/la
 | System | File | How to install |
 |---|---|---|
 | Windows 10/11 | `OPTIC-windows-amd64-setup.exe` | Open it and follow the installer. Shortcut in the Start menu and on the desktop. |
-| macOS 11+ (Intel and Apple Silicon) | `OPTIC-macos-universal.dmg` | Drag OPTIC to Applications. First time: right-click › **Open**. |
+| macOS 11+ (Intel and Apple Silicon) | `OPTIC-macos-universal.dmg` | Drag OPTIC to Applications. First time: open the app, then System Settings › Privacy & Security › **Open Anyway** (macOS 15+), or run `xattr -dr com.apple.quarantine /Applications/OPTIC.app`. |
 | Linux (x64) | `OPTIC-linux-amd64.tar.gz` | Extract and run `./install.sh` (installs for your user, no root). |
 
 The step by step, including the SmartScreen and Gatekeeper warnings (the binaries are not signed yet), is in the [**guide**](https://andredeomondes.github.io/optic/en/).
+
+### Package managers (coming soon)
+
+They work once each package is published; they are not available yet.
+
+```sh
+winget install andredeomondes.OPTIC                                   # Windows
+scoop bucket add optic https://github.com/andredeomondes/scoop-optic  # Windows (Scoop)
+scoop install optic
+brew install --cask andredeomondes/optic/optic                        # macOS
+yay -S optic-bin                                                      # Arch Linux (AUR)
+```
+
+AUR and Flatpak: coming soon (AUR uses the WebKitGTK 4.1 tarball). Checksums: `SHA256SUMS` in each release. Maintainer guide (in Portuguese): [docs/PACKAGING.md](docs/PACKAGING.md).
 
 ## First use
 

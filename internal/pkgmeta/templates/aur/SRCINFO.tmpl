@@ -1,0 +1,16 @@
+pkgbase = optic-bin
+	pkgdesc = {{.DescEN}}
+	pkgver = {{.Version}}
+	pkgrel = 1
+	url = {{.Homepage}}
+	arch = x86_64
+	license = {{.License}}
+	depends = gtk3
+	depends = webkit2gtk-4.1
+	options = !strip
+	provides = optic
+	conflicts = optic
+	source = optic-{{.Version}}.tar.gz::{{.Tarball41.URL}}
+	sha256sums = {{.Tarball41.SHA256}}
+
+pkgname = optic-bin

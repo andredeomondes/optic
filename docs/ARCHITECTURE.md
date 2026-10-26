@@ -79,6 +79,7 @@ main (composição) ──► adapters ──► domain ◄── control (casos
 | `pkg/webos` | Cliente SSAP (WebSocket 3001/3000): registro com "Permitir", requisições, assinaturas e socket de ponteiro | stdlib, `gorilla/websocket` |
 | `pkg/tizen` | Controle remoto da Samsung (WebSocket 8002/8001 com token) e informações pela REST 8001 | stdlib, `gorilla/websocket` |
 | `cmd/optic` | CLI de diagnóstico e engenharia reversa | `pkg/*` |
+| `cmd/pkgmeta`, `internal/pkgmeta` | Gera os manifestos de pacotes (winget, scoop, Homebrew, AUR, Flatpak) a partir da versão e do `SHA256SUMS` da release (veja `docs/PACKAGING.md`) | stdlib |
 
 ## SOLID na prática
 

@@ -1,0 +1,29 @@
+# Uses the WebKitGTK 4.1 build of OPTIC (Wails -tags webkit2_41), which the
+# GNOME runtimes ship. Flathub may ask for a build from source instead.
+app-id: io.github.andredeomondes.optic
+runtime: org.gnome.Platform
+runtime-version: '50'
+sdk: org.gnome.Sdk
+command: optic-desktop
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+modules:
+  - name: optic
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 optic-desktop /app/bin/optic-desktop
+      - install -Dm644 optic-512.png /app/share/icons/hicolor/512x512/apps/io.github.andredeomondes.optic.png
+      - sed 's/^Icon=.*/Icon=io.github.andredeomondes.optic/' optic.desktop > io.github.andredeomondes.optic.desktop
+      - install -Dm644 io.github.andredeomondes.optic.desktop /app/share/applications/io.github.andredeomondes.optic.desktop
+      - install -Dm644 io.github.andredeomondes.optic.metainfo.xml /app/share/metainfo/io.github.andredeomondes.optic.metainfo.xml
+    sources:
+      - type: archive
+        url: https://github.com/andredeomondes/optic/releases/download/v1.2.3/OPTIC-linux-amd64-webkit41.tar.gz
+        sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+        strip-components: 1
+      - type: file
+        path: io.github.andredeomondes.optic.metainfo.xml

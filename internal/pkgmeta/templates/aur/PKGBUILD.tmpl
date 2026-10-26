@@ -1,0 +1,22 @@
+# Maintainer: {{.Publisher}}
+pkgname=optic-bin
+pkgver={{.Version}}
+pkgrel=1
+pkgdesc="{{.DescEN}}"
+arch=('x86_64')
+url="{{.Homepage}}"
+license=('{{.License}}')
+depends=('gtk3' 'webkit2gtk-4.1')
+options=('!strip')
+provides=('optic')
+conflicts=('optic')
+source=("optic-${pkgver}.tar.gz::{{.Homepage}}/releases/download/v${pkgver}/{{.Tarball41.Name}}")
+sha256sums=('{{.Tarball41.SHA256}}')
+
+package() {
+  cd "${srcdir}/OPTIC"
+  install -Dm755 optic-desktop "${pkgdir}/usr/bin/optic-desktop"
+  install -Dm644 optic.desktop "${pkgdir}/usr/share/applications/optic.desktop"
+  install -Dm644 optic-512.png "${pkgdir}/usr/share/icons/hicolor/512x512/apps/optic.png"
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

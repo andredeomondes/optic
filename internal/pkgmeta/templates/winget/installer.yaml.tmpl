@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+PackageIdentifier: {{.WingetID}}
+PackageVersion: {{.Version}}
+InstallerType: nullsoft
+Scope: machine
+ElevationRequirement: elevatesSelf
+UpgradeBehavior: install
+ProductCode: OPTICOPTIC
+Installers:
+  - Architecture: x64
+    InstallerUrl: {{.Setup.URL}}
+    InstallerSha256: {{.Setup.SHA256Upper}}
+    AppsAndFeaturesEntries:
+      - Publisher: OPTIC
+        DisplayName: OPTIC
+        ProductCode: OPTICOPTIC
+ManifestType: installer
+ManifestVersion: 1.6.0

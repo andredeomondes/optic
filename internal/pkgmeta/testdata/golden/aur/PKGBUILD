@@ -1,0 +1,22 @@
+# Maintainer: andredeomondes
+pkgname=optic-bin
+pkgver=1.2.3
+pkgrel=1
+pkgdesc="Control your TV from your PC"
+arch=('x86_64')
+url="https://github.com/andredeomondes/optic"
+license=('MIT')
+depends=('gtk3' 'webkit2gtk-4.1')
+options=('!strip')
+provides=('optic')
+conflicts=('optic')
+source=("optic-${pkgver}.tar.gz::https://github.com/andredeomondes/optic/releases/download/v${pkgver}/OPTIC-linux-amd64-webkit41.tar.gz")
+sha256sums=('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
+
+package() {
+  cd "${srcdir}/OPTIC"
+  install -Dm755 optic-desktop "${pkgdir}/usr/bin/optic-desktop"
+  install -Dm644 optic.desktop "${pkgdir}/usr/share/applications/optic.desktop"
+  install -Dm644 optic-512.png "${pkgdir}/usr/share/icons/hicolor/512x512/apps/optic.png"
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

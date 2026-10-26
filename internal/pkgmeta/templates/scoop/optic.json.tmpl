@@ -1,0 +1,32 @@
+{
+    "version": "{{.Version}}",
+    "description": "{{.DescEN}}",
+    "homepage": "{{.Homepage}}",
+    "license": "{{.License}}",
+    "architecture": {
+        "64bit": {
+            "url": "{{.Portable.URL}}#/optic.exe",
+            "hash": "{{.Portable.SHA256}}"
+        }
+    },
+    "bin": "optic.exe",
+    "shortcuts": [
+        [
+            "optic.exe",
+            "OPTIC"
+        ]
+    ],
+    "checkver": {
+        "github": "{{.Homepage}}"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "{{.Homepage}}/releases/download/v$version/{{.Portable.Name}}#/optic.exe",
+                "hash": {
+                    "url": "{{.Homepage}}/releases/download/v$version/SHA256SUMS"
+                }
+            }
+        }
+    }
+}
