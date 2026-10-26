@@ -16,8 +16,16 @@ let webosVolume = 12
 const ROKU_HOST = '192.168.0.50'
 const WEBOS_HOST = '192.168.0.40'
 let host = ''
+let rokuPlaying: 'playing' | 'paused' = 'playing'
 const pushState = () =>
-  emit('state', host === ROKU_HOST ? { on: true, volume: 0, volumeMax: 0, muted: false, playing: '' } : { on: true, volume: host === WEBOS_HOST ? webosVolume : volume, volumeMax: 100, muted, playing: '' })
+  emit(
+    'state',
+    host === ROKU_HOST
+      ? { on: true, volume: 0, volumeMax: 0, muted: false, app: '837', playing: rokuPlaying }
+      : host === WEBOS_HOST
+        ? { on: true, volume: webosVolume, volumeMax: 100, muted, app: 'netflix', playing: '' }
+        : { on: true, volume, volumeMax: 100, muted, playing: '' },
+  )
 
 const w = window as any
 
@@ -93,6 +101,10 @@ w.go = {
         if (key === 'VOLUME_UP') volume = Math.min(100, volume + 1)
         if (key === 'VOLUME_DOWN') volume = Math.max(0, volume - 1)
         if (key === 'MUTE') muted = !muted
+        if (key === 'MEDIA_PLAY_PAUSE' && host === ROKU_HOST) {
+          rokuPlaying = rokuPlaying === 'playing' ? 'paused' : 'playing'
+          setTimeout(pushState, 120)
+        }
         if (key.startsWith('VOLUME') || key === 'MUTE') setTimeout(pushState, 120)
       },
       async SendText(text: string) {
@@ -109,10 +121,29 @@ w.go = {
         emit('trace', '>', `90 { 1: "${id}" }`)
       },
       async InstalledApps() {
-        return [
-          { id: '12', name: 'Netflix' },
-          { id: '837', name: 'YouTube' },
-        ]
+        await wait(400)
+        if (host === ROKU_HOST) {
+          return [
+            { id: '12', name: 'Netflix' },
+            { id: '837', name: 'YouTube' },
+            { id: '2285', name: 'Globoplay' },
+            { id: '13535', name: 'Plex' },
+            { id: '291097', name: 'Disney+' },
+            { id: '61322', name: 'Max' },
+            { id: '74519', name: 'Pluto TV' },
+            { id: '151908', name: 'The Roku Channel' },
+          ]
+        }
+        if (host === WEBOS_HOST) {
+          return [
+            { id: 'netflix', name: 'Netflix' },
+            { id: 'youtube.leanback.v4', name: 'YouTube' },
+            { id: 'com.webos.app.hdmi1', name: 'HDMI 1' },
+            { id: 'com.webos.app.livetv', name: 'Live TV' },
+            { id: 'globoplay', name: 'Globoplay' },
+          ]
+        }
+        throw new Error('Android TV ainda não é suportada')
       },
       async LatestRelease() {
         return {
