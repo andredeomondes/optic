@@ -1,6 +1,6 @@
 # Empacotamento e distribuição (guia do mantenedor)
 
-**English summary.** Every release tag publishes `SHA256SUMS` and `packaging-manifests.zip`. The zip holds ready-to-submit manifests for winget, scoop, Homebrew, AUR and Flatpak, rendered by `go run ./cmd/pkgmeta`. Nothing is published automatically: submitting to each registry needs the maintainer's own accounts (GitHub for winget/scoop/Homebrew, an AUR account with an SSH key). Flathub is blocked until CI produces a Linux build against WebKitGTK 4.1. Binaries are unsigned (SmartScreen / Gatekeeper warnings). Nothing described here is published yet; the install commands in the READMEs work only after each submission is accepted.
+**English summary.** Every release tag publishes `SHA256SUMS` and `packaging-manifests.zip`. The zip holds ready-to-submit manifests for winget, scoop, Homebrew, AUR and Flatpak, rendered by `go run ./cmd/pkgmeta`. Nothing is published automatically: submitting to each registry needs the maintainer's own accounts (GitHub for winget/scoop/Homebrew, an AUR account with an SSH key). AUR and Flatpak use the WebKitGTK 4.1 Linux tarball (`OPTIC-linux-amd64-webkit41.tar.gz`); both are still "coming soon", and Flathub may ask for a build from source. Binaries are unsigned (SmartScreen / Gatekeeper warnings). Nothing described here is published yet; the install commands in the READMEs work only after each submission is accepted.
 
 Este guia explica como levar os manifestos de cada release para os gerenciadores de pacotes. **Nada disso está publicado ainda**: os comandos de instalação dos READMEs só passam a funcionar depois que cada envio for feito e aceito.
 
@@ -19,7 +19,7 @@ Conteúdo do zip:
 | `scoop/` | `optic.json` | bucket próprio `scoop-optic` |
 | `homebrew/` | `optic.rb` (cask) | tap próprio `homebrew-optic` |
 | `aur/` | `PKGBUILD`, `.SRCINFO` (pacote `optic-bin`) | AUR |
-| `flatpak/` | `io.github.andredeomondes.optic.yml` e `.metainfo.xml` | Flathub (bloqueado, veja abaixo) |
+| `flatpak/` | `io.github.andredeomondes.optic.yml` e `.metainfo.xml` | Flathub (veja abaixo) |
 
 ## Regerar os manifestos localmente
 
@@ -36,7 +36,7 @@ Os modelos ficam em `internal/pkgmeta/templates`. Para alterar um manifesto, edi
 Os instaladores ainda não são assinados:
 
 - **Windows**: o SmartScreen mostra "O Windows protegeu seu computador". Clique em **Mais informações › Executar assim mesmo**. O winget e o scoop não evitam o aviso do SmartScreen na primeira execução.
-- **macOS**: o Gatekeeper bloqueia o app baixado. Pelo Homebrew, use `brew install --cask --no-quarantine andredeomondes/optic/optic`; manualmente, botão direito › **Abrir**. O cask exige macOS 11 (Big Sur) ou mais novo.
+- **macOS**: o Gatekeeper bloqueia o app baixado. Depois de instalar (DMG ou Homebrew), rode `xattr -dr com.apple.quarantine /Applications/OPTIC.app`; ou, no macOS 15 ou mais novo, abra o app uma vez e vá em **Ajustes do Sistema › Privacidade e Segurança › Abrir Mesmo Assim**. O cask exige macOS 11 (Big Sur) ou mais novo.
 
 ## winget
 
@@ -75,11 +75,11 @@ mkdir -p homebrew-optic/Casks && cp out/homebrew/optic.rb homebrew-optic/Casks/
 cd homebrew-optic && git add . && git commit -m "optic vX.Y.Z" && git push
 ```
 
-Instalação pelo usuário: `brew install --cask andredeomondes/optic/optic` (acrescente `--no-quarantine` por causa do Gatekeeper).
+Instalação pelo usuário: `brew install --cask andredeomondes/optic/optic`. O Homebrew 5 removeu o `--no-quarantine`; veja o `xattr` acima por causa do Gatekeeper.
 
 ## AUR
 
-Pacote `optic-bin` (instala o binário do tarball, a `LICENSE` e o ícone de 512 px).
+Pacote `optic-bin` (instala o binário do tarball WebKitGTK 4.1, a `LICENSE` e o ícone de 512 px; depende de `webkit2gtk-4.1`, pois o Arch abandonou o `webkit2gtk` 4.0). Em breve: ainda não publicado no AUR.
 
 Precisa de conta no AUR com chave SSH cadastrada. Na primeira vez o clone vem vazio:
 
@@ -95,12 +95,12 @@ Teste antes: `makepkg -si` num Arch (ou contêiner Arch).
 
 ## Flatpak / Flathub
 
-**Bloqueado por ora.** O manifesto (`flatpak/`) usa o runtime GNOME 49 e o ícone de 512 px, mas o tarball atual da release liga com WebKitGTK 4.0 (`libwebkit2gtk-4.0`), que não existe nos runtimes GNOME. Para destravar:
+O manifesto (`flatpak/`) usa o tarball WebKitGTK 4.1 da release (`OPTIC-linux-amd64-webkit41.tar.gz`, compilado com Wails `-tags webkit2_41`), o runtime GNOME 50 e o ícone de 512 px. Em breve: ainda não foi enviado ao Flathub.
 
-1. Fazer o CI publicar um binário Linux compilado com Wails `-tags webkit2_41` (WebKitGTK 4.1).
-2. Regerar os manifestos com esse tarball.
-3. Testar com `flatpak-builder --user --install build io.github.andredeomondes.optic.yml`.
-4. Enviar para o Flathub: PR no repositório `flathub/flathub` (branch `new-pr`) seguindo o guia de submissão deles, com conta GitHub do mantenedor; ou manter um repositório Flatpak próprio.
+1. Testar com `flatpak-builder --user --install build io.github.andredeomondes.optic.yml`.
+2. Ao enviar, use o runtime GNOME vigente na época (atualize `runtime-version`, hoje `'50'`).
+3. Enviar para o Flathub: PR no repositório `flathub/flathub` (branch `new-pr`) seguindo o guia de submissão deles, com conta GitHub do mantenedor; ou manter um repositório Flatpak próprio.
+4. O Flathub pode pedir compilação a partir do código-fonte em vez do binário pré-compilado; nesse caso o manifesto precisa de um módulo que rode o build do Wails.
 
 Enquanto isso, não anuncie Flatpak como disponível.
 
