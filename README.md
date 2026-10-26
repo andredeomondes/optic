@@ -27,12 +27,12 @@ Controle remoto desktop open source para **Android TV, Google TV, Roku, LG webOS
 - **TVs Roku** (Philco, AOC, TCL Roku…): sem pareamento; teclas, texto, apps, entradas (HDMI) e ligar/desligar.
 - **TVs LG (webOS)**: aceite **Permitir** na TV uma vez; volume exato, texto, apps, entradas e mensagem na tela (`Ctrl+K` › "avisar na tv …").
 - **TVs Samsung (Tizen, 2016+)**: aceite **Permitir** na TV uma vez; teclas, texto quando o teclado da TV abre, apps instalados e ligar/desligar.
-- **Apps da TV** (Roku e LG): a lista real de apps instalados, com busca; marque ★ para virar favorito.
+- **Apps da TV** (Roku, LG e Samsung): a lista real de apps instalados, com busca; marque ★ para virar favorito.
 - **Entrada/Source** (Roku TV e LG): troque de HDMI pelo botão de entrada ou com `Ctrl+K` › "hdmi 2".
 - **Agora tocando:** o app aberto na TV e, na Roku, se está tocando ou pausado.
 - **Liga a TV** pela rede (Wake-on-LAN), depois da primeira conexão com ela ligada.
 - **Controle completo:** D-pad, voltar, início, volume (com slider), canais, mídia e power.
-- **Abre apps** com um clique: YouTube, Netflix, Prime Video, Globoplay e qualquer outro pelo nome do pacote (na Roku e na LG, também os apps instalados na TV).
+- **Abre apps** com um clique: YouTube, Netflix, Prime Video, Globoplay e qualquer outro pelo nome do pacote (na Roku, na LG e na Samsung, também os apps instalados na TV).
 - **Digita na TV** pelo teclado do PC, direto no campo de busca. `Ctrl+V` cola o texto copiado na TV.
 - **Comandos rápidos** (`Ctrl+K`): "netflix", "volume 20", "digitar …" e outros.
 - **Atalhos de teclado:** setas navegam, `Enter` OK, `Esc` voltar, `H` início, `M` mudo, `+`/`-` volume, espaço play/pause, `Ctrl+T` digitar.
