@@ -32,6 +32,7 @@ import (
 	"optic/internal/platform/arp"
 	"optic/pkg/atvremote"
 	"optic/pkg/roku"
+	ssdpproto "optic/pkg/ssdp"
 	"optic/pkg/wol"
 )
 
@@ -47,6 +48,18 @@ const singleInstanceID = "optic-desktop-8b5cf6"
 // rokuInfo reads a Roku's name and model during discovery.
 func rokuInfo(ctx context.Context, host string) (roku.DeviceInfo, error) {
 	return (&roku.Client{Host: host, Timeout: 1500 * time.Millisecond}).DeviceInfo(ctx)
+}
+
+// upnpClient fetches device descriptions during discovery; it never follows
+// redirects so a TV cannot send us to another host.
+var upnpClient = &http.Client{
+	Timeout:       1500 * time.Millisecond,
+	CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+}
+
+// describeUPnP reads an LG TV's own name and model during discovery.
+func describeUPnP(ctx context.Context, location string) (string, string, error) {
+	return ssdpproto.Describe(ctx, upnpClient, location)
 }
 
 func main() {
@@ -68,7 +81,7 @@ func main() {
 	app := &App{
 		Shell: shell,
 		svc: control.New(control.Deps{
-			Discoverer: compose.Discoverer{Sources: []domain.Discoverer{mdns.Discoverer{}, ssdp.Discoverer{RokuInfo: rokuInfo}}},
+			Discoverer: compose.Discoverer{Sources: []domain.Discoverer{mdns.Discoverer{}, ssdp.Discoverer{RokuInfo: rokuInfo, Describe: describeUPnP}}},
 			Connector:  router,
 			Pairer:     router,
 			Hosts:      store,
