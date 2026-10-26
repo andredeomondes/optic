@@ -8,6 +8,7 @@ export type Action =
   | { type: 'launch'; app: AppDef }
   | { type: 'volume'; level: number }
   | { type: 'text'; text: string }
+  | { type: 'toast'; text: string }
   /** minutes 0 cancels the timer. */
   | { type: 'sleep'; minutes: number }
   | { type: 'link'; url: string; label: string }
@@ -60,7 +61,10 @@ export const normalize = (s: string) =>
   s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
 
 /** input is normalized; raw keeps the user's casing and accents. */
-type Parser = (input: string, apps: AppDef[], raw: string) => Command[]
+type Parser = (input: string, apps: AppDef[], raw: string, ctx: Context) => Command[]
+
+/** What the connected TV can do; parsers for optional features check it. */
+export type Context = { toast?: boolean }
 
 const PARSERS: Parser[] = [
   // "volume 30", "vol 30", "volume em 30"
@@ -101,12 +105,20 @@ const PARSERS: Parser[] = [
     if (!m) return []
     return [{ id: 'type-text', title: `Digitar “${m[1]}”`, hint: 'envia para o campo de texto aberto', icon: 'text', action: { type: 'text', text: m[1] } }]
   },
+  // "avisar na tv a janta saiu", "mensagem oi" (only when the TV can show toasts)
+  (_input, _apps, raw, ctx) => {
+    if (!ctx.toast) return []
+    const m = raw.trim().match(/^(?:avisar\s+na\s+tv|mensagem)\s+(.+)$/i)
+    const text = m?.[1].trim()
+    if (!text) return []
+    return [{ id: 'toast', title: `Avisar na TV: “${text}”`, hint: 'mostra uma mensagem na tela', icon: 'text', action: { type: 'toast', text } }]
+  },
 ]
 
 /** Returns ranked suggestions for the palette. */
-export function suggest(raw: string, apps: AppDef[]): Command[] {
+export function suggest(raw: string, apps: AppDef[], ctx: Context = {}): Command[] {
   const input = normalize(raw)
-  const dynamic = input ? PARSERS.flatMap((p) => p(input, apps, raw)) : []
+  const dynamic = input ? PARSERS.flatMap((p) => p(input, apps, raw, ctx)) : []
 
   const appCommands: Command[] = apps.map((a) => ({
     id: `open-${a.id}`,

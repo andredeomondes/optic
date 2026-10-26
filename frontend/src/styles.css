@@ -416,6 +416,7 @@ input.switch:disabled { opacity: 0.4; cursor: not-allowed; }
 .enter { animation: enter 0.6s var(--ease) both; }
 .pop { animation: pop 0.45s var(--spring) both; }
 .spin { animation: spin 0.9s linear infinite; }
+.pair-wait { display: flex; justify-content: center; padding: 6px 0; color: var(--muted, inherit); }
 .dot.live { animation: live 2s ease-in-out infinite; }
 .shake { animation: shake 0.35s; }
 .skeleton {

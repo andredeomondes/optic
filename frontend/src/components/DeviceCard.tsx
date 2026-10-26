@@ -6,7 +6,7 @@ import type { TV } from '../lib/types'
 
 /** One TV in the sidebar. The selected TV expands with live details. */
 export function DeviceCard({ tv, index }: { tv: TV; index: number }) {
-  const { host, status, info, connectedAt, connect, removeManual, powerOn, feedback } = useRemote()
+  const { host, status, pairingMode, info, connectedAt, connect, removeManual, powerOn, feedback } = useRemote()
   const now = useNow()
   const selected = tv.ip === host
   const live = selected && status === 'connected'
@@ -22,7 +22,7 @@ export function DeviceCard({ tv, index }: { tv: TV; index: number }) {
     : live
     ? `Conectado${connectedAt ? ` ${since(connectedAt, now)}` : ''}`
     : busy
-      ? status === 'pairing' ? 'Aguardando código' : 'Conectando…'
+      ? status === 'pairing' ? (pairingMode === 'prompt' ? 'Confirme na TV' : 'Aguardando código') : 'Conectando…'
       : selected && status === 'error'
         ? 'Desconectado'
         : tv.manual ? 'Adicionada manualmente' : 'Disponível'
@@ -42,7 +42,7 @@ export function DeviceCard({ tv, index }: { tv: TV; index: number }) {
           <b>{live && info ? `${info.vendor} ${info.model}` : tv.name}</b>
           <span>
             {tv.ip}
-            {live && info?.version && info.platform !== 'roku' ? ` · Android ${info.version}` : ''}
+            {live && info?.version && info.platform === 'androidtv' ? ` · Android ${info.version}` : ''}
           </span>
           <span className="chip platform">{PLATFORM_LABEL[tv.platform]}</span>
           <span className={`state ${live ? 'on' : selected && status === 'error' ? 'bad' : ''}`}>{state}</span>

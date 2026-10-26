@@ -6,7 +6,7 @@ import { SleepTimer } from './SleepTimer'
 
 /** Remote header: TV name, live status line and the power / reconnect button. */
 export function ConnectionStatus() {
-  const { status, host, info, tvs, error, connectedAt, connect } = useRemote()
+  const { status, pairingMode, host, info, tvs, error, connectedAt, connect } = useRemote()
   const now = useNow()
   const name = info ? `${info.vendor} ${info.model}` : tvs.find((t) => t.ip === host)?.name || host
 
@@ -21,7 +21,7 @@ export function ConnectionStatus() {
           {status === 'connected' && (
             <>
               <span>Conectado {connectedAt ? since(connectedAt, now) : ''}</span>
-              {info?.version && <span className="chip">{info.platform === 'roku' ? 'Roku OS' : 'Android'} {info.version}</span>}
+              {info?.version && <span className="chip">{info.platform === 'roku' ? 'Roku OS' : info.platform === 'webos' ? 'webOS' : 'Android'} {info.version}</span>}
               <span className="chip">{host}</span>
             </>
           )}
@@ -30,7 +30,7 @@ export function ConnectionStatus() {
               <LoaderCircle size={12} className="spin" /> Conectando…
             </>
           )}
-          {status === 'pairing' && 'Aguardando código de pareamento'}
+          {status === 'pairing' && (pairingMode === 'prompt' ? 'Confirme na TV' : 'Aguardando código de pareamento')}
           {status === 'error' && (error || 'Erro')}
           {status === 'idle' && 'Selecione uma TV na lista ao lado'}
         </small>

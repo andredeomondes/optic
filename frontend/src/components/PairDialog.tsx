@@ -3,7 +3,34 @@ import { KeyRound, LoaderCircle } from 'lucide-react'
 import { errText } from '../lib/backend'
 import { Modal } from './Modal'
 
-export function PairDialog({ onSubmit, onCancel }: { onSubmit: (code: string) => Promise<void>; onCancel: () => void }) {
+type Props = { mode: 'code' | 'prompt'; onSubmit: (code: string) => Promise<void>; onCancel: () => void }
+
+export function PairDialog({ mode, onSubmit, onCancel }: Props) {
+  return mode === 'prompt' ? <PromptDialog onCancel={onCancel} /> : <CodeDialog onSubmit={onSubmit} onCancel={onCancel} />
+}
+
+/** The TV asks for confirmation on screen; the backend call is already running. */
+function PromptDialog({ onCancel }: { onCancel: () => void }) {
+  return (
+    <Modal title="Parear com a TV" icon={<KeyRound size={20} />} onClose={onCancel}>
+      <div className="dialog-body">
+        <p>
+          Na TV, escolha <strong>Permitir</strong> para conectar o OPTIC.
+        </p>
+        <div className="pair-wait">
+          <LoaderCircle size={22} className="spin" />
+        </div>
+        <div className="actions">
+          <button type="button" className="btn" onClick={onCancel}>
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+function CodeDialog({ onSubmit, onCancel }: Omit<Props, 'mode'>) {
   const [code, setCode] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)

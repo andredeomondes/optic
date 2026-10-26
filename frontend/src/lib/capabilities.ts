@@ -11,12 +11,12 @@ export const PLATFORM_LABEL: Record<Platform, string> = {
 
 /** Platforms OPTIC can control today; the rest are only listed. */
 export function isSupported(p: Platform): boolean {
-  return p === 'androidtv' || p === '' || p === 'roku'
+  return p === 'androidtv' || p === '' || p === 'roku' || p === 'webos'
 }
 
-/** Roku needs no Remote v2 or pairing; Android TV does. */
+/** Roku and webOS need no Remote v2; Android TV does. */
 export function canConnect(tv: TV): boolean {
-  return isSupported(tv.platform) && (tv.platform === 'roku' || tv.remotev2)
+  return isSupported(tv.platform) && (tv.platform === 'roku' || tv.platform === 'webos' || tv.remotev2)
 }
 
 /** Whether the TV can be switched on from the network (Wake-on-LAN or Roku ECP). */
