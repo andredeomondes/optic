@@ -82,15 +82,15 @@ func TestWebOSNamesEnriched(t *testing.T) {
 		{Name: "WebOS/4.1.0", IP: "192.168.0.20", Platform: domain.PlatformWebOS},
 		{Name: "Samsung", IP: "192.168.0.10", Platform: domain.PlatformTizen},
 	}
-	locs := map[string]string{"192.168.0.20": "http://192.168.0.20:1234/desc.xml", "192.168.0.10": "http://192.168.0.10/x"}
+	locs := map[string]string{"192.168.0.20": "http://192.168.0.20:1234/desc.xml", "192.168.0.10": "http://192.168.0.10:9197/dmr"}
 	got := d.enrich(context.Background(), tvs, locs)
 	if got[0].Name != "Sala LG" || got[0].Model != "OLED55C1" {
 		t.Errorf("lg = %+v", got[0])
 	}
-	if got[1].Name != "Samsung" || got[1].Model != "" {
-		t.Errorf("non-lg changed: %+v", got[1])
+	if got[1].Name != "Sala LG" || got[1].Model != "OLED55C1" {
+		t.Errorf("samsung = %+v", got[1])
 	}
-	if len(asked) != 1 || asked[0] != "http://192.168.0.20:1234/desc.xml" {
+	if len(asked) != 2 {
 		t.Errorf("asked = %v", asked)
 	}
 }
@@ -130,5 +130,27 @@ func TestLocationsFirstPerWebOSIP(t *testing.T) {
 	})
 	if len(got) != 1 || got["1.1.1.1"] != "http://1.1.1.1/a" {
 		t.Errorf("got %v", got)
+	}
+}
+
+func TestLocationsIncludeTizen(t *testing.T) {
+	got := locations([]ssdpproto.Response{
+		{IP: "3.3.3.3", ST: "urn:samsung.com:device:RemoteControlReceiver:1", Location: "http://3.3.3.3:9197/dmr"},
+	})
+	if got["3.3.3.3"] != "http://3.3.3.3:9197/dmr" {
+		t.Errorf("got %v", got)
+	}
+}
+
+func TestDescribeSkippedForForeignTizenHost(t *testing.T) {
+	called := false
+	d := Discoverer{Describe: func(context.Context, string) (string, string, error) {
+		called = true
+		return "x", "y", nil
+	}}
+	tvs := []domain.TV{{Name: "Samsung", IP: "192.168.0.10", Platform: domain.PlatformTizen}}
+	d.enrich(context.Background(), tvs, map[string]string{"192.168.0.10": "http://10.0.0.5/dmr"})
+	if called {
+		t.Error("Describe called for a foreign Location")
 	}
 }

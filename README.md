@@ -6,7 +6,7 @@
 
 **Controle sua TV pelo computador.** Sem hardware extra, sem nuvem, sem conta.
 
-Controle remoto desktop open source para **Android TV, Google TV, Roku e LG webOS**, falando direto com a TV pela rede local: Android TV Remote protocol v2, implementado do zero em Go, o protocolo oficial da Roku (ECP) e o da LG (SSAP).
+Controle remoto desktop open source para **Android TV, Google TV, Roku, LG webOS e Samsung Tizen**, falando direto com a TV pela rede local: Android TV Remote protocol v2, implementado do zero em Go, o protocolo oficial da Roku (ECP), o da LG (SSAP) e o controle remoto de rede da Samsung.
 
 [**Baixar**](https://github.com/andredeomondes/optic/releases/latest) ·
 [**Guia de instalação e uso**](https://andredeomondes.github.io/optic/) ·
@@ -26,12 +26,13 @@ Controle remoto desktop open source para **Android TV, Google TV, Roku e LG webO
 - **Encontra a TV sozinho** na rede (mDNS e SSDP) e pareia com o código de 6 caracteres que aparece na tela.
 - **TVs Roku** (Philco, AOC, TCL Roku…): sem pareamento; teclas, texto, apps, entradas (HDMI) e ligar/desligar.
 - **TVs LG (webOS)**: aceite **Permitir** na TV uma vez; volume exato, texto, apps, entradas e mensagem na tela (`Ctrl+K` › "avisar na tv …").
-- **Apps da TV** (Roku e LG): a lista real de apps instalados, com busca; marque ★ para virar favorito.
+- **TVs Samsung (Tizen, 2016+)**: aceite **Permitir** na TV uma vez; teclas, texto quando o teclado da TV abre, apps instalados e ligar/desligar.
+- **Apps da TV** (Roku, LG e Samsung): a lista real de apps instalados, com busca; marque ★ para virar favorito.
 - **Entrada/Source** (Roku TV e LG): troque de HDMI pelo botão de entrada ou com `Ctrl+K` › "hdmi 2".
 - **Agora tocando:** o app aberto na TV e, na Roku, se está tocando ou pausado.
 - **Liga a TV** pela rede (Wake-on-LAN), depois da primeira conexão com ela ligada.
 - **Controle completo:** D-pad, voltar, início, volume (com slider), canais, mídia e power.
-- **Abre apps** com um clique: YouTube, Netflix, Prime Video, Globoplay e qualquer outro pelo nome do pacote (na Roku e na LG, também os apps instalados na TV).
+- **Abre apps** com um clique: YouTube, Netflix, Prime Video, Globoplay e qualquer outro pelo nome do pacote (na Roku, na LG e na Samsung, também os apps instalados na TV).
 - **Digita na TV** pelo teclado do PC, direto no campo de busca. `Ctrl+V` cola o texto copiado na TV.
 - **Comandos rápidos** (`Ctrl+K`): "netflix", "volume 20", "digitar …" e outros.
 - **Atalhos de teclado:** setas navegam, `Enter` OK, `Esc` voltar, `H` início, `M` mudo, `+`/`-` volume, espaço play/pause, `Ctrl+T` digitar.
@@ -43,7 +44,7 @@ Controle remoto desktop open source para **Android TV, Google TV, Roku e LG webO
 - **Tela cheia** com `F11` e janela maximizável.
 - **100% local:** o controle não passa por servidores. O certificado do pareamento fica só no seu PC.
 
-> Para ligar a TV pela rede, a opção **Ligar pela rede** (ou *Network standby*) precisa estar ativa na TV. Samsung já aparece na lista de TVs; o suporte chega nas próximas versões.
+> Para ligar a TV pela rede, a opção **Ligar pela rede** (ou *Network standby*) precisa estar ativa na TV.
 
 <table>
   <tr>
@@ -78,7 +79,9 @@ O passo a passo, incluindo os avisos do SmartScreen e do Gatekeeper (os binário
 
 > LG não liga pela rede? Ative na TV *LG Connect Apps* e *Ligar via Wi-Fi* (ou *Ligar com Mobile*), conforme o modelo.
 >
-> Suporte a LG testado com um simulador do protocolo; se algo não funcionar na sua TV, abra uma issue com o relatório de diagnóstico.
+> Samsung não pede permissão? Na TV: Geral › Gerenciador de dispositivos externos › Gerenciador de conexão de dispositivo › Notificação de acesso: **Ativada**. Para ligar pela rede, ative *Ligar com dispositivo móvel*.
+>
+> Suporte a LG e Samsung testado com simuladores dos protocolos; se algo não funcionar na sua TV, abra uma issue com o relatório de diagnóstico.
 
 > Netflix e Prime Video usam teclado próprio, que não recebe texto pelo protocolo. Use as setas e o OK, ou a busca global da TV.
 

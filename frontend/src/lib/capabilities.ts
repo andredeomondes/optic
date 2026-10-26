@@ -9,14 +9,20 @@ export const PLATFORM_LABEL: Record<Platform, string> = {
   '': 'Desconhecida',
 }
 
-/** Platforms OPTIC can control today; the rest are only listed. */
-export function isSupported(p: Platform): boolean {
-  return p === 'androidtv' || p === '' || p === 'roku' || p === 'webos'
+/** OS name and version for chips and the settings list; no trailing space when the version is unknown. */
+export function platformOSLabel(platform: Platform | undefined, version?: string): string {
+  const os = platform === 'roku' ? 'Roku OS' : platform === 'webos' ? 'webOS' : platform === 'tizen' ? 'Tizen' : 'Android'
+  return version ? `${os} ${version}` : os
 }
 
-/** Roku and webOS need no Remote v2; Android TV does. */
+/** Platforms OPTIC can control today; the rest are only listed. */
+export function isSupported(p: Platform): boolean {
+  return p === 'androidtv' || p === '' || p === 'roku' || p === 'webos' || p === 'tizen'
+}
+
+/** Roku, webOS and Tizen need no Remote v2; Android TV does. */
 export function canConnect(tv: TV): boolean {
-  return isSupported(tv.platform) && (tv.platform === 'roku' || tv.platform === 'webos' || tv.remotev2)
+  return isSupported(tv.platform) && (tv.platform === 'roku' || tv.platform === 'webos' || tv.platform === 'tizen' || tv.remotev2)
 }
 
 /** Whether the TV can be switched on from the network (Wake-on-LAN or Roku ECP). */

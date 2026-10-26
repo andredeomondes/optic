@@ -76,11 +76,12 @@ test('sleep timer rejects minutes outside 1-240', () => {
   }
 })
 
-test('input key command shows only on android tv or unknown platform', () => {
-  const has = (platform?: 'androidtv' | 'webos' | 'roku' | '') => suggest('hdmi', CATALOG, { platform }).some((c) => c.id === 'input')
+test('input key command shows only on android tv, samsung or unknown platform', () => {
+  const has = (platform?: 'androidtv' | 'webos' | 'roku' | 'tizen' | '') => suggest('hdmi', CATALOG, { platform }).some((c) => c.id === 'input')
   assert.ok(has())
   assert.ok(has(''))
   assert.ok(has('androidtv'))
+  assert.ok(has('tizen'))
   assert.ok(!has('roku'))
   assert.ok(!has('webos'))
 })

@@ -13,8 +13,11 @@ let maximised = false
 let muted = false
 let webosPaired = false
 let webosVolume = 12
+let tizenPaired = false
+let tizenKeyboard = false
 const ROKU_HOST = '192.168.0.50'
 const WEBOS_HOST = '192.168.0.40'
+const TIZEN_HOST = '192.168.0.60'
 let host = ''
 let rokuPlaying: 'playing' | 'paused' = 'playing'
 const pushState = () =>
@@ -24,7 +27,9 @@ const pushState = () =>
       ? { on: true, volume: 0, volumeMax: 0, muted: false, app: 'YouTube', playing: rokuPlaying }
       : host === WEBOS_HOST
         ? { on: true, volume: webosVolume, volumeMax: 100, muted, app: 'netflix', playing: '' }
-        : { on: true, volume, volumeMax: 100, muted, playing: '' },
+        : host === TIZEN_HOST
+          ? { on: true, volume: 0, volumeMax: 0, muted: false, playing: '', keyboard: tizenKeyboard }
+          : { on: true, volume, volumeMax: 100, muted, playing: '' },
   )
 
 const w = window as any
@@ -63,6 +68,7 @@ w.go = {
           { name: 'Quarto', model: 'Chromecast', ip: '192.168.0.71', remotev2: true, platform: 'androidtv' },
           { name: 'Sala Roku', model: 'TCL 43S5', ip: ROKU_HOST, remotev2: false, platform: 'roku' },
           { name: 'LG Sala', model: 'OLED55C1', ip: WEBOS_HOST, remotev2: false, platform: 'webos' },
+          { name: 'Samsung Quarto', model: 'QN55Q60', ip: TIZEN_HOST, remotev2: false, platform: 'tizen' },
         ]
       },
       async LastHost() {
@@ -88,6 +94,15 @@ w.go = {
             capabilities: { text: true, appList: true, absoluteVolume: true, powerOn: false, inputs: true, pointer: false, toast: true },
           }
         }
+        if (ip === TIZEN_HOST) {
+          if (!tizenPaired) throw new Error('NOT_PAIRED')
+          emit('trace', '>', 'ms.channel.connect')
+          setTimeout(pushState, 300)
+          return {
+            model: 'QN55Q60', vendor: 'Samsung', version: '6.5', appVersion: '', platform: 'tizen',
+            capabilities: { text: true, appList: true, absoluteVolume: false, powerOn: false, inputs: false, pointer: false, toast: false },
+          }
+        }
         emit('trace', '<', `1 { 1: 639 2 { 1: "UnionTV" 2: "TCL" } }`)
         emit('trace', '>', `1 { 1: 622 2 { 1: "OPTIC" } }`)
         setTimeout(pushState, 300)
@@ -98,6 +113,11 @@ w.go = {
       },
       async SendKey(key: string) {
         emit('trace', '>', `10 { 1: ${key} 2: 3 }`)
+        // Stands in for a text field gaining focus on the Samsung.
+        if (key === 'ENTER' && host === TIZEN_HOST) {
+          tizenKeyboard = !tizenKeyboard
+          setTimeout(pushState, 120)
+        }
         if (key === 'VOLUME_UP') volume = Math.min(100, volume + 1)
         if (key === 'VOLUME_DOWN') volume = Math.max(0, volume - 1)
         if (key === 'MUTE') muted = !muted
@@ -143,6 +163,13 @@ w.go = {
             { id: 'globoplay', name: 'Globoplay' },
           ]
         }
+        if (host === TIZEN_HOST) {
+          return [
+            { id: '111299001912', name: 'YouTube' },
+            { id: '3201907018807', name: 'Netflix' },
+            { id: '3201908019041', name: 'Globoplay' },
+          ]
+        }
         throw new Error('Android TV ainda não é suportada')
       },
       async LatestRelease() {
@@ -159,6 +186,7 @@ w.go = {
         emit('trace', '>', `wol ${ip}`)
       },
       async StartPairing(ip: string) {
+        if (ip === TIZEN_HOST) return { name: 'Samsung Quarto', mode: 'prompt' }
         return ip === WEBOS_HOST ? { name: 'LG Sala', mode: 'prompt' } : { name: 'UnionTV', mode: 'code' }
       },
       async Inputs() {
@@ -185,7 +213,8 @@ w.go = {
       },
       async FinishPairing() {
         await wait(1500)
-        webosPaired = true
+        if (host === TIZEN_HOST) tizenPaired = true
+        else webosPaired = true
       },
       async CancelPairing() {},
       async TrayAvailable() {

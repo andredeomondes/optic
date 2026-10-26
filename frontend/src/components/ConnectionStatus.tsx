@@ -3,7 +3,7 @@ import { since, useNow } from '../hooks/useNow'
 import { useRemote } from '../hooks/useRemote'
 import { useTVApps } from '../hooks/useTVApps'
 import { CATALOG } from '../lib/apps'
-import { can } from '../lib/capabilities'
+import { can, platformOSLabel } from '../lib/capabilities'
 import { nowPlayingText } from '../lib/nowplaying'
 import { InputPicker } from './InputPicker'
 import { RemoteButton } from './RemoteButton'
@@ -33,7 +33,7 @@ export function ConnectionStatus() {
           {status === 'connected' && (
             <>
               <span>Conectado {connectedAt ? since(connectedAt, now) : ''}</span>
-              {info?.version && <span className="chip">{info.platform === 'roku' ? 'Roku OS' : info.platform === 'webos' ? 'webOS' : 'Android'} {info.version}</span>}
+              {(info?.version || info?.platform === 'tizen') && <span className="chip">{platformOSLabel(info.platform, info.version)}</span>}
               <span className="chip">{host}</span>
             </>
           )}

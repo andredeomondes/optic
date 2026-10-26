@@ -2,11 +2,9 @@ package webos
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -682,45 +680,9 @@ func TestCloseIdempotentAndDone(t *testing.T) {
 	}
 }
 
-func TestKeyStoreAtomicAndCorrupt(t *testing.T) {
+func TestKeysFilePath(t *testing.T) {
 	dir := t.TempDir()
-	ks := keyStore{path: filepath.Join(dir, "webos_keys.json")}
-	if ks.Get(host) != "" {
-		t.Error("missing file must read empty")
-	}
-	if err := ks.Put(host, "a"); err != nil {
-		t.Fatal(err)
-	}
-	if err := ks.Put("10.0.0.6", "b"); err != nil {
-		t.Fatal(err)
-	}
-	if ks.Get(host) != "a" || ks.Get("10.0.0.6") != "b" {
-		t.Error("keys not kept")
-	}
-	if _, err := os.Stat(ks.path + ".tmp"); !os.IsNotExist(err) {
-		t.Error("temp file left behind")
-	}
-	var m map[string]string
-	b, _ := os.ReadFile(ks.path)
-	if json.Unmarshal(b, &m) != nil || m[host] != "a" {
-		t.Errorf("file = %s", b)
-	}
-	if err := ks.Delete(host); err != nil {
-		t.Fatal(err)
-	}
-	if ks.Get(host) != "" || ks.Get("10.0.0.6") != "b" {
-		t.Error("delete wrong")
-	}
-
-	os.WriteFile(ks.path, []byte("{not json"), 0o600)
-	if ks.Get("10.0.0.6") != "" {
-		t.Error("corrupt file must read empty")
-	}
-	if err := ks.Put(host, "c"); err != nil || ks.Get(host) != "c" {
-		t.Errorf("put over corrupt: %v", err)
-	}
-
-	if New(dir).keys.path != filepath.Join(dir, "webos_keys.json") {
+	if New(dir).keys.Path != filepath.Join(dir, "webos_keys.json") {
 		t.Error("keys file path")
 	}
 }

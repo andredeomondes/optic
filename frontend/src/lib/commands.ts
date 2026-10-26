@@ -141,8 +141,8 @@ export function suggest(raw: string, apps: AppDef[], ctx: Context = {}): Command
     action: { type: 'launch', app: a },
   }))
 
-  // The raw TV_INPUT key only exists on Android; Roku and LG use the picker.
-  const keyInput = ctx.platform === undefined || ctx.platform === '' || ctx.platform === 'androidtv'
+  // The raw TV_INPUT key only exists on Android and Samsung (KEY_SOURCE); Roku and LG use the picker.
+  const keyInput = ctx.platform === undefined || ctx.platform === '' || ctx.platform === 'androidtv' || ctx.platform === 'tizen'
   const statics = keyInput ? STATIC : STATIC.filter((c) => c.id !== 'input')
   const pool = [...statics, ...appCommands]
   const matched = input

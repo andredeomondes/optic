@@ -3,6 +3,7 @@ import { AppWindow, ClipboardList, Copy, ExternalLink, Eraser, Info, Keyboard, R
 import { useRemote } from '../hooks/useRemote'
 import type { Updates } from '../hooks/useUpdates'
 import * as api from '../lib/backend'
+import { platformOSLabel } from '../lib/capabilities'
 import { buildReport } from '../lib/report'
 import { SHORTCUTS } from '../lib/shortcuts'
 import { safeReleaseURL } from '../lib/version'
@@ -137,7 +138,7 @@ function Diagnostics() {
     ['IP', host || '—'],
     ['Fabricante', info?.vendor || '—'],
     ['Modelo', info?.model || '—'],
-    [info?.platform === 'roku' ? 'Roku OS' : 'Android', info?.version || '—'],
+    ['Sistema', info ? platformOSLabel(info.platform, info.version) : '—'],
     ['Serviço remoto', info?.appVersion || '—'],
     ['Volume', tvState?.volumeMax ? `${tvState.volume} / ${tvState.volumeMax}` : '—'],
   ]

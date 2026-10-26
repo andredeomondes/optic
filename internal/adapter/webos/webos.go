@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"optic/internal/adapter/keystore"
 	"optic/internal/domain"
 	"optic/pkg/webos"
 )
@@ -57,7 +58,7 @@ var (
 
 // Adapter opens sessions with LG webOS TVs and pairs with them.
 type Adapter struct {
-	keys keyStore
+	keys keystore.Store
 	// Dial opens the SSAP connection; nil uses webos.Dial (tests only).
 	Dial            func(ctx context.Context, host string, opt webos.Options) (*webos.Conn, error)
 	promptTimeout   time.Duration
@@ -66,7 +67,7 @@ type Adapter struct {
 
 // New returns an adapter keeping the TVs' client keys in cfgDir.
 func New(cfgDir string) *Adapter {
-	return &Adapter{keys: keyStore{path: filepath.Join(cfgDir, keysFile)}}
+	return &Adapter{keys: keystore.Store{Path: filepath.Join(cfgDir, keysFile)}}
 }
 
 func (a *Adapter) dial(ctx context.Context, host string, opt webos.Options) (*webos.Conn, error) {
@@ -208,7 +209,7 @@ type regResult struct {
 // pairing waits for the user to answer the prompt on the TV.
 type pairing struct {
 	conn    *webos.Conn
-	keys    keyStore
+	keys    keystore.Store
 	host    string
 	timeout time.Duration
 	cancel  context.CancelFunc
