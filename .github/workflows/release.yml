@@ -66,7 +66,7 @@ jobs:
         with: { go-version-file: go.mod }
       - uses: actions/setup-node@v4
         with: { node-version: 24 }
-      - run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+      - run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev imagemagick
       - run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
       - name: Build
         run: |
@@ -74,10 +74,19 @@ jobs:
           mkdir -p pkg/OPTIC && cp build/bin/optic-desktop pkg/OPTIC/ && cp build/appicon.png pkg/OPTIC/optic.png
           cp packaging/linux/optic.desktop pkg/OPTIC/ && cp packaging/linux/install.sh pkg/OPTIC/ && cp LICENSE pkg/OPTIC/ && convert build/appicon.png -resize 512x512 pkg/OPTIC/optic-512.png
           tar -C pkg -czf build/bin/OPTIC-linux-amd64.tar.gz OPTIC
+      # Same layout, linked against WebKitGTK 4.1 (Arch, Flathub).
+      - name: Build (WebKitGTK 4.1)
+        run: |
+          rm -f build/bin/optic-desktop
+          wails build -skipbindings -trimpath -platform linux/amd64 -tags webkit2_41 -o optic-desktop
+          mkdir -p pkg41 && cp -r pkg/OPTIC pkg41/OPTIC && cp build/bin/optic-desktop pkg41/OPTIC/optic-desktop
+          tar -C pkg41 -czf build/bin/OPTIC-linux-amd64-webkit41.tar.gz OPTIC
       - uses: actions/upload-artifact@v4
         with:
           name: linux
-          path: build/bin/OPTIC-linux-amd64.tar.gz
+          path: |
+            build/bin/OPTIC-linux-amd64.tar.gz
+            build/bin/OPTIC-linux-amd64-webkit41.tar.gz
 
   publish:
     needs: [windows, macos, linux]
