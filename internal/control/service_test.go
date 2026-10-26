@@ -183,6 +183,19 @@ func TestSetVolumeRokuNotReported(t *testing.T) {
 	}
 }
 
+func TestSetVolumeTizenNotReported(t *testing.T) {
+	sess := newSession(domain.State{})
+	sess.plat = domain.PlatformTizen
+	s, _, _ := newService(fakeConnector{sess: sess}, nil)
+	s.Connect(context.Background(), "x")
+	if err := s.SetVolume(20); !errors.Is(err, domain.ErrVolumeNotReported) {
+		t.Fatalf("err = %v", err)
+	}
+	if len(sess.keys) != 0 {
+		t.Fatalf("sent %v", sess.keys)
+	}
+}
+
 func TestSetVolume(t *testing.T) {
 	cases := []struct {
 		name      string
