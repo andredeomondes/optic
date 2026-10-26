@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { AppLauncher } from './components/AppLauncher'
 import { DeviceSidebar } from './components/DeviceSidebar'
 import { PairDialog } from './components/PairDialog'
@@ -16,6 +16,7 @@ import { useShortcuts } from './hooks/useShortcuts'
 import { useUpdates } from './hooks/useUpdates'
 import { useWindowMode } from './hooks/useWindowMode'
 import { appsForPlatform, launchLink } from './lib/apps'
+import * as api from './lib/backend'
 import { matchInput } from './lib/tvapps'
 import type { Command } from './lib/commands'
 
@@ -39,6 +40,9 @@ function Shell() {
   const [settings, setSettings] = useState(false)
 
   const togglePalette = useCallback(() => setPalette((p) => !p), [])
+  // Global shortcuts: the palette key opens the quick command, failures become toasts.
+  useEffect(() => api.onEvent('hotkey:palette', () => setPalette(true)), [])
+  useEffect(() => api.onEvent('hotkey:error', (msg: string) => remote.notify('err', msg)), [remote.notify])
   useShortcuts({ connected: remote.connected, press: remote.press, togglePalette, paste: remote.pasteToTV })
 
   const runCommand = (c: Command) => {

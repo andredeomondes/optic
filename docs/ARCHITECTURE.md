@@ -71,6 +71,7 @@ main (composição) ──► adapters ──► domain ◄── control (casos
 | `internal/adapter/ssdp` | `Discoverer` via SSDP (Roku, LG, Samsung); nomes das Roku pelo device-info | `domain`, `pkg/ssdp`, `pkg/roku` |
 | `internal/adapter/filestore` | `HostStore` e preferências em arquivos na pasta de config | `domain` |
 | `internal/platform/tray` | Ícone na bandeja (Windows) ou no-op (outros SOs) | `energye/systray` (só Windows) |
+| `internal/platform/hotkey` | Atalhos globais e teclas de mídia com `RegisterHotKey` numa thread própria (Windows) ou no-op | stdlib (`user32.dll` no Windows) |
 | `main` (`main.go`, `app.go`, `shell.go`) | Composição + entrega via Wails: bindings, janela, eventos | tudo acima |
 | `pkg/atvremote` | Protocolo: TLS, pairing Polo, mensagens protobuf codificadas à mão | stdlib, `protowire` |
 | `pkg/discovery` | mDNS/zeroconf | `zeroconf` |

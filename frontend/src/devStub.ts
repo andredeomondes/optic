@@ -8,6 +8,32 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 let volume = 18
 let closeToTray = true
+// Global shortcuts: in memory; Ctrl+Alt+H is "taken" so the error state can be seen.
+const hotkeyDefaults: Record<string, string> = {
+  volume_up: 'Ctrl+Alt+Up',
+  volume_down: 'Ctrl+Alt+Down',
+  mute: 'Ctrl+Alt+M',
+  home: 'Ctrl+Alt+H',
+  palette: 'Ctrl+Alt+K',
+}
+const mediaAccels: Record<string, string> = {
+  media_play_pause: 'MediaPlayPause',
+  media_next: 'MediaNext',
+  media_prev: 'MediaPrev',
+  media_stop: 'MediaStop',
+}
+const hotkeys = { enabled: false, media: false, bindings: { ...hotkeyDefaults } }
+const hotkeyState = () => {
+  const list = Object.entries(hotkeys.bindings).map(([id, accel]) => ({
+    id,
+    accel,
+    error: hotkeys.enabled && accel.toLowerCase() === 'ctrl+alt+h' ? 'Em uso por outro programa' : '',
+  }))
+  if (hotkeys.enabled && hotkeys.media) {
+    for (const [id, accel] of Object.entries(mediaAccels)) list.push({ id, accel, error: '' })
+  }
+  return { supported: true, enabled: hotkeys.enabled, media: hotkeys.media, bindings: list }
+}
 let size = { w: 820, h: 880 }
 let maximised = false
 let muted = false
@@ -227,11 +253,29 @@ w.go = {
         closeToTray = on
         emit('prefs:closeToTray', on)
       },
+      async GetHotkeys() {
+        return hotkeyState()
+      },
+      async SetHotkeys(enabled: boolean, media: boolean, bindings: Record<string, string>) {
+        const next: Record<string, string> = {}
+        for (const id of Object.keys(hotkeyDefaults)) next[id] = bindings[id] ?? hotkeys.bindings[id as keyof typeof hotkeys.bindings]
+        const seen = new Set<string>()
+        for (const accel of Object.values(next)) {
+          const k = accel.toLowerCase()
+          if (seen.has(k)) throw new Error(`Atalho repetido: ${accel}`)
+          seen.add(k)
+        }
+        hotkeys.enabled = enabled
+        hotkeys.media = media
+        hotkeys.bindings = next as typeof hotkeys.bindings
+        return hotkeyState()
+      },
       async SetCompactMode() {},
       async ResizeWindow(_minW: number, _minH: number, w: number, h: number) {
         size = { w, h }
       },
       async ShowWindow() {},
+      async SuspendHotkeys() {},
       async QuitApp() {},
       async ToggleFullscreen() {
         if (document.fullscreenElement) await document.exitFullscreen().catch(() => {})

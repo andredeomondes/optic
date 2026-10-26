@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
 
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -9,6 +10,7 @@ import (
 
 	"optic/internal/adapter/filestore"
 	"optic/internal/domain"
+	"optic/internal/platform/hotkey"
 	"optic/internal/platform/tray"
 )
 
@@ -32,6 +34,15 @@ type Shell struct {
 
 	closeToTray atomic.Bool
 	quitting    atomic.Bool
+	hidden      atomic.Bool // window hidden to the tray
+
+	// keys sends a key to the connected TV; injected by main.
+	keys func(string) error
+
+	hkMu   sync.Mutex // guards hk, hkErrs and the prefs read-modify-write
+	hk     hotkey.Manager
+	hkErrs map[string]string
+	hkOff  bool // registrations dropped while the UI captures a new key
 }
 
 func newShell(store filestore.Store, icon []byte) *Shell {
@@ -58,9 +69,74 @@ func (s *Shell) startup(ctx context.Context) {
 			Quit:              s.QuitApp,
 		},
 	})
+	s.hkMu.Lock()
+	s.hk = hotkey.Start(s.onHotkey)
+	s.hkErrs = hotkeyErrors(s.hk.Set(hotkeyBindings(s.store.LoadPrefs().Hotkeys)))
+	s.hkMu.Unlock()
 }
 
-func (s *Shell) shutdown() { s.tray.Stop() }
+func (s *Shell) shutdown() {
+	s.hkMu.Lock()
+	if s.hk != nil {
+		s.hk.Close()
+	}
+	s.hkMu.Unlock()
+	s.tray.Stop()
+}
+
+// onHotkey runs on its own goroutine for each fired global shortcut.
+func (s *Shell) onHotkey(id string) {
+	dispatchHotkey(id, s.keys, hotkeyEffects{
+		visible: func() bool { return !s.hidden.Load() },
+		show:    s.ShowWindow,
+		emit:    func(ev string, data ...any) { runtime.EventsEmit(s.ctx, ev, data...) },
+	})
+}
+
+// GetHotkeys returns the shortcut settings and the result of the last registration.
+func (s *Shell) GetHotkeys() HotkeyState {
+	s.hkMu.Lock()
+	defer s.hkMu.Unlock()
+	return buildHotkeyState(hotkey.Supported(), s.store.LoadPrefs().Hotkeys, s.hkErrs)
+}
+
+// SetHotkeys validates, saves and registers the shortcuts. Invalid input is
+// returned as an error and nothing changes. Unknown action ids are ignored.
+func (s *Shell) SetHotkeys(enabled, media bool, bindings map[string]string) (HotkeyState, error) {
+	s.hkMu.Lock()
+	defer s.hkMu.Unlock()
+	prefs := s.store.LoadPrefs()
+	valid, err := validateHotkeys(bindings, prefs.Hotkeys.Bindings)
+	if err != nil {
+		return HotkeyState{}, err
+	}
+	prefs.Hotkeys = filestore.HotkeyPrefs{Enabled: enabled, Media: media, Bindings: valid}
+	if err := s.store.SavePrefs(prefs); err != nil {
+		return HotkeyState{}, err
+	}
+	if s.hk != nil {
+		s.hkErrs = hotkeyErrors(s.hk.Set(hotkeyBindings(prefs.Hotkeys)))
+		s.hkOff = false
+	}
+	return buildHotkeyState(hotkey.Supported(), prefs.Hotkeys, s.hkErrs), nil
+}
+
+// SuspendHotkeys drops every registration while the UI captures a new
+// shortcut (so the keys do not fire on the TV), and restores them from the
+// saved prefs when on is false. Repeated calls do nothing.
+func (s *Shell) SuspendHotkeys(on bool) {
+	s.hkMu.Lock()
+	defer s.hkMu.Unlock()
+	if s.hk == nil || s.hkOff == on {
+		return
+	}
+	s.hkOff = on
+	if on {
+		s.hk.Set(nil)
+		return
+	}
+	s.hkErrs = hotkeyErrors(s.hk.Set(hotkeyBindings(s.store.LoadPrefs().Hotkeys)))
+}
 
 // beforeClose turns the close button (and Alt+F4) into "hide to tray" when
 // that preference is on and the tray is there to bring the window back.
@@ -70,6 +146,7 @@ func (s *Shell) beforeClose(context.Context) bool {
 		return false
 	}
 	runtime.WindowHide(s.ctx)
+	s.hidden.Store(true)
 	return true
 }
 
@@ -79,6 +156,7 @@ func (s *Shell) onSecondInstance(options.SecondInstanceData) { s.ShowWindow() }
 
 // ShowWindow brings the window back from the tray or the taskbar.
 func (s *Shell) ShowWindow() {
+	s.hidden.Store(false)
 	runtime.WindowShow(s.ctx)
 	runtime.WindowUnminimise(s.ctx)
 	runtime.WindowSetAlwaysOnTop(s.ctx, true)  // Windows won't hand focus to a background process;
@@ -123,7 +201,11 @@ func (s *Shell) CloseToTray() bool { return s.closeToTray.Load() }
 
 func (s *Shell) SetCloseToTray(on bool) {
 	s.closeToTray.Store(on)
-	_ = s.store.SavePrefs(filestore.Prefs{CloseToTray: on})
+	s.hkMu.Lock()
+	p := s.store.LoadPrefs()
+	p.CloseToTray = on
+	_ = s.store.SavePrefs(p)
+	s.hkMu.Unlock()
 	s.tray.SetCloseToTray(on)
 	runtime.EventsEmit(s.ctx, evCloseToTray, on)
 }

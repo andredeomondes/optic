@@ -31,4 +31,6 @@ export type LogLine = { id: number; dir: string; text: string; time: string }
 /** Visual result of an action, keyed by action id (e.g. "key:HOME"). */
 export type Feedback = 'pending' | 'ok' | 'err'
 
+export type HotkeyBinding = { id: string; accel: string; error: string }
+export type HotkeyState = { supported: boolean; enabled: boolean; media: boolean; bindings: HotkeyBinding[] }
 export type Toast = { id: number; kind: 'ok' | 'err' | 'info'; text: string }

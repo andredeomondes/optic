@@ -36,6 +36,8 @@ Controle remoto desktop open source para **Android TV, Google TV, Roku, LG webOS
 - **Digita na TV** pelo teclado do PC, direto no campo de busca. `Ctrl+V` cola o texto copiado na TV.
 - **Comandos rápidos** (`Ctrl+K`): "netflix", "volume 20", "digitar …" e outros.
 - **Atalhos de teclado:** setas navegam, `Enter` OK, `Esc` voltar, `H` início, `M` mudo, `+`/`-` volume, espaço play/pause, `Ctrl+T` digitar.
+- **Atalhos globais** (Windows): `Ctrl+Alt+↑/↓` volume, `Ctrl+Alt+M` mudo, `Ctrl+Alt+H` início e `Ctrl+Alt+K` comandos rápidos, mesmo com outra janela em foco. Ative e troque as teclas em Configurações › Atalhos. `Ctrl+Alt` equivale a `AltGr` em alguns teclados; se um atalho impedir digitar um caractere, troque-o.
+- **Teclas de mídia** do teclado do PC (play/pause, próxima, anterior, parar) controlando a TV, opcional.
 - **Volume pela roda do mouse** sobre o controle (com a TV conectada) e pelo menu da bandeja.
 - **Timer para desligar** a TV em 15, 30, 60 ou 90 minutos (ou "desligar em 45 min" no `Ctrl+K`).
 - **Aviso de nova versão:** o app avisa quando sai uma release nova (dá para desligar em Configurações). A checagem só consulta a página pública de releases no GitHub; nenhum dado seu ou da TV é enviado.
