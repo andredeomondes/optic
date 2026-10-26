@@ -26,6 +26,7 @@ import (
 	"optic/internal/adapter/registry"
 	rokuadapter "optic/internal/adapter/roku"
 	"optic/internal/adapter/ssdp"
+	"optic/internal/adapter/tizen"
 	"optic/internal/adapter/webos"
 	"optic/internal/control"
 	"optic/internal/domain"
@@ -57,7 +58,7 @@ var upnpClient = &http.Client{
 	CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 }
 
-// describeUPnP reads an LG TV's own name and model during discovery.
+// describeUPnP reads an LG or Samsung TV's own name and model during discovery.
 func describeUPnP(ctx context.Context, location string) (string, string, error) {
 	return ssdpproto.Describe(ctx, upnpClient, location)
 }
@@ -75,6 +76,7 @@ func main() {
 			domain.PlatformAndroidTV: tv,
 			domain.PlatformRoku:      rokuadapter.Adapter{},
 			domain.PlatformWebOS:     webos.New(cfgDir),
+			domain.PlatformTizen:     tizen.New(cfgDir),
 		},
 		Known: store,
 	}

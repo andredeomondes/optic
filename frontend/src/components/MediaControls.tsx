@@ -21,10 +21,10 @@ export function NavButtons() {
   )
 }
 
-/** LG has no previous/next keys, so those two are hidden on webOS. */
+/** LG and Samsung have no previous/next keys, so those two are hidden on webOS and Tizen. */
 export function MediaControls() {
   const { info } = useRemote()
-  const skip = info?.platform !== 'webos'
+  const skip = info?.platform !== 'webos' && info?.platform !== 'tizen'
   return (
     <div className="media-row" style={skip ? undefined : { gridTemplateColumns: 'repeat(3, 1fr)' }}>
       {skip && (

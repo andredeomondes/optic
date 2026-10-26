@@ -33,7 +33,7 @@ func (d Discoverer) Discover(ctx context.Context, timeout time.Duration) ([]doma
 	return d.enrich(ctx, toTVs(resps), locations(resps)), nil
 }
 
-// enrich replaces the SSDP name of each Roku and LG TV with the name it
+// enrich replaces the SSDP name of each Roku, LG and Samsung TV with the name it
 // reports itself. locs maps a TV IP to its SSDP Location. A failed lookup
 // keeps the TV as found.
 func (d Discoverer) enrich(ctx context.Context, tvs []domain.TV, locs map[string]string) []domain.TV {
@@ -51,7 +51,7 @@ func (d Discoverer) enrich(ctx context.Context, tvs []domain.TV, locs map[string
 				tv.Name = info.Name()
 				tv.Model = info.Model
 			}(&tvs[i])
-		case tvs[i].Platform == domain.PlatformWebOS && d.Describe != nil:
+		case (tvs[i].Platform == domain.PlatformWebOS || tvs[i].Platform == domain.PlatformTizen) && d.Describe != nil:
 			loc := locs[tvs[i].IP]
 			if !sameHost(loc, tvs[i].IP) {
 				continue
@@ -94,11 +94,11 @@ func toTVs(resps []ssdpproto.Response) []domain.TV {
 	return out
 }
 
-// locations maps each LG TV's IP to the first Location it advertised.
+// locations maps each LG or Samsung TV's IP to the first Location it advertised.
 func locations(resps []ssdpproto.Response) map[string]string {
 	out := map[string]string{}
 	for _, r := range resps {
-		if p, ok := ssdpproto.Classify(r); !ok || p != "webos" || r.Location == "" {
+		if p, ok := ssdpproto.Classify(r); !ok || (p != "webos" && p != "tizen") || r.Location == "" {
 			continue
 		}
 		if _, dup := out[r.IP]; !dup {

@@ -137,7 +137,7 @@ function Diagnostics() {
     ['IP', host || '—'],
     ['Fabricante', info?.vendor || '—'],
     ['Modelo', info?.model || '—'],
-    [info?.platform === 'roku' ? 'Roku OS' : 'Android', info?.version || '—'],
+    [info?.platform === 'roku' ? 'Roku OS' : info?.platform === 'webos' ? 'webOS' : info?.platform === 'tizen' ? 'Tizen' : 'Android', info?.version || '—'],
     ['Serviço remoto', info?.appVersion || '—'],
     ['Volume', tvState?.volumeMax ? `${tvState.volume} / ${tvState.volumeMax}` : '—'],
   ]

@@ -9,7 +9,7 @@ test('isSupported', () => {
   assert.equal(isSupported(''), true)
   assert.equal(isSupported('roku'), true)
   assert.equal(isSupported('webos'), true)
-  assert.equal(isSupported('tizen'), false)
+  assert.equal(isSupported('tizen'), true)
 })
 
 test('canConnect', () => {
@@ -18,7 +18,7 @@ test('canConnect', () => {
   assert.equal(canConnect(tv('androidtv', false)), false)
   assert.equal(canConnect(tv('androidtv', true)), true)
   assert.equal(canConnect(tv('webos', false)), true)
-  assert.equal(canConnect(tv('tizen', true)), false)
+  assert.equal(canConnect(tv('tizen', false)), true)
 })
 
 test('canPowerOn', () => {
@@ -27,7 +27,8 @@ test('canPowerOn', () => {
   assert.equal(canPowerOn(tv('androidtv')), false)
   assert.equal(canPowerOn(tv('androidtv', 'aa:bb:cc:dd:ee:ff')), true)
   assert.equal(canPowerOn(tv('webos', 'aa:bb:cc:dd:ee:ff')), true)
-  assert.equal(canPowerOn(tv('tizen', 'aa:bb:cc:dd:ee:ff')), false)
+  assert.equal(canPowerOn(tv('tizen', 'aa:bb:cc:dd:ee:ff')), true)
+  assert.equal(canPowerOn(tv('tizen')), false)
 })
 
 test('can', () => {

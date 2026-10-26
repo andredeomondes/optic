@@ -25,7 +25,7 @@ export function VolumeControl() {
         </RemoteButton>
         <div className="slider-wrap" title={known
             ? 'Arraste para ajustar'
-            : info?.platform === 'roku'
+            : info?.platform === 'roku' || info?.platform === 'tizen'
               ? 'Esta TV não informa o volume: use + e −'
               : 'Volume aparece após a primeira mudança'}>
           <input

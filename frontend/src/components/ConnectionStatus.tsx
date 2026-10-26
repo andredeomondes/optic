@@ -33,7 +33,7 @@ export function ConnectionStatus() {
           {status === 'connected' && (
             <>
               <span>Conectado {connectedAt ? since(connectedAt, now) : ''}</span>
-              {info?.version && <span className="chip">{info.platform === 'roku' ? 'Roku OS' : info.platform === 'webos' ? 'webOS' : 'Android'} {info.version}</span>}
+              {info?.version && <span className="chip">{info.platform === 'roku' ? 'Roku OS' : info.platform === 'webos' ? 'webOS' : info.platform === 'tizen' ? 'Tizen' : 'Android'} {info.version}</span>}
               <span className="chip">{host}</span>
             </>
           )}
