@@ -17,7 +17,7 @@ const ROKU_HOST = '192.168.0.50'
 const WEBOS_HOST = '192.168.0.40'
 let host = ''
 const pushState = () =>
-  emit('state', host === ROKU_HOST ? { on: true, volume: 0, volumeMax: 0, muted: false } : { on: true, volume: host === WEBOS_HOST ? webosVolume : volume, volumeMax: 100, muted })
+  emit('state', host === ROKU_HOST ? { on: true, volume: 0, volumeMax: 0, muted: false, playing: '' } : { on: true, volume: host === WEBOS_HOST ? webosVolume : volume, volumeMax: 100, muted, playing: '' })
 
 const w = window as any
 

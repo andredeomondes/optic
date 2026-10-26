@@ -22,6 +22,8 @@ export type TVState = {
   app?: string
   /** Android on-screen keyboard is open on the TV. */
   keyboard?: boolean
+  /** Playback state; empty when the TV does not report it. */
+  playing: 'playing' | 'paused' | ''
 }
 export type Status = 'idle' | 'connecting' | 'pairing' | 'connected' | 'error'
 export type LogLine = { id: number; dir: string; text: string; time: string }
