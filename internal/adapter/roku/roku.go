@@ -31,6 +31,17 @@ type Adapter struct {
 	MaxFails int
 }
 
+// quick returns c with a 1 s timeout, for optional endpoints.
+func (a Adapter) quick(c roku.Client) roku.Client {
+	h := http.Client{}
+	if c.HTTP != nil {
+		h = *c.HTTP
+	}
+	h.Timeout = time.Second
+	c.HTTP = &h
+	return c
+}
+
 func (a Adapter) client(host string) roku.Client {
 	c := roku.Client{HTTP: a.HTTP, Host: host}
 	if a.BaseURL != nil {
@@ -66,10 +77,11 @@ func (a Adapter) Connect(ctx context.Context, host string, ev domain.SessionEven
 			Capabilities: domain.Capabilities{Text: true, AppList: true, PowerOn: true, Inputs: di.IsTV},
 		},
 		isTV:  di.IsTV,
-		state: toState(di, app, playing(c.MediaPlayer(ctx))),
+		state: toState(di, app, playing(a.quick(c).MediaPlayer(ctx))),
 		done:  make(chan struct{}),
 	}
 	ev.OnState(s.state)
+	s.quick = a.quick(c)
 	go s.poll(poll, maxFails)
 	return s, nil
 }
@@ -115,6 +127,7 @@ var rokuInputs = []domain.Input{
 
 type session struct {
 	c      roku.Client
+	quick  roku.Client // 1 s timeout, optional calls
 	ev     domain.SessionEvents
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -186,7 +199,7 @@ func (s *session) poll(every time.Duration, maxFails int) {
 			continue
 		}
 		fails = 0
-		s.update(toState(di, app, playing(s.c.MediaPlayer(s.ctx))))
+		s.update(toState(di, app, playing(s.quick.MediaPlayer(s.ctx))))
 	}
 }
 
@@ -272,7 +285,7 @@ func (s *session) Apps(ctx context.Context) ([]domain.App, error) {
 	s.mu.Unlock()
 	out := make([]domain.App, 0, len(list))
 	for _, a := range list {
-		if a.ID != "" {
+		if a.ID != "" && a.Type != "tvin" {
 			out = append(out, domain.App{ID: a.ID, Name: a.Name})
 		}
 	}

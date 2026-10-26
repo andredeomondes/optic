@@ -60,6 +60,11 @@ func resolveApp(target string, installed []roku.App) (string, error) {
 		return "", ErrAppNotInstalled
 	}
 	for _, a := range installed {
+		if a.ID == target {
+			return a.ID, nil
+		}
+	}
+	for _, a := range installed {
 		if strings.EqualFold(a.Name, target) {
 			return a.ID, nil
 		}

@@ -56,7 +56,7 @@ func (f *fakeRoku) handle(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/query/active-app":
 		fmt.Fprintf(w, `<active-app><app id="12">%s</app></active-app>`, f.active)
 	case r.URL.Path == "/query/apps":
-		fmt.Fprint(w, `<apps><app id="12" type="appl">Netflix</app><app id="837" type="appl">YouTube</app></apps>`)
+		fmt.Fprint(w, `<apps><app id="12" type="appl">Netflix</app><app id="837" type="appl">YouTube</app><app id="tvinput.hdmi1" type="tvin">HDMI 1</app></apps>`)
 	}
 }
 
