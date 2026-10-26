@@ -38,14 +38,26 @@ type Downloader struct {
 	AllowedHosts []string     // nil → DefaultAllowedHosts
 	Prefix       string       // "" → ReleasePrefix
 	MaxSize      int64        // 0 → DefaultMaxSize
+
+	stall time.Duration // 0 → DefaultStall; tests shorten it
 }
 
-var errRedirect = errors.New("redirect refused")
+// DefaultStall aborts a download when no bytes arrive for this long.
+const DefaultStall = 60 * time.Second
 
-// Fetch downloads asset from rel into dir and returns its path once its
-// SHA256 matches the release's SHA256SUMS. Partial or bad files are removed.
+var (
+	errRedirect = errors.New("redirect refused")
+	errStalled  = errors.New("download stalled")
+	errDest     = errors.New("Não foi possível salvar o download nesta pasta.")
+)
+
+// Fetch downloads asset (one of the Asset* installable names) from rel into
+// dir and returns its path once its SHA256 matches the release's SHA256SUMS.
+// Bytes go to a unique temp file that is renamed into place only after the
+// check, so the returned file always holds verified bytes. Cancel ctx to
+// stop; a download with no bytes for DefaultStall is aborted as well.
 func (d Downloader) Fetch(ctx context.Context, rel domain.Release, asset, dir string, progress func(got, total int64)) (string, error) {
-	if asset == "" || filepath.Base(asset) != asset || strings.ContainsAny(asset, `/\`) {
+	if !knownAsset(asset) {
 		return "", ErrNoAsset
 	}
 	var target, sums *domain.Asset
@@ -68,6 +80,9 @@ func (d Downloader) Fetch(ctx context.Context, rel domain.Release, asset, dir st
 	}
 
 	client := d.client()
+	if d.HTTP == nil {
+		defer client.CloseIdleConnections()
+	}
 	list, err := d.get(ctx, client, sums.URL, MaxSumsSize, nil)
 	if err != nil {
 		return "", err
@@ -81,11 +96,11 @@ func (d Downloader) Fetch(ctx context.Context, rel domain.Release, asset, dir st
 		return "", err
 	}
 	final := filepath.Join(dir, asset)
-	part := final + ".part"
-	f, err := os.OpenFile(part, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
+	f, err := os.CreateTemp(dir, asset+".*.part")
 	if err != nil {
-		return "", err
+		return "", errDest
 	}
+	part := f.Name()
 	h := sha256.New()
 	limit := d.maxSize()
 	if target.Size > 0 && target.Size < limit {
@@ -110,7 +125,7 @@ func (d Downloader) Fetch(ctx context.Context, rel domain.Release, asset, dir st
 		err = ErrChecksum
 	}
 	if err == nil {
-		err = os.Rename(part, final)
+		err = replace(part, final)
 	}
 	if err != nil {
 		os.Remove(part)
@@ -119,9 +134,35 @@ func (d Downloader) Fetch(ctx context.Context, rel domain.Release, asset, dir st
 	return final, nil
 }
 
+// replace moves the verified temp file to final, refusing to follow or
+// replace anything but a regular file there.
+func replace(tmp, final string) error {
+	if fi, err := os.Lstat(final); err == nil {
+		if !fi.Mode().IsRegular() {
+			return errDest
+		}
+		if err := os.Remove(final); err != nil {
+			return errDest
+		}
+	}
+	if err := os.Rename(tmp, final); err != nil {
+		return errDest
+	}
+	return nil
+}
+
 // get fetches u, reading at most limit bytes. With sink nil the body is
 // returned; otherwise sink consumes it and nothing is returned.
-func (d Downloader) get(ctx context.Context, c *http.Client, u string, limit int64, sink func(io.Reader, int64) (int64, error)) ([]byte, error) {
+func (d Downloader) get(parent context.Context, c *http.Client, u string, limit int64, sink func(io.Reader, int64) (int64, error)) ([]byte, error) {
+	ctx, cancel := context.WithCancelCause(parent)
+	defer cancel(nil)
+	stall := d.stall
+	if stall <= 0 {
+		stall = DefaultStall
+	}
+	timer := time.AfterFunc(stall, func() { cancel(errStalled) })
+	defer timer.Stop()
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, ErrNetwork
@@ -137,7 +178,7 @@ func (d Downloader) get(ctx context.Context, c *http.Client, u string, limit int
 	if resp.ContentLength > limit {
 		return nil, ErrTooLarge
 	}
-	body := io.LimitReader(resp.Body, limit+1)
+	body := io.LimitReader(stallReader{resp.Body, timer, stall}, limit+1)
 	if sink == nil {
 		b, err := io.ReadAll(body)
 		if err != nil {
@@ -159,8 +200,12 @@ func (d Downloader) get(ctx context.Context, c *http.Client, u string, limit int
 }
 
 // netErr maps transport errors to ErrNetwork without leaking signed URLs.
+// A cancelled caller context wins; a stall is a network error.
 func (d Downloader) netErr(ctx context.Context, err error) error {
 	if ctx.Err() != nil {
+		if cause := context.Cause(ctx); errors.Is(cause, errStalled) {
+			return fmt.Errorf("%w (%v)", ErrNetwork, errStalled)
+		}
 		return ctx.Err()
 	}
 	var ue *url.Error
@@ -175,6 +220,21 @@ func (d Downloader) netErr(ctx context.Context, err error) error {
 		return we.error // disk problems are not network problems
 	}
 	return ErrNetwork
+}
+
+// stallReader pushes the stall deadline back on every read that returns data.
+type stallReader struct {
+	r     io.Reader
+	t     *time.Timer
+	stall time.Duration
+}
+
+func (s stallReader) Read(p []byte) (int, error) {
+	n, err := s.r.Read(p)
+	if n > 0 {
+		s.t.Reset(s.stall)
+	}
+	return n, err
 }
 
 // writeErr marks a failure writing to disk.
@@ -214,6 +274,7 @@ func (d Downloader) client() *http.Client {
 			ResponseHeaderTimeout: 30 * time.Second,
 		}}
 	}
+	c.Jar = nil // no cookies across hosts
 	c.CheckRedirect = d.checkRedirect
 	return &c
 }
@@ -254,8 +315,10 @@ func (d Downloader) maxSize() int64 {
 	return DefaultMaxSize
 }
 
-// sumFor finds the sha256 for name in sha256sum output.
+// sumFor finds the sha256 for name in sha256sum output. Conflicting lines
+// for the same name count as no checksum.
 func sumFor(list []byte, name string) (string, bool) {
+	found := ""
 	sc := bufio.NewScanner(bytes.NewReader(list))
 	for sc.Scan() {
 		sum, rest, ok := strings.Cut(strings.TrimSpace(sc.Text()), " ")
@@ -265,9 +328,14 @@ func sumFor(list []byte, name string) (string, bool) {
 		if _, err := hex.DecodeString(sum); err != nil {
 			continue
 		}
-		if strings.TrimPrefix(strings.TrimSpace(rest), "*") == name {
-			return strings.ToLower(sum), true
+		if strings.TrimPrefix(strings.TrimSpace(rest), "*") != name {
+			continue
 		}
+		sum = strings.ToLower(sum)
+		if found != "" && found != sum {
+			return "", false
+		}
+		found = sum
 	}
-	return "", false
+	return found, found != ""
 }
