@@ -279,6 +279,25 @@ func TestCompareVersions(t *testing.T) {
 	}
 }
 
+func TestIsNewer(t *testing.T) {
+	cases := []struct {
+		cur, latest string
+		want        bool
+	}{
+		{"1.0.10", "v1.1.0", true},
+		{"1.1.0", "v1.1.0", false},
+		{"1.1.0", "1.0.10", false},
+		{"", "1.1.0", false},
+		{"1.0.0", "../1.1.0", false},
+		{"1.0.0", "latest", false},
+	}
+	for _, c := range cases {
+		if got := IsNewer(c.cur, c.latest); got != c.want {
+			t.Errorf("IsNewer(%q, %q) = %v, want %v", c.cur, c.latest, got, c.want)
+		}
+	}
+}
+
 // --- tar extraction ---
 
 type tarEntry struct {

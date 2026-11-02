@@ -94,6 +94,12 @@ func compareVersions(a, b string) int {
 	return strings.Compare(pa, pb)
 }
 
+// IsNewer reports whether latest is a valid version newer than current
+// (either may start with "v"). Invalid input is never newer.
+func IsNewer(current, latest string) bool {
+	return validVersion(current) && validVersion(latest) && compareVersions(latest, current) > 0
+}
+
 var sha256Re = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 // validSHA256 reports whether s is a lowercase hex SHA-256, as Fetch verifies.

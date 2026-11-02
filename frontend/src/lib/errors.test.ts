@@ -87,3 +87,34 @@ test("uses Couldn't and 'not available' wording", () => {
   assert.equal(translateError('tizen: não foi possível conectar', 'en'), "Couldn't connect.")
   assert.equal(translateError('Atalhos globais indisponíveis neste sistema', 'en'), 'Global shortcuts are not available on this system.')
 })
+
+test('update errors', () => {
+  const cases: Array<[string, string]> = [
+    ['Esta versão não tem lista de checksums; atualize pela página de releases.', 'This version has no checksum list; update from the releases page.'],
+    ['Esta versão não tem um arquivo para este sistema.', 'This version has no file for this system.'],
+    ['O download não confere (checksum). Tente de novo.', "The download doesn't match its checksum. Try again."],
+    ['Download maior que o esperado; cancelado.', 'The download is larger than expected; cancelled.'],
+    ['Não foi possível baixar a atualização. Verifique a conexão e tente de novo.', "Couldn't download the update. Check the connection and try again."],
+    ['Atualização automática não disponível neste sistema.', 'Automatic update is not available on this system.'],
+    ['Não foi possível salvar o download nesta pasta.', "Couldn't save the download in this folder."],
+    ['O Windows não deixou o atualizador rodar. Baixe a nova versão pela página de releases.', "Windows didn't let the updater run. Download the new version from the releases page."],
+    ['xdg-open não encontrado; abra a pasta da nova versão manualmente.', "xdg-open not found; open the new version's folder yourself."],
+    ['Você já está na versão mais recente.', "You're already on the latest version."],
+  ]
+  for (const [pt, en] of cases) {
+    assert.equal(translateError(pt, 'en'), en)
+    assert.equal(translateError(pt, 'pt-BR'), pt)
+  }
+})
+
+test('update errors keep their technical tail', () => {
+  assert.equal(
+    translateError('xdg-open não encontrado; abra a pasta da nova versão manualmente. (/home/a/.config/optic/updates/1.1.0/OPTIC)', 'en'),
+    "xdg-open not found; open the new version's folder yourself. (/home/a/.config/optic/updates/1.1.0/OPTIC)",
+  )
+  assert.equal(
+    translateError('Não foi possível baixar a atualização. Verifique a conexão e tente de novo. (HTTP 404)', 'en'),
+    "Couldn't download the update. Check the connection and try again. (HTTP 404)",
+  )
+  assert.equal(translateError('Algo novo. (detalhe)', 'en'), 'Algo novo. (detalhe)')
+})

@@ -8,7 +8,7 @@ import { cleanPaste } from '../lib/paste'
 import { load, save } from '../lib/storage'
 import { translateError } from '../lib/errors'
 import type { Key } from '../lib/i18n'
-import type { DeviceInfo, Feedback, LogLine, Status, Toast, TV, TVState } from '../lib/types'
+import type { DeviceInfo, Feedback, LogLine, Status, Toast, ToastAction, TV, TVState } from '../lib/types'
 
 const MANUAL_KEY = 'optic.manualHosts.v1'
 const FEEDBACK_MS = 650
@@ -58,10 +58,11 @@ function useRemoteState() {
     setLog((l) => [...l.slice(-300), { id: ++seq, dir, text, time }])
   }, [])
 
-  const notify = useCallback((kind: Toast['kind'], text: string) => {
+  /** Shows a toast; one with an action stays longer so it can be clicked. */
+  const notify = useCallback((kind: Toast['kind'], text: string, action?: ToastAction) => {
     window.clearTimeout(toastTimer.current)
-    setToast({ id: ++seq, kind, text })
-    toastTimer.current = window.setTimeout(() => setToast(null), kind === 'err' ? 4000 : 2200)
+    setToast({ id: ++seq, kind, text, action })
+    toastTimer.current = window.setTimeout(() => setToast(null), action ? 12000 : kind === 'err' ? 4000 : 2200)
   }, [])
 
   /** Runs an action with feedback under `id`; errors become a toast. */

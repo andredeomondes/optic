@@ -10,6 +10,7 @@ export {
   Inputs,
   InstalledApps,
   LastHost,
+  LastUpdateResult,
   LatestRelease,
   LaunchApp,
   PowerOn,
@@ -22,11 +23,13 @@ export {
   SetLanguage,
   SetVolume,
   StartPairing,
+  StartUpdate,
   SuspendHotkeys,
   SwitchInput,
   Toast,
   ToggleFullscreen,
   TrayAvailable,
+  UpdateSupport,
 } from '../../wailsjs/go/main/App'
 export {
   BrowserOpenURL,

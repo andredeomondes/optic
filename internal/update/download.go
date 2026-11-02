@@ -52,13 +52,14 @@ var (
 )
 
 // Fetch downloads asset (one of the Asset* installable names) from rel into
-// dir and returns its path once its SHA256 matches the release's SHA256SUMS.
+// dir and returns its path and verified SHA-256 (lowercase hex) once it
+// matches the release's SHA256SUMS.
 // Bytes go to a unique temp file that is renamed into place only after the
 // check, so the returned file always holds verified bytes. Cancel ctx to
 // stop; a download with no bytes for DefaultStall is aborted as well.
-func (d Downloader) Fetch(ctx context.Context, rel domain.Release, asset, dir string, progress func(got, total int64)) (string, error) {
+func (d Downloader) Fetch(ctx context.Context, rel domain.Release, asset, dir string, progress func(got, total int64)) (path, sha256sum string, err error) {
 	if !knownAsset(asset) {
-		return "", ErrNoAsset
+		return "", "", ErrNoAsset
 	}
 	var target, sums *domain.Asset
 	for i := range rel.Assets {
@@ -70,13 +71,13 @@ func (d Downloader) Fetch(ctx context.Context, rel domain.Release, asset, dir st
 		}
 	}
 	if target == nil {
-		return "", ErrNoAsset
+		return "", "", ErrNoAsset
 	}
 	if sums == nil {
-		return "", ErrNoChecksum
+		return "", "", ErrNoChecksum
 	}
 	if !d.allowedStart(target.URL) || !d.allowedStart(sums.URL) {
-		return "", ErrNetwork
+		return "", "", ErrNetwork
 	}
 
 	client := d.client()
@@ -85,20 +86,20 @@ func (d Downloader) Fetch(ctx context.Context, rel domain.Release, asset, dir st
 	}
 	list, err := d.get(ctx, client, sums.URL, MaxSumsSize, nil)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	want, ok := sumFor(list, asset)
 	if !ok {
-		return "", ErrNoChecksum
+		return "", "", ErrNoChecksum
 	}
 
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return "", err
+		return "", "", err
 	}
 	final := filepath.Join(dir, asset)
 	f, err := os.CreateTemp(dir, asset+".*.part")
 	if err != nil {
-		return "", fmt.Errorf("%w: %v", ErrDest, err)
+		return "", "", fmt.Errorf("%w: %v", ErrDest, err)
 	}
 	part := f.Name()
 	h := sha256.New()
@@ -129,9 +130,9 @@ func (d Downloader) Fetch(ctx context.Context, rel domain.Release, asset, dir st
 	}
 	if err != nil {
 		os.Remove(part)
-		return "", err
+		return "", "", err
 	}
-	return final, nil
+	return final, want, nil
 }
 
 // replace moves the verified temp file to final, refusing to follow or

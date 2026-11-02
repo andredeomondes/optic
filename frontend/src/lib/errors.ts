@@ -54,6 +54,20 @@ const exact: Record<string, string> = {
   'webos: TV não informou o socket de ponteiro': "The TV didn't provide the pointer socket.",
   'webos: socket de ponteiro inválido': 'Invalid pointer socket.',
   'webos: não foi possível conectar ao socket de ponteiro': "Couldn't connect to the pointer socket.",
+  // In-app update (internal/update, updater.go)
+  'Esta versão não tem lista de checksums; atualize pela página de releases.':
+    "This version has no checksum list; update from the releases page.",
+  'Esta versão não tem um arquivo para este sistema.': "This version has no file for this system.",
+  'O download não confere (checksum). Tente de novo.': "The download doesn't match its checksum. Try again.",
+  'Download maior que o esperado; cancelado.': 'The download is larger than expected; cancelled.',
+  'Não foi possível baixar a atualização. Verifique a conexão e tente de novo.':
+    "Couldn't download the update. Check the connection and try again.",
+  'Atualização automática não disponível neste sistema.': 'Automatic update is not available on this system.',
+  'Não foi possível salvar o download nesta pasta.': "Couldn't save the download in this folder.",
+  'O Windows não deixou o atualizador rodar. Baixe a nova versão pela página de releases.':
+    "Windows didn't let the updater run. Download the new version from the releases page.",
+  'xdg-open não encontrado; abra a pasta da nova versão manualmente.': "xdg-open not found; open the new version's folder yourself.",
+  'Você já está na versão mais recente.': "You're already on the latest version.",
   // Global shortcuts
   'Use Ctrl ou Alt junto com a tecla': 'Use Ctrl or Alt together with the key.',
   'A tecla Windows é reservada pelo sistema': 'The Windows key is reserved by the system.',
@@ -119,6 +133,8 @@ const patterns: Array<[RegExp, (m: RegExpMatchArray) => string]> = [
   [/^roku: HTTP (\d+)$/, (m) => `Roku answered with HTTP ${m[1]}.`],
   // "<ação>: <motivo>" from SetHotkeys: only known action labels, reason translated too.
   [new RegExp(`^(${labelAlternation}): (.+)$`), (m) => `${actionLabels[m[1]]}: ${tr(m[2])}`],
+  // A known message with a technical tail, e.g. "… (HTTP 404)" or the folder to open.
+  [/^(.+?[.;]) \((.+)\)$/, (m) => (exact[m[1]] !== undefined ? `${exact[m[1]]} (${m[2]})` : m[0])],
 ]
 
 function tr(msg: string): string {

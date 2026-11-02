@@ -109,7 +109,8 @@ func newFixture(t *testing.T) *fixture {
 }
 
 func (fx *fixture) fetch(ctx context.Context, progress func(got, total int64)) (string, error) {
-	return fx.dl.Fetch(ctx, fx.rel, testAsset, fx.dir, progress)
+	path, _, err := fx.dl.Fetch(ctx, fx.rel, testAsset, fx.dir, progress)
+	return path, err
 }
 
 // assertNoFiles checks that neither the asset nor any temp .part file is left behind.
@@ -152,6 +153,18 @@ func TestFetchHappyPath(t *testing.T) {
 	}
 }
 
+func TestFetchReturnsVerifiedSHA256(t *testing.T) {
+	fx := newFixture(t)
+	_, sum, err := fx.dl.Fetch(context.Background(), fx.rel, testAsset, fx.dir, nil)
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+	want := sha256.Sum256(fx.payload)
+	if sum != hex.EncodeToString(want[:]) {
+		t.Errorf("sha256 = %q, want %x", sum, want)
+	}
+}
+
 func TestFetchChecksumMismatchDeletes(t *testing.T) {
 	fx := newFixture(t)
 	fx.sums = strings.Repeat("ab", 32) + "  " + testAsset + "\n"
@@ -174,13 +187,13 @@ func TestFetchMissingAssets(t *testing.T) {
 	fx := newFixture(t)
 	noSums := fx.rel
 	noSums.Assets = fx.rel.Assets[:1]
-	if _, err := fx.dl.Fetch(context.Background(), noSums, testAsset, fx.dir, nil); !errors.Is(err, ErrNoChecksum) {
+	if _, _, err := fx.dl.Fetch(context.Background(), noSums, testAsset, fx.dir, nil); !errors.Is(err, ErrNoChecksum) {
 		t.Errorf("no SHA256SUMS: err = %v, want ErrNoChecksum", err)
 	}
-	if _, err := fx.dl.Fetch(context.Background(), fx.rel, AssetMacOS, fx.dir, nil); !errors.Is(err, ErrNoAsset) {
+	if _, _, err := fx.dl.Fetch(context.Background(), fx.rel, AssetMacOS, fx.dir, nil); !errors.Is(err, ErrNoAsset) {
 		t.Errorf("missing asset: err = %v, want ErrNoAsset", err)
 	}
-	if _, err := fx.dl.Fetch(context.Background(), fx.rel, "../"+testAsset, fx.dir, nil); !errors.Is(err, ErrNoAsset) {
+	if _, _, err := fx.dl.Fetch(context.Background(), fx.rel, "../"+testAsset, fx.dir, nil); !errors.Is(err, ErrNoAsset) {
 		t.Errorf("path in asset name: err = %v, want ErrNoAsset", err)
 	}
 }
@@ -285,7 +298,7 @@ func TestFetchPlainHTTPRefused(t *testing.T) {
 		{Name: testAsset, URL: httpPrefix + "v1.1.0/" + testAsset},
 		{Name: AssetSums, URL: httpPrefix + "v1.1.0/" + AssetSums},
 	}}
-	if _, err := dl.Fetch(context.Background(), rel, testAsset, fx.dir, nil); !errors.Is(err, ErrNetwork) {
+	if _, _, err := dl.Fetch(context.Background(), rel, testAsset, fx.dir, nil); !errors.Is(err, ErrNetwork) {
 		t.Errorf("http start: err = %v, want ErrNetwork", err)
 	}
 	if hits.Load() != 0 {
@@ -357,7 +370,7 @@ func TestFetchConcurrentNeverPublishesUnverifiedBytes(t *testing.T) {
 	var once sync.Once
 	badErr := make(chan error, 1)
 	go func() {
-		_, err := fx.dl.Fetch(context.Background(), badRel, testAsset, fx.dir, func(got, total int64) {
+		_, _, err := fx.dl.Fetch(context.Background(), badRel, testAsset, fx.dir, func(got, total int64) {
 			once.Do(func() { close(started) })
 		})
 		badErr <- err
@@ -387,7 +400,7 @@ func TestFetchRefusesUnknownAssetNames(t *testing.T) {
 		rel := fx.rel
 		rel.Assets = append([]domain.Asset{{Name: n, URL: fx.rel.Assets[0].URL}}, fx.rel.Assets...)
 		fx.sums += strings.Repeat("0", 64) + "  " + n + "\n"
-		if _, err := fx.dl.Fetch(context.Background(), rel, n, fx.dir, nil); !errors.Is(err, ErrNoAsset) {
+		if _, _, err := fx.dl.Fetch(context.Background(), rel, n, fx.dir, nil); !errors.Is(err, ErrNoAsset) {
 			t.Errorf("asset %q: err = %v, want ErrNoAsset", n, err)
 		}
 	}

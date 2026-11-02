@@ -7,6 +7,7 @@ const emit = (name: string, ...args: any[]) => handlers[name]?.forEach((h) => h(
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 let volume = 18
+let updating = false
 let closeToTray = true
 // Global shortcuts: in memory; Ctrl+Alt+H is "taken" so the error state can be seen.
 const hotkeyDefaults: Record<string, string> = {
@@ -199,22 +200,23 @@ w.go = {
         throw new Error('Android TV ainda não é suportada')
       },
       async LatestRelease() {
+        // Newer than the app so the update banner shows.
         return {
-          tag: 'v1.0.4',
-          name: 'OPTIC 1.0.4',
-          url: 'https://github.com/andredeomondes/optic/releases/tag/v1.0.4',
+          tag: 'v1.2.0',
+          name: 'OPTIC 1.2.0',
+          url: 'https://github.com/andredeomondes/optic/releases/tag/v1.2.0',
           notes: 'Correções e melhorias.',
           publishedAt: new Date().toISOString(),
           assets: [
-            ['OPTIC-1.0.4-setup.exe', 9_400_000],
-            ['OPTIC-1.0.4-portable.exe', 9_100_000],
-            ['OPTIC-1.0.4.dmg', 11_200_000],
-            ['optic-1.0.4-linux-amd64.tar.gz', 8_700_000],
-            ['optic-1.0.4-linux-amd64-webkit41.tar.gz', 8_700_000],
+            ['OPTIC-windows-amd64-setup.exe', 9_400_000],
+            ['OPTIC-windows-amd64-portable.exe', 9_100_000],
+            ['OPTIC-macos-universal.dmg', 11_200_000],
+            ['OPTIC-linux-amd64.tar.gz', 8_700_000],
+            ['OPTIC-linux-amd64-webkit41.tar.gz', 8_700_000],
             ['SHA256SUMS', 480],
           ].map(([name, size]) => ({
             name: name as string,
-            url: `https://github.com/andredeomondes/optic/releases/download/v1.0.4/${name}`,
+            url: `https://github.com/andredeomondes/optic/releases/download/v1.2.0/${name}`,
             size: size as number,
           })),
         }
@@ -222,6 +224,34 @@ w.go = {
       async PowerOn(ip: string) {
         await wait(300)
         emit('trace', '>', `wol ${ip}`)
+      },
+      async UpdateSupport() {
+        return { auto: true, kind: 'installer' }
+      },
+      // Simulates the Windows flow: ~3 s of download, verify, install; then
+      // 'ready' instead of quitting so the page stays usable.
+      async StartUpdate() {
+        if (updating) return // single-flight, like Go
+        updating = true
+        const total = 9_400_000
+        const kind = 'installer'
+        // Like Go, return at once and report through events.
+        void (async () => {
+          emit('update:state', { state: 'downloading', kind })
+          for (let i = 1; i <= 30; i++) {
+            await wait(100)
+            emit('update:progress', { got: Math.round((total * i) / 30), total })
+          }
+          emit('update:state', { state: 'verifying', kind })
+          await wait(400)
+          emit('update:state', { state: 'installing', kind })
+          await wait(1200)
+          emit('update:state', { state: 'ready', kind })
+          updating = false
+        })()
+      },
+      async LastUpdateResult() {
+        return null
       },
       async StartPairing(ip: string) {
         if (ip === TIZEN_HOST) return { name: 'Samsung Quarto', mode: 'prompt' }

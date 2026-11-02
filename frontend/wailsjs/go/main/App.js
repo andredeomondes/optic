@@ -31,3 +31,6 @@ export function SetCompactMode(arg1) { return window['go']['main']['App']['SetCo
 export function ShowWindow() { return window['go']['main']['App']['ShowWindow'](); }
 export function ToggleFullscreen() { return window['go']['main']['App']['ToggleFullscreen'](); }
 export function TrayAvailable() { return window['go']['main']['App']['TrayAvailable'](); }
+export function UpdateSupport() { return window['go']['main']['App']['UpdateSupport'](); }
+export function StartUpdate() { return window['go']['main']['App']['StartUpdate'](); }
+export function LastUpdateResult() { return window['go']['main']['App']['LastUpdateResult'](); }

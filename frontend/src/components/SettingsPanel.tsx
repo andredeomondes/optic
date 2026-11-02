@@ -6,10 +6,12 @@ import type { Updates } from '../hooks/useUpdates'
 import * as api from '../lib/backend'
 import { platformOSLabel } from '../lib/capabilities'
 import type { LangPref } from '../lib/i18n'
+import { translateError } from '../lib/errors'
 import { buildReport } from '../lib/report'
 import { NAMED_KEYS, SHORTCUTS } from '../lib/shortcuts'
 import { safeReleaseURL } from '../lib/version'
 import { HotkeySettings } from './HotkeySettings'
+import { UpdateNowButton, UpdateStatus } from './UpdateBanner'
 import { Modal } from './Modal'
 
 // Wails on Windows opens target=_blank links in a bare in-app window, so go through the runtime.
@@ -225,7 +227,7 @@ function Diagnostics() {
 
 function UpdatesTab({ updates }: { updates: Updates }) {
   const { t, lang } = useI18n()
-  const { release, available, checking, auto, lastChecked, checkNow, setAuto } = updates
+  const { release, available, checking, auto, lastChecked, checkNow, setAuto, support, run } = updates
   const when = lastChecked ? new Date(lastChecked).toLocaleString(lang === 'en' ? 'en-US' : 'pt-BR') : t('updates.never')
   return (
     <ul className="shortcut-list">
@@ -246,6 +248,7 @@ function UpdatesTab({ updates }: { updates: Updates }) {
       <li>
         <span>{t('updates.lastChecked', { when })}</span>
         <span className="log-actions">
+          {available && release && <UpdateNowButton updates={updates} />}
           {available && release && (
             <button className="link" onClick={() => api.BrowserOpenURL(safeReleaseURL(release.url))}>
               <ExternalLink size={12} /> {t('update.whatsNew')}
@@ -256,6 +259,14 @@ function UpdatesTab({ updates }: { updates: Updates }) {
           </button>
         </span>
       </li>
+      {run.state !== 'idle' && (
+        <li className="update-run">
+          <UpdateStatus run={run} />
+        </li>
+      )}
+      {available && support && !support.auto && support.reason && (
+        <li className="note">{translateError(support.reason, lang)}</li>
+      )}
       <li className="note">{t('updates.note')}</li>
     </ul>
   )
