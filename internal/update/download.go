@@ -140,14 +140,14 @@ func (d Downloader) Fetch(ctx context.Context, rel domain.Release, asset, dir st
 func replace(tmp, final string) error {
 	if fi, err := os.Lstat(final); err == nil {
 		if !fi.Mode().IsRegular() {
-			return ErrDest
+			return fmt.Errorf("%w: %s is not a regular file", ErrDest, final)
 		}
 		if err := os.Remove(final); err != nil {
-			return ErrDest
+			return fmt.Errorf("%w: %v", ErrDest, err)
 		}
 	}
 	if err := os.Rename(tmp, final); err != nil {
-		return ErrDest
+		return fmt.Errorf("%w: %v", ErrDest, err)
 	}
 	return nil
 }

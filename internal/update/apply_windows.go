@@ -29,15 +29,18 @@ func Apply(t Target, path, sha256, exe string, pid int, dir, version string) (qu
 	work := filepath.Dir(path)
 	resultPath := filepath.Join(dir, ResultFile)
 	marker := filepath.Join(work, markerName)
+	cancel := filepath.Join(work, cancelName)
 	os.Remove(resultPath) // never report a stale outcome
-	os.Remove(marker)
+	if err := clearStale(marker, cancel); err != nil {
+		return false, err
+	}
 
 	// Best effort: mark the download as from the Internet so SmartScreen
 	// checks it like a browser download.
 	os.WriteFile(path+":Zone.Identifier", []byte(zoneIdentifier), 0o644)
 
 	script := filepath.Join(work, scriptName)
-	text := windowsScript(t.Kind, path, sha256, exe, pid, resultPath, marker, version)
+	text := windowsScript(t.Kind, path, sha256, exe, pid, resultPath, marker, cancel, version)
 	// On Windows the mode only decides the read-only bit.
 	if err := os.WriteFile(script, scriptBytes(text), 0o600); err != nil {
 		return false, err
@@ -54,6 +57,8 @@ func Apply(t Target, path, sha256, exe string, pid int, dir, version string) (qu
 	go func() { cmd.Wait(); close(exited) }()
 	markerExists := func() bool { _, err := os.Stat(marker); return err == nil }
 	if err := awaitStart(markerExists, exited, applyStartTimeout, applyStartPoll); err != nil {
+		// A script that starts after this sees the cancel file and exits.
+		cancelStart(cancel)
 		return false, err
 	}
 	return true, nil

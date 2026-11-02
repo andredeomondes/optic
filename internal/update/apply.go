@@ -20,10 +20,13 @@ import (
 const ResultFile = "result.json"
 
 // scriptName is the PowerShell script written next to the download;
-// markerName is the file its first line writes, proving it was allowed to run.
+// markerName is the file its first line writes, proving it was allowed to run;
+// cancelName is written by Apply when it stopped waiting, so a script that
+// starts late exits without installing.
 const (
 	scriptName = "apply-update.ps1"
 	markerName = "apply.started"
+	cancelName = "apply.cancel"
 )
 
 // Errors shown to the user (the UI translates them).
@@ -34,7 +37,7 @@ var (
 
 // How long Apply waits for the script's start marker, and how often it looks.
 const (
-	applyStartTimeout = 5 * time.Second
+	applyStartTimeout = 15 * time.Second
 	applyStartPoll    = 100 * time.Millisecond
 )
 
@@ -91,7 +94,42 @@ func compareVersions(a, b string) int {
 	case pb == "":
 		return -1
 	}
-	return strings.Compare(pa, pb)
+	return comparePrerelease(pa, pb)
+}
+
+// comparePrerelease orders prerelease tags per semver: dot-separated
+// fields, numeric ones by value and below alphanumeric ones, and a tag that
+// runs out of fields first is lower.
+func comparePrerelease(a, b string) int {
+	fa, fb := strings.Split(a, "."), strings.Split(b, ".")
+	for i := 0; i < len(fa) && i < len(fb); i++ {
+		na, ea := strconv.Atoi(fa[i])
+		nb, eb := strconv.Atoi(fb[i])
+		switch {
+		case ea == nil && eb == nil:
+			if na != nb {
+				if na < nb {
+					return -1
+				}
+				return 1
+			}
+		case ea == nil:
+			return -1
+		case eb == nil:
+			return 1
+		default:
+			if c := strings.Compare(fa[i], fb[i]); c != 0 {
+				return c
+			}
+		}
+	}
+	switch {
+	case len(fa) < len(fb):
+		return -1
+	case len(fa) > len(fb):
+		return 1
+	}
+	return 0
 }
 
 // IsNewer reports whether latest is a valid version newer than current
@@ -120,6 +158,24 @@ func validateApply(t Target, path, sha256, exe string, pid int, dir, version str
 		return errors.New("update: invalid sha256")
 	}
 	return nil
+}
+
+// clearStale removes the marker and cancel files of an earlier run. A file
+// that exists but cannot be removed would fake (or block) the handshake, so
+// that refuses the update.
+func clearStale(paths ...string) error {
+	for _, p := range paths {
+		if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("%w (%v)", ErrApplyBlocked, err)
+		}
+	}
+	return nil
+}
+
+// cancelStart tells a script that has not started yet to exit without
+// installing: Apply gave up on it and the app stays open.
+func cancelStart(cancelPath string) error {
+	return os.WriteFile(cancelPath, []byte("cancel"), 0o600)
 }
 
 // awaitStart waits until the script's marker exists (started → nil) or the
@@ -175,9 +231,11 @@ func ReadResult(dir string) (*Result, error) {
 }
 
 // Cleanup removes the version folders in dir older than current. Newer ones
-// (an update not installed yet) and current itself stay. Only direct
-// subfolders named like a version are touched; symlinks are skipped. An
-// invalid current removes nothing.
+// (an update not installed yet) and current itself stay, minus leftover
+// *.part downloads and, in current's folder, the installer already used.
+// Only direct subfolders named like a version are touched; symlinks are
+// skipped. An invalid current removes nothing. Call it only when no
+// download is running.
 func Cleanup(dir, current string) {
 	if !validVersion(current) {
 		return
@@ -188,10 +246,33 @@ func Cleanup(dir, current string) {
 	}
 	for _, e := range entries {
 		name := e.Name()
-		if !e.IsDir() || !validVersion(name) || compareVersions(name, current) >= 0 {
+		if !e.IsDir() || !validVersion(name) {
 			continue
 		}
-		os.RemoveAll(filepath.Join(dir, name))
+		folder := filepath.Join(dir, name)
+		if compareVersions(name, current) < 0 {
+			os.RemoveAll(folder)
+			continue
+		}
+		cleanFolder(folder, compareVersions(name, current) == 0)
+	}
+}
+
+// cleanFolder removes *.part files and, when installed is true, the
+// release assets in folder. Only regular files directly inside are touched.
+func cleanFolder(folder string, installed bool) {
+	files, err := os.ReadDir(folder)
+	if err != nil {
+		return
+	}
+	for _, f := range files {
+		n := f.Name()
+		if !f.Type().IsRegular() {
+			continue
+		}
+		if strings.HasSuffix(n, ".part") || installed && knownAsset(n) {
+			os.Remove(filepath.Join(folder, n))
+		}
 	}
 }
 
@@ -215,10 +296,12 @@ func psQuote(s string) string {
 // windowsScript builds the PowerShell script that installs src and relaunches
 // exe once the app (pid) has exited. It writes the outcome to resultPath and
 // starts the app again, new or old (unless it never exited). The first line
-// writes markerPath so Apply knows the script was allowed to run; src is
+// writes markerPath so Apply knows the script was allowed to run; if
+// cancelPath exists right after, Apply already gave up and the script exits
+// without installing. src is
 // re-checked against sha256 right before use. Other kinds or a bad sha256
 // give "".
-func windowsScript(kind Kind, src, sha256, exe string, pid int, resultPath, markerPath, version string) string {
+func windowsScript(kind Kind, src, sha256, exe string, pid int, resultPath, markerPath, cancelPath, version string) string {
 	if kind != KindInstaller && kind != KindPortable || !validSHA256(sha256) {
 		return ""
 	}
@@ -227,6 +310,7 @@ func windowsScript(kind Kind, src, sha256, exe string, pid int, resultPath, mark
 	hashCheck := fmt.Sprintf("if ((Get-FileHash -LiteralPath %s -Algorithm SHA256 -ErrorAction Stop).Hash -ne '%s') { throw 'checksum' }",
 		psQuote(src), strings.ToUpper(sha256))
 	w("Set-Content -LiteralPath %s -Value 'started' -ErrorAction SilentlyContinue", psQuote(markerPath))
+	w("if (Test-Path -LiteralPath %s) { exit }", psQuote(cancelPath))
 	w("$result = %s", psQuote(resultPath))
 	w("$version = %s", psQuote(version))
 	w("function Write-Result([bool]$ok, [string]$msg) {")

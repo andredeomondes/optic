@@ -20,6 +20,7 @@ const (
 	trickyExe    = `C:\Program Files\OPTIC Ação\optic-desktop.exe`
 	trickyResult = `C:\Users\Jo'ão Conceição\AppData\Roaming\optic\updates\result.json`
 	trickyMarker = `C:\Users\Jo'ão Conceição\AppData\Roaming\optic\updates\1.1.0\apply.started`
+	trickyCancel = `C:\Users\Jo'ão Conceição\AppData\Roaming\optic\updates\1.1.0\apply.cancel`
 	trickySum    = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 )
 
@@ -42,6 +43,7 @@ func TestPSQuote(t *testing.T) {
 }
 
 const scriptHead = `Set-Content -LiteralPath 'C:\Users\Jo''ão Conceição\AppData\Roaming\optic\updates\1.1.0\apply.started' -Value 'started' -ErrorAction SilentlyContinue
+if (Test-Path -LiteralPath 'C:\Users\Jo''ão Conceição\AppData\Roaming\optic\updates\1.1.0\apply.cancel') { exit }
 $result = 'C:\Users\Jo''ão Conceição\AppData\Roaming\optic\updates\result.json'
 $version = '1.1.0'
 function Write-Result([bool]$ok, [string]$msg) {
@@ -68,7 +70,7 @@ func TestWindowsScriptInstaller(t *testing.T) {
 }
 Start-Process -FilePath 'C:\Program Files\OPTIC Ação\optic-desktop.exe'
 `
-	got := windowsScript(KindInstaller, trickySrc, trickySum, trickyExe, 4242, trickyResult, trickyMarker, "1.1.0")
+	got := windowsScript(KindInstaller, trickySrc, trickySum, trickyExe, 4242, trickyResult, trickyMarker, trickyCancel, "1.1.0")
 	if got != want {
 		t.Errorf("installer script mismatch\n--- got ---\n%s\n--- want ---\n%s", got, want)
 	}
@@ -99,7 +101,7 @@ if (-not (Test-Path -LiteralPath $exe)) { $exe = $old }
 Start-Process -FilePath $exe
 if ($ok) { Remove-Item -LiteralPath $old -Force -ErrorAction SilentlyContinue }
 `
-	got := windowsScript(KindPortable, src, trickySum, exe, 4242, trickyResult, trickyMarker, "1.1.0")
+	got := windowsScript(KindPortable, src, trickySum, exe, 4242, trickyResult, trickyMarker, trickyCancel, "1.1.0")
 	if got != want {
 		t.Errorf("portable script mismatch\n--- got ---\n%s\n--- want ---\n%s", got, want)
 	}
@@ -107,7 +109,7 @@ if ($ok) { Remove-Item -LiteralPath $old -Force -ErrorAction SilentlyContinue }
 
 func TestWindowsScriptMarkerFirst(t *testing.T) {
 	for _, k := range []Kind{KindInstaller, KindPortable} {
-		s := windowsScript(k, trickySrc, trickySum, trickyExe, 4242, trickyResult, trickyMarker, "1.1.0")
+		s := windowsScript(k, trickySrc, trickySum, trickyExe, 4242, trickyResult, trickyMarker, trickyCancel, "1.1.0")
 		first, _, _ := strings.Cut(s, "\n")
 		if !strings.HasPrefix(first, "Set-Content -LiteralPath "+psQuote(trickyMarker)) {
 			t.Errorf("%s: first line = %q", k, first)
@@ -117,11 +119,11 @@ func TestWindowsScriptMarkerFirst(t *testing.T) {
 
 func TestWindowsScriptRefusesBadInput(t *testing.T) {
 	for _, k := range []Kind{KindDMG, KindTarball, ""} {
-		if s := windowsScript(k, "a", trickySum, "b", 1, "c", "d", "1.0.0"); s != "" {
+		if s := windowsScript(k, "a", trickySum, "b", 1, "c", "d", "e", "1.0.0"); s != "" {
 			t.Errorf("windowsScript(%q) = %q, want empty", k, s)
 		}
 	}
-	if s := windowsScript(KindPortable, "a", "nothex", "b", 1, "c", "d", "1.0.0"); s != "" {
+	if s := windowsScript(KindPortable, "a", "nothex", "b", 1, "c", "d", "e", "1.0.0"); s != "" {
 		t.Errorf("bad sha accepted: %q", s)
 	}
 }
@@ -206,7 +208,7 @@ func TestAwaitStart(t *testing.T) {
 			t.Fatalf("err = %v, want ErrApplyBlocked", err)
 		}
 	})
-	if applyStartTimeout != 5*time.Second || applyStartPoll != 100*time.Millisecond {
+	if applyStartTimeout != 15*time.Second || applyStartPoll != 100*time.Millisecond {
 		t.Errorf("defaults = %v / %v", applyStartTimeout, applyStartPoll)
 	}
 }
@@ -271,6 +273,11 @@ func TestCompareVersions(t *testing.T) {
 		{"1.1.0", "1.1.0-rc.1", 1},
 		{"1.1.0-rc.1", "1.1.0-rc.2", -1},
 		{"1.1.0+b1", "1.1.0", 0},
+		{"1.1.0-rc.10", "1.1.0-rc.2", 1},
+		{"1.1.0-rc.2", "1.1.0-rc.10", -1},
+		{"1.1.0-rc.1", "1.1.0-rc.1.1", -1},
+		{"1.1.0-1", "1.1.0-alpha", -1},
+		{"1.1.0-beta", "1.1.0-alpha", 1},
 	}
 	for _, c := range cases {
 		if got := compareVersions(c.a, c.b); got != c.want {
@@ -535,5 +542,70 @@ func TestCleanupSkipsSymlinks(t *testing.T) {
 	Cleanup(d, "1.1.0")
 	if _, err := os.Stat(filepath.Join(target, "keep")); err != nil {
 		t.Errorf("symlink target touched: %v", err)
+	}
+}
+
+func TestWindowsScriptCancelRightAfterMarker(t *testing.T) {
+	for _, k := range []Kind{KindInstaller, KindPortable} {
+		s := windowsScript(k, trickySrc, trickySum, trickyExe, 4242, trickyResult, trickyMarker, trickyCancel, "1.1.0")
+		lines := strings.Split(s, "\n")
+		if want := "if (Test-Path -LiteralPath " + psQuote(trickyCancel) + ") { exit }"; lines[1] != want {
+			t.Errorf("%s: second line = %q, want %q", k, lines[1], want)
+		}
+	}
+}
+
+func TestClearStale(t *testing.T) {
+	d := t.TempDir()
+	f := filepath.Join(d, "apply.started")
+	os.WriteFile(f, []byte("x"), 0o644)
+	if err := clearStale(f, filepath.Join(d, "missing")); err != nil {
+		t.Fatalf("clearStale: %v", err)
+	}
+	if _, err := os.Stat(f); !os.IsNotExist(err) {
+		t.Error("stale marker kept")
+	}
+	// A marker that cannot be removed (here a non-empty folder) refuses the update.
+	stuck := filepath.Join(d, "apply.cancel")
+	os.MkdirAll(filepath.Join(stuck, "x"), 0o755)
+	if err := clearStale(stuck); !errors.Is(err, ErrApplyBlocked) {
+		t.Fatalf("err = %v, want ErrApplyBlocked", err)
+	}
+}
+
+func TestCancelStart(t *testing.T) {
+	p := filepath.Join(t.TempDir(), cancelName)
+	if err := cancelStart(p); err != nil {
+		t.Fatalf("cancelStart: %v", err)
+	}
+	if _, err := os.Stat(p); err != nil {
+		t.Fatalf("cancel file missing: %v", err)
+	}
+}
+
+func TestCleanupLeftovers(t *testing.T) {
+	d := filepath.Join(t.TempDir(), "updates")
+	cur := filepath.Join(d, "1.1.0")
+	next := filepath.Join(d, "1.2.0")
+	for _, f := range []string{
+		filepath.Join(cur, AssetWindowsSetup), filepath.Join(cur, AssetWindowsPortable + ".123.part"),
+		filepath.Join(cur, "notes.txt"), filepath.Join(cur, "OPTIC", AssetLinux),
+		filepath.Join(next, AssetWindowsSetup), filepath.Join(next, AssetWindowsSetup + ".9.part"),
+	} {
+		os.MkdirAll(filepath.Dir(f), 0o755)
+		os.WriteFile(f, []byte("x"), 0o644)
+	}
+	Cleanup(d, "1.1.0")
+	gone := []string{filepath.Join(cur, AssetWindowsSetup), filepath.Join(cur, AssetWindowsPortable+".123.part"), filepath.Join(next, AssetWindowsSetup+".9.part")}
+	kept := []string{filepath.Join(cur, "notes.txt"), filepath.Join(cur, "OPTIC", AssetLinux), filepath.Join(next, AssetWindowsSetup)}
+	for _, g := range gone {
+		if _, err := os.Stat(g); !os.IsNotExist(err) {
+			t.Errorf("%s not removed", g)
+		}
+	}
+	for _, k := range kept {
+		if _, err := os.Stat(k); err != nil {
+			t.Errorf("%s removed: %v", k, err)
+		}
 	}
 }

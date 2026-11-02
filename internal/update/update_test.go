@@ -525,3 +525,15 @@ func TestFetchRefusesNonRegularFinal(t *testing.T) {
 		t.Errorf("temp files left behind: %v", left)
 	}
 }
+
+func TestReplaceWrapsCauseInErrDest(t *testing.T) {
+	d := t.TempDir()
+	tmp := filepath.Join(d, "x.part")
+	os.WriteFile(tmp, []byte("x"), 0o644)
+	final := filepath.Join(d, "final")
+	os.MkdirAll(final, 0o755) // a folder where the file should go
+	err := replace(tmp, final)
+	if !errors.Is(err, ErrDest) || err.Error() == ErrDest.Error() {
+		t.Fatalf("err = %v, want ErrDest with its cause", err)
+	}
+}
