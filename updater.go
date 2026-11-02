@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"path/filepath"
 	"strings"
@@ -36,6 +37,8 @@ const (
 	releaseMaxAge = 10 * time.Minute
 	// stopWait is how long shutdown waits for a cancelled download to clean up.
 	stopWait = 2 * time.Second
+	// loadWait is how long LastUpdateResult waits for startup to read the result.
+	loadWait = 2 * time.Second
 )
 
 // errUpToDate is returned when the latest release is not newer than this one.
@@ -84,6 +87,9 @@ type updater struct {
 	quit func()
 	now  func() time.Time // nil → time.Now
 
+	loadOnce sync.Once
+	loaded   chan struct{} // closed once load has run; use loadedC
+
 	mu      sync.Mutex
 	running bool
 	cancel  context.CancelFunc // of the running update
@@ -100,9 +106,15 @@ func (u *updater) clock() time.Time {
 	return time.Now()
 }
 
+func (u *updater) loadedC() chan struct{} {
+	u.loadOnce.Do(func() { u.loaded = make(chan struct{}) })
+	return u.loaded
+}
+
 // load reads the outcome of the previous update and removes stale
 // downloads. Called once at startup, before any update can run.
 func (u *updater) load() {
+	defer close(u.loadedC())
 	r, err := update.ReadResult(u.dir)
 	if err != nil {
 		log.Printf("update result: %v", err)
@@ -118,7 +130,12 @@ func (u *updater) load() {
 }
 
 // lastResult returns the previous update's outcome once; later calls get nil.
+// It waits briefly for load, so an early call from the UI is not lost.
 func (u *updater) lastResult() *update.Result {
+	select {
+	case <-u.loadedC():
+	case <-time.After(loadWait):
+	}
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	r := u.last
@@ -145,7 +162,11 @@ func (u *updater) release(ctx context.Context) (domain.Release, error) {
 	if !at.IsZero() && u.clock().Sub(at) < releaseMaxAge {
 		return rel, nil
 	}
-	return u.latestRelease(ctx)
+	rel, err := u.latestRelease(ctx)
+	if err != nil && !errors.Is(err, domain.ErrNoReleaseSource) {
+		err = fmt.Errorf("%w (%v)", update.ErrNetwork, err)
+	}
+	return rel, err
 }
 
 func (u *updater) target() (update.Target, error) {
@@ -165,7 +186,7 @@ func (u *updater) support(ctx context.Context) UpdateSupport {
 	s := UpdateSupport{Kind: string(t.Kind)}
 	rel, err := u.release(ctx)
 	if err != nil {
-		s.Reason = err.Error()
+		s.Reason = userError(ctx, err)
 		return s
 	}
 	var asset, sums bool
@@ -291,7 +312,8 @@ func (u *updater) run(ctx context.Context) bool {
 
 // userError turns an update failure into the text shown to the user: the
 // known pt-BR sentinel without technical tails, a timeout or cancel as a
-// network error, anything else as it came.
+// network error. Anything else is logged and gives "", which the UI shows
+// as a generic failure, so raw system text never reaches it.
 func userError(ctx context.Context, err error) string {
 	if errors.Is(err, update.ErrNoXdgOpen) {
 		return err.Error() // keeps the folder to open by hand
@@ -299,7 +321,7 @@ func userError(ctx context.Context, err error) string {
 	for _, s := range []error{
 		update.ErrNoChecksum, update.ErrNoAsset, update.ErrChecksum, update.ErrTooLarge,
 		update.ErrNetwork, update.ErrUnsupported, update.ErrDest, update.ErrApplyBlocked,
-		errUpToDate, domain.ErrNoReleaseSource,
+		update.ErrExtract, errUpToDate, domain.ErrNoReleaseSource,
 	} {
 		if errors.Is(err, s) {
 			return s.Error()
@@ -308,7 +330,8 @@ func userError(ctx context.Context, err error) string {
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) || ctx.Err() != nil {
 		return update.ErrNetwork.Error()
 	}
-	return err.Error()
+	log.Printf("update: %v", err)
+	return ""
 }
 
 // progressGate thins out progress events: one per whole percent or per

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -395,5 +396,59 @@ func TestUserErrorSentinelBeforeContext(t *testing.T) {
 	}
 	if got := userError(ctx, errors.New("boom")); got != update.ErrNetwork.Error() {
 		t.Errorf("got %q, want the network text", got)
+	}
+}
+
+func TestLastResultWaitsForLoad(t *testing.T) {
+	f := newFakeUpdater(t, "windows")
+	os.MkdirAll(f.dir, 0o755)
+	b, _ := json.Marshal(update.Result{Version: "1.0.10", OK: true})
+	os.WriteFile(filepath.Join(f.dir, update.ResultFile), b, 0o644)
+	got := make(chan *update.Result, 1)
+	go func() { got <- f.lastResult() }() // the UI asks before startup finished
+	time.Sleep(20 * time.Millisecond)
+	f.load()
+	select {
+	case r := <-got:
+		if r == nil || !r.OK {
+			t.Fatalf("result = %+v, want the loaded one", r)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("lastResult did not return")
+	}
+}
+
+func TestLookupErrorsAreNetwork(t *testing.T) {
+	f := newFakeUpdater(t, "windows")
+	f.latest = func(context.Context) (domain.Release, error) {
+		return domain.Release{}, errors.New("Get \"https://api.github.com/x\": dial tcp: no such host")
+	}
+	if s := f.support(context.Background()); s.Reason != update.ErrNetwork.Error() {
+		t.Errorf("support reason = %q", s.Reason)
+	}
+	f.start(context.Background())
+	f.wait(t)
+	if st := f.lastState(); st.Error != update.ErrNetwork.Error() {
+		t.Fatalf("state = %+v", st)
+	}
+}
+
+func TestRawErrorsNeverReachTheUI(t *testing.T) {
+	cases := []struct {
+		err  error
+		want string
+	}{
+		{errors.New("exec: \"/usr/bin/open\": file not found"), ""},
+		{fmt.Errorf("%w (tarball: unsafe path)", update.ErrExtract), update.ErrExtract.Error()},
+		{fmt.Errorf("%w: access denied", update.ErrDest), update.ErrDest.Error()},
+	}
+	for _, c := range cases {
+		f := newFakeUpdater(t, "linux")
+		f.apply = func(update.Target, string, string, string, int, string, string) (bool, error) { return false, c.err }
+		f.start(context.Background())
+		f.wait(t)
+		if st := f.lastState(); st.State != updError || st.Error != c.want {
+			t.Errorf("%v: state = %+v, want error %q", c.err, st, c.want)
+		}
 	}
 }

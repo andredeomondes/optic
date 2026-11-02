@@ -81,3 +81,10 @@ test('lastResultNotice: other reasons keep the Smart App Control hint and show t
   const long = lastResultNotice({ version: '1.1.0', ok: false, error: 'x'.repeat(500) }, 'en')
   assert.equal(long?.detail?.length, 160)
 })
+
+test('ready texts say what to do next', () => {
+  assert.equal(ptBR['update.state.readyInstaller'], 'Abrimos o DMG: feche o OPTIC e arraste-o para Aplicativos.')
+  assert.equal(en['update.state.readyInstaller'], 'We opened the DMG: quit OPTIC and drag it to Applications.')
+  assert.equal(ptBR['update.state.readyFolder'], 'Abrimos a pasta da nova versão: rode ./install.sh e abra o OPTIC de novo.')
+  assert.equal(en['update.state.readyFolder'], "We opened the new version's folder: run ./install.sh and open OPTIC again.")
+})

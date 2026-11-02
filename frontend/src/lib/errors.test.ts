@@ -122,3 +122,7 @@ test('update errors keep their technical tail', () => {
 test('release check unavailable', () => {
   assert.equal(translateError('checagem de versão indisponível', 'en'), 'Update check unavailable.')
 })
+
+test('unpack error', () => {
+  assert.equal(translateError('Não foi possível descompactar a nova versão.', 'en'), "Couldn't unpack the new version.")
+})

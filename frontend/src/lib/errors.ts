@@ -68,6 +68,7 @@ const exact: Record<string, string> = {
     "Windows didn't let the updater run. Download the new version from the releases page.",
   'xdg-open não encontrado; abra a pasta da nova versão manualmente.': "xdg-open not found; open the new version's folder yourself.",
   'Você já está na versão mais recente.': "You're already on the latest version.",
+  'Não foi possível descompactar a nova versão.': "Couldn't unpack the new version.",
   // Global shortcuts
   'Use Ctrl ou Alt junto com a tecla': 'Use Ctrl or Alt together with the key.',
   'A tecla Windows é reservada pelo sistema': 'The Windows key is reserved by the system.',

@@ -604,7 +604,7 @@ body {
 .update-status.error { color: var(--danger); }
 .update-status.ready { color: var(--ok); }
 .update-progress { display: flex; align-items: center; gap: 8px; flex: 1 1 160px; min-width: 120px; }
-.update-progress .bar { flex: 1; height: 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.update-progress .bar { flex: 1; height: 6px; border-radius: 999px; background: var(--stroke-hi); overflow: hidden; }
 .update-progress .bar span { display: block; height: 100%; background: var(--grad); border-radius: inherit; transition: width 0.25s var(--ease); }
 .update-progress .pct { font-variant-numeric: tabular-nums; min-width: 3ch; text-align: right; color: var(--text); }
 .update-text { min-width: 0; }
