@@ -42,7 +42,7 @@ Open source desktop remote for **Android TV, Google TV, Roku, LG webOS and Samsu
 - **Media keys** on the PC keyboard (play/pause, next, previous, stop) controlling the TV, optional.
 - **Volume with the mouse wheel** over the remote (with the TV connected) and from the tray menu.
 - **Sleep timer** to turn the TV off in 15, 30, 60 or 90 minutes (or "turn off in 45 min" in `Ctrl+K`).
-- **New version notice:** the app tells you when a new release is out (you can turn it off in Settings). The check only reads the public releases page on GitHub; no data about you or the TV is sent.
+- **New version notice and updates from inside the app:** the app tells you when a new release is out (you can turn it off in Settings) and updates from inside the app, with the download verified by SHA256. On Windows it installs and reopens OPTIC (if SmartScreen or Smart App Control blocks it, it tells you and points to the releases page; with the portable build they may also ask the first time the new .exe opens); on macOS it opens the DMG (quit OPTIC and drag it to Applications); on Linux it unpacks the package and opens the folder so you can run `./install.sh` and open OPTIC again. Versions before 1.1.0 need one manual update. The check only reads the public releases page on GitHub; no data about you or the TV is sent.
 - **Compact mode** 360×520 that can stay always on top, next to whatever you are doing.
 - **System tray** (Windows): closing hides the app in the hidden icons area; opening it again brings back the same window.
 - **Full screen** with `F11` and a maximizable window.

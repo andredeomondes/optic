@@ -11,7 +11,21 @@ export function ToastHost() {
   return (
     <div className={`toast ${toast.kind}`} key={toast.id} role="status" aria-live="polite">
       <Icon size={16} />
-      <span>{toast.text}</span>
+      <span className="toast-text">
+        {toast.text}
+        {toast.detail && <small className="toast-detail">{toast.detail}</small>}
+      </span>
+      {toast.action && (
+        <button
+          className="link"
+          onClick={() => {
+            toast.action?.run()
+            dismissToast()
+          }}
+        >
+          {toast.action.label}
+        </button>
+      )}
       <button className="icon-btn" onClick={dismissToast} aria-label={t('toast.close')}>
         <X size={12} />
       </button>

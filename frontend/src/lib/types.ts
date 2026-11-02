@@ -33,4 +33,5 @@ export type Feedback = 'pending' | 'ok' | 'err'
 
 export type HotkeyBinding = { id: string; accel: string; error: string }
 export type HotkeyState = { supported: boolean; enabled: boolean; media: boolean; bindings: HotkeyBinding[] }
-export type Toast = { id: number; kind: 'ok' | 'err' | 'info'; text: string }
+export type ToastAction = { label: string; run: () => void }
+export type Toast = { id: number; kind: 'ok' | 'err' | 'info'; text: string; action?: ToastAction; detail?: string }

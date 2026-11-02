@@ -7,7 +7,11 @@ export type DeviceInfo = { model: string; vendor: string; version: string; appVe
 export type TVApp = { id: string; name: string };
 export type PairingInfo = { name: string; mode: 'code' | 'prompt' };
 export type TVInput = { id: string; name: string };
-export type Release = { tag: string; name: string; url: string; notes: string; publishedAt: string };
+export type Release = { tag: string; name: string; url: string; notes: string; publishedAt: string; assets: { name: string; url: string; size: number }[] };
+
+export type UpdateKind = 'installer' | 'portable' | 'dmg' | 'tarball' | '';
+export type UpdateSupport = { auto: boolean; kind: UpdateKind; reason?: string };
+export type UpdateResult = { version: string; ok: boolean; error: string };
 
 export type HotkeyBinding = { id: string; accel: string; error: string };
 export type HotkeyState = { supported: boolean; enabled: boolean; media: boolean; bindings: Array<HotkeyBinding> };
@@ -41,3 +45,6 @@ export function SetCompactMode(arg1: boolean): Promise<void>;
 export function ShowWindow(): Promise<void>;
 export function ToggleFullscreen(): Promise<boolean>;
 export function TrayAvailable(): Promise<boolean>;
+export function UpdateSupport(): Promise<UpdateSupport>;
+export function StartUpdate(): Promise<void>;
+export function LastUpdateResult(): Promise<UpdateResult | null>;

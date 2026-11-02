@@ -6,6 +6,7 @@ import (
 
 	"optic/internal/control"
 	"optic/internal/domain"
+	"optic/internal/update"
 )
 
 // App is the Wails binding: every exported method is callable from React as
@@ -15,6 +16,14 @@ import (
 type App struct {
 	*Shell
 	svc *control.Service
+	upd *updater
+}
+
+// startup runs once Wails has a window: the shell first, then the outcome
+// of the last update is read (only the instance that got the window does it).
+func (a *App) startup(ctx context.Context) {
+	a.Shell.startup(ctx)
+	a.upd.load()
 }
 
 // Discover scans the network for a few seconds.
@@ -52,8 +61,31 @@ func (a *App) LaunchApp(name string) error { return a.svc.LaunchApp(name) }
 // message when the TV's MAC was never learned.
 func (a *App) PowerOn(ip string) error { return a.svc.PowerOn(ip) }
 
-// LatestRelease returns the newest published OPTIC release.
-func (a *App) LatestRelease() (domain.Release, error) { return a.svc.LatestRelease(a.ctx) }
+// LatestRelease returns the newest published OPTIC release. The updater
+// remembers it so "Atualizar agora" right after needs no second lookup.
+func (a *App) LatestRelease() (domain.Release, error) { return a.upd.latestRelease(a.ctx) }
+
+// UpdateSupport says whether the latest release can be installed from here.
+func (a *App) UpdateSupport() UpdateSupport { return a.upd.support(a.ctx) }
+
+// StartUpdate downloads, verifies and installs the latest release in the
+// background, reporting through the update:progress and update:state
+// events. A second call while one runs does nothing.
+func (a *App) StartUpdate() error {
+	a.upd.start(a.ctx)
+	return nil
+}
+
+// LastUpdateResult is the outcome of the previous update, once (then nil).
+func (a *App) LastUpdateResult() *update.Result { return a.upd.lastResult() }
+
+// quitForUpdate closes any TV session or pairing and exits so the update
+// script can replace the app.
+func (a *App) quitForUpdate() {
+	a.svc.CancelPairing()
+	a.svc.Disconnect()
+	a.Shell.QuitApp()
+}
 
 // InstalledApps lists the apps installed on the connected TV.
 func (a *App) InstalledApps() ([]domain.App, error) {
@@ -85,6 +117,7 @@ func (a *App) Toast(msg string) error {
 
 // shutdown runs when the app quits for real.
 func (a *App) shutdown(context.Context) {
+	a.upd.stop() // a cancelled download deletes its temp file
 	a.svc.Disconnect()
 	a.Shell.shutdown()
 }

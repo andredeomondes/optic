@@ -10,6 +10,9 @@ import (
 	"embed"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
+	goruntime "runtime"
 	"time"
 
 	"github.com/wailsapp/wails/v2"
@@ -17,6 +20,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"optic/internal/adapter/atv"
 	"optic/internal/adapter/compose"
@@ -31,6 +35,7 @@ import (
 	"optic/internal/control"
 	"optic/internal/domain"
 	"optic/internal/platform/arp"
+	"optic/internal/update"
 	"optic/pkg/atvremote"
 	"optic/pkg/roku"
 	ssdpproto "optic/pkg/ssdp"
@@ -61,6 +66,26 @@ var upnpClient = &http.Client{
 // describeUPnP reads an LG or Samsung TV's own name and model during discovery.
 func describeUPnP(ctx context.Context, location string) (string, string, error) {
 	return ssdpproto.Describe(ctx, upnpClient, location)
+}
+
+// newUpdater wires the in-app updater to the real system.
+func newUpdater(app *App, dir string) *updater {
+	dl := update.Downloader{}
+	return &updater{
+		version:      productVersion(wailsJSON),
+		dir:          dir,
+		goos:         goruntime.GOOS,
+		goarch:       goruntime.GOARCH,
+		programFiles: []string{os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)"), os.Getenv("ProgramW6432")},
+		webkit41:     webkit41,
+		pid:          os.Getpid(),
+		exe:          os.Executable,
+		latest:       app.svc.LatestRelease,
+		fetch:        dl.Fetch,
+		apply:        update.Apply,
+		emit:         func(ev string, data any) { runtime.EventsEmit(app.ctx, ev, data) },
+		quit:         app.quitForUpdate,
+	}
 }
 
 func main() {
@@ -97,6 +122,7 @@ func main() {
 	}
 
 	shell.keys = app.svc.SendKey
+	app.upd = newUpdater(app, filepath.Join(cfgDir, "updates"))
 
 	err = wails.Run(&options.App{
 		Title:            "OPTIC",
@@ -107,7 +133,7 @@ func main() {
 		Frameless:        true,
 		BackgroundColour: &options.RGBA{R: 0, G: 0, B: 0, A: 0},
 		AssetServer:      &assetserver.Options{Assets: assets},
-		OnStartup:        shell.startup,
+		OnStartup:        app.startup,
 		OnShutdown:       app.shutdown,
 		OnBeforeClose:    shell.beforeClose,
 		Bind:             []interface{}{app},
