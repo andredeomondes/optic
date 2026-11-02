@@ -48,7 +48,7 @@ const DefaultStall = 60 * time.Second
 var (
 	errRedirect = errors.New("redirect refused")
 	errStalled  = errors.New("download stalled")
-	errDest     = errors.New("Não foi possível salvar o download nesta pasta.")
+	ErrDest     = errors.New("Não foi possível salvar o download nesta pasta.")
 )
 
 // Fetch downloads asset (one of the Asset* installable names) from rel into
@@ -98,7 +98,7 @@ func (d Downloader) Fetch(ctx context.Context, rel domain.Release, asset, dir st
 	final := filepath.Join(dir, asset)
 	f, err := os.CreateTemp(dir, asset+".*.part")
 	if err != nil {
-		return "", errDest
+		return "", fmt.Errorf("%w: %v", ErrDest, err)
 	}
 	part := f.Name()
 	h := sha256.New()
@@ -139,14 +139,14 @@ func (d Downloader) Fetch(ctx context.Context, rel domain.Release, asset, dir st
 func replace(tmp, final string) error {
 	if fi, err := os.Lstat(final); err == nil {
 		if !fi.Mode().IsRegular() {
-			return errDest
+			return ErrDest
 		}
 		if err := os.Remove(final); err != nil {
-			return errDest
+			return ErrDest
 		}
 	}
 	if err := os.Rename(tmp, final); err != nil {
-		return errDest
+		return ErrDest
 	}
 	return nil
 }

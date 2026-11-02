@@ -10,15 +10,43 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // ResultFile is written by the Windows update script into the updates dir
 // and read (then deleted) on the next start.
 const ResultFile = "result.json"
 
-// scriptName is the PowerShell script written next to the download.
-const scriptName = "apply-update.ps1"
+// scriptName is the PowerShell script written next to the download;
+// markerName is the file its first line writes, proving it was allowed to run.
+const (
+	scriptName = "apply-update.ps1"
+	markerName = "apply.started"
+)
+
+// Errors shown to the user (the UI translates them).
+var (
+	ErrApplyBlocked = errors.New("O Windows não deixou o atualizador rodar. Baixe a nova versão pela página de releases.")
+	ErrNoXdgOpen    = errors.New("xdg-open não encontrado; abra a pasta da nova versão manualmente.")
+)
+
+// How long Apply waits for the script's start marker, and how often it looks.
+const (
+	applyStartTimeout = 5 * time.Second
+	applyStartPoll    = 100 * time.Millisecond
+)
+
+// zoneIdentifier is the Mark of the Web ("downloaded from the Internet"), so
+// SmartScreen evaluates the downloaded exe like any browser download.
+const zoneIdentifier = "[ZoneTransfer]\r\nZoneId=3\r\n"
+
+// macQuarantine is the com.apple.quarantine value a browser would set, so
+// Gatekeeper evaluates the DMG as a download.
+func macQuarantine(now time.Time) string {
+	return fmt.Sprintf("0081;%08x;OPTIC;", now.Unix())
+}
 
 // Result is the outcome of the last Windows update.
 type Result struct {
@@ -31,6 +59,88 @@ var versionRe = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(
 
 // validVersion reports whether v looks like a semver (optional "v").
 func validVersion(v string) bool { return versionRe.MatchString(v) }
+
+// compareVersions orders two valid versions (-1, 0, 1). Build metadata is
+// ignored; a prerelease sorts before its release and prereleases compare
+// as text.
+func compareVersions(a, b string) int {
+	split := func(v string) ([3]int, string) {
+		v, _, _ = strings.Cut(strings.TrimPrefix(v, "v"), "+")
+		core, pre, _ := strings.Cut(v, "-")
+		var n [3]int
+		for i, f := range strings.SplitN(core, ".", 3) {
+			n[i], _ = strconv.Atoi(f)
+		}
+		return n, pre
+	}
+	na, pa := split(a)
+	nb, pb := split(b)
+	for i := range na {
+		if na[i] != nb[i] {
+			if na[i] < nb[i] {
+				return -1
+			}
+			return 1
+		}
+	}
+	switch {
+	case pa == pb:
+		return 0
+	case pa == "":
+		return 1
+	case pb == "":
+		return -1
+	}
+	return strings.Compare(pa, pb)
+}
+
+var sha256Re = regexp.MustCompile(`^[0-9a-f]{64}$`)
+
+// validSHA256 reports whether s is a lowercase hex SHA-256, as Fetch verifies.
+func validSHA256(s string) bool { return sha256Re.MatchString(s) }
+
+// validateApply checks the Windows Apply arguments before anything is written.
+func validateApply(t Target, path, sha256, exe string, pid int, dir, version string) error {
+	switch {
+	case t.Kind != KindInstaller && t.Kind != KindPortable:
+		return ErrUnsupported
+	case !filepath.IsAbs(path) || !filepath.IsAbs(exe) || !filepath.IsAbs(dir):
+		return errors.New("update: paths must be absolute")
+	case pid <= 0:
+		return errors.New("update: invalid pid")
+	case !validVersion(version):
+		return errors.New("update: invalid version")
+	case !validSHA256(sha256):
+		return errors.New("update: invalid sha256")
+	}
+	return nil
+}
+
+// awaitStart waits until the script's marker exists (started → nil) or the
+// process exits or timeout passes without it (→ ErrApplyBlocked), e.g. when
+// policy, AppLocker or Smart App Control refuses the script.
+func awaitStart(markerExists func() bool, exited <-chan struct{}, timeout, poll time.Duration) error {
+	deadline := time.NewTimer(timeout)
+	defer deadline.Stop()
+	tick := time.NewTicker(poll)
+	defer tick.Stop()
+	for {
+		if markerExists() {
+			return nil
+		}
+		select {
+		case <-exited:
+		case <-deadline.C:
+		case <-tick.C:
+			continue
+		}
+		// Exited or timed out: one last look covers a marker written just now.
+		if markerExists() {
+			return nil
+		}
+		return ErrApplyBlocked
+	}
+}
 
 // ReadResult reads and deletes <dir>/result.json. A missing file gives
 // (nil, nil); an unreadable one is deleted and reported as an error.
@@ -58,17 +168,21 @@ func ReadResult(dir string) (*Result, error) {
 	return &r, nil
 }
 
-// Cleanup removes the version folders in dir other than keepVersion. Only
-// direct subfolders named like a version are touched; symlinks are skipped.
-func Cleanup(dir, keepVersion string) {
+// Cleanup removes the version folders in dir older than current. Newer ones
+// (an update not installed yet) and current itself stay. Only direct
+// subfolders named like a version are touched; symlinks are skipped. An
+// invalid current removes nothing.
+func Cleanup(dir, current string) {
+	if !validVersion(current) {
+		return
+	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return
 	}
-	keep := strings.TrimPrefix(keepVersion, "v")
 	for _, e := range entries {
 		name := e.Name()
-		if !e.IsDir() || !validVersion(name) || strings.TrimPrefix(name, "v") == keep {
+		if !e.IsDir() || !validVersion(name) || compareVersions(name, current) >= 0 {
 			continue
 		}
 		os.RemoveAll(filepath.Join(dir, name))
@@ -94,13 +208,19 @@ func psQuote(s string) string {
 
 // windowsScript builds the PowerShell script that installs src and relaunches
 // exe once the app (pid) has exited. It writes the outcome to resultPath and
-// always starts the app again, new or old. Other kinds give "".
-func windowsScript(kind Kind, src, exe string, pid int, resultPath, version string) string {
-	if kind != KindInstaller && kind != KindPortable {
+// starts the app again, new or old (unless it never exited). The first line
+// writes markerPath so Apply knows the script was allowed to run; src is
+// re-checked against sha256 right before use. Other kinds or a bad sha256
+// give "".
+func windowsScript(kind Kind, src, sha256, exe string, pid int, resultPath, markerPath, version string) string {
+	if kind != KindInstaller && kind != KindPortable || !validSHA256(sha256) {
 		return ""
 	}
 	var b strings.Builder
 	w := func(format string, a ...any) { fmt.Fprintf(&b, format+"\n", a...) }
+	hashCheck := fmt.Sprintf("if ((Get-FileHash -LiteralPath %s -Algorithm SHA256 -ErrorAction Stop).Hash -ne '%s') { throw 'checksum' }",
+		psQuote(src), strings.ToUpper(sha256))
+	w("Set-Content -LiteralPath %s -Value 'started' -ErrorAction SilentlyContinue", psQuote(markerPath))
 	w("$result = %s", psQuote(resultPath))
 	w("$version = %s", psQuote(version))
 	w("function Write-Result([bool]$ok, [string]$msg) {")
@@ -110,11 +230,17 @@ func windowsScript(kind Kind, src, exe string, pid int, resultPath, version stri
 	w("  } catch {}")
 	w("}")
 	w("Wait-Process -Id %d -Timeout 30 -ErrorAction SilentlyContinue", pid)
+	// Still running: install nothing and start nothing (it is open already).
+	w("if (Get-Process -Id %d -ErrorAction SilentlyContinue) {", pid)
+	w("  Write-Result $false 'O OPTIC não fechou a tempo.'")
+	w("  exit")
+	w("}")
 	if kind == KindInstaller {
 		// Installed apps run from Program Files, so exe is also the path the
 		// installer writes to. UAC is shown by Windows; a refusal or a
 		// Smart App Control block lands in catch.
 		w("try {")
+		w("  %s", hashCheck)
 		w("  $p = Start-Process -FilePath %s -ArgumentList '/S' -Verb RunAs -Wait -PassThru -ErrorAction Stop", psQuote(src))
 		w(`  if ($null -ne $p.ExitCode -and $p.ExitCode -ne 0) { throw "installer exit code $($p.ExitCode)" }`)
 		w("  Write-Result $true ''")
@@ -128,6 +254,7 @@ func windowsScript(kind Kind, src, exe string, pid int, resultPath, version stri
 	w("$old = %s", psQuote(exe+".old"))
 	w("$ok = $false")
 	w("try {")
+	w("  %s", hashCheck)
 	w("  Move-Item -LiteralPath $exe -Destination $old -Force -ErrorAction Stop")
 	w("  try {")
 	w("    Move-Item -LiteralPath %s -Destination $exe -Force -ErrorAction Stop", psQuote(src))
@@ -141,6 +268,7 @@ func windowsScript(kind Kind, src, exe string, pid int, resultPath, version stri
 	w("} catch {")
 	w("  Write-Result $false $_.Exception.Message")
 	w("}")
+	w("if (-not (Test-Path -LiteralPath $exe)) { $exe = $old }")
 	w("Start-Process -FilePath $exe")
 	w("if ($ok) { Remove-Item -LiteralPath $old -Force -ErrorAction SilentlyContinue }")
 	return b.String()
@@ -206,7 +334,7 @@ func extractTarball(src, dest string, lim extractLimits) (err error) {
 
 	tr := tar.NewReader(gz)
 	var total int64
-	files := 0
+	entries := 0 // files and folders, capped by lim.maxFiles
 	for {
 		h, err := tr.Next()
 		if err == io.EOF {
@@ -220,15 +348,17 @@ func extractTarball(src, dest string, lim extractLimits) (err error) {
 			return err
 		}
 		target := filepath.Join(dest, rel)
+		if entries++; entries > lim.maxFiles {
+			return errors.New("tarball: too many entries")
+		}
 		switch h.Typeflag {
 		case tar.TypeDir:
 			if err := os.MkdirAll(target, 0o755); err != nil {
 				return err
 			}
 		case tar.TypeReg:
-			files++
 			total += h.Size
-			if files > lim.maxFiles || h.Size < 0 || total > lim.maxBytes {
+			if h.Size < 0 || total > lim.maxBytes {
 				return errors.New("tarball: too large")
 			}
 			if err := writeTarFile(target, tr, h); err != nil {
