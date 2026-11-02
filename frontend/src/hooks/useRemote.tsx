@@ -58,10 +58,10 @@ function useRemoteState() {
     setLog((l) => [...l.slice(-300), { id: ++seq, dir, text, time }])
   }, [])
 
-  /** Shows a toast; one with an action stays longer so it can be clicked. */
-  const notify = useCallback((kind: Toast['kind'], text: string, action?: ToastAction) => {
+  /** Shows a toast (detail is a smaller second line); one with an action stays longer so it can be clicked. */
+  const notify = useCallback((kind: Toast['kind'], text: string, action?: ToastAction, detail?: string) => {
     window.clearTimeout(toastTimer.current)
-    setToast({ id: ++seq, kind, text, action })
+    setToast({ id: ++seq, kind, text, action, detail })
     toastTimer.current = window.setTimeout(() => setToast(null), action ? 12000 : kind === 'err' ? 4000 : 2200)
   }, [])
 

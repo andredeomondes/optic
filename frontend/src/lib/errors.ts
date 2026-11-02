@@ -36,7 +36,7 @@ const exact: Record<string, string> = {
   'MAC da TV desconhecido: conecte uma vez com ela ligada': 'TV MAC address unknown: connect once while it is on.',
   'Entrada desconhecida': 'Unknown input.',
   'Mensagem vazia': 'Empty message.',
-  'checagem de versão indisponível': 'Version check not available.',
+  'checagem de versão indisponível': 'Update check unavailable.',
   // Roku
   'A Roku bloqueou o controle pela rede. Na TV: Configurações › Sistema › Configurações avançadas do sistema › Controle por apps móveis › Acesso à rede: Padrão.':
     'Roku blocked network control. On the TV: Settings › System › Advanced system settings › Control by mobile apps › Network access: Default.',

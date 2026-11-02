@@ -84,11 +84,17 @@ func (f *fakeUpdater) wait(t *testing.T) {
 		f.mu.Lock()
 		r := f.running
 		f.mu.Unlock()
-		if !r || f.quits > 0 {
+		if !r || f.quitCount() > 0 {
 			return
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
+}
+
+func (f *fakeUpdater) quitCount() int {
+	f.evMu.Lock()
+	defer f.evMu.Unlock()
+	return f.quits
 }
 
 func (f *fakeUpdater) stateList() []string {
@@ -168,7 +174,7 @@ func TestStartUpdateReadyOnMac(t *testing.T) {
 		got.version != "1.1.0" || got.dir != f.dir || got.kind != update.KindDMG {
 		t.Errorf("apply got %+v", got)
 	}
-	if f.quits != 0 {
+	if f.quitCount() != 0 {
 		t.Error("quit called on macOS")
 	}
 }
@@ -178,8 +184,8 @@ func TestStartUpdateWindowsQuits(t *testing.T) {
 	f.apply = func(update.Target, string, string, string, int, string, string) (bool, error) { return true, nil }
 	f.start(context.Background())
 	f.wait(t)
-	if f.quits != 1 {
-		t.Fatalf("quits = %d, want 1", f.quits)
+	if n := f.quitCount(); n != 1 {
+		t.Fatalf("quits = %d, want 1", n)
 	}
 	if s := f.stateList(); s[len(s)-1] != updInstalling {
 		t.Errorf("states = %v, want to end at installing", s)
@@ -197,7 +203,7 @@ func TestStartUpdateApplyBlocked(t *testing.T) {
 	if st.State != updError || st.Error != update.ErrApplyBlocked.Error() || st.Kind != "portable" {
 		t.Fatalf("state = %+v", st)
 	}
-	if f.quits != 0 {
+	if f.quitCount() != 0 {
 		t.Error("quit called after a blocked apply")
 	}
 }
@@ -246,12 +252,14 @@ func TestUpdateSupport(t *testing.T) {
 	f.latest = func(context.Context) (domain.Release, error) {
 		return domain.Release{Tag: "v1.0.9", Assets: []domain.Asset{{Name: update.AssetWindowsSetup}}}, nil
 	}
+	f.relAt = time.Time{} // drop the cached release
 	if s := f.support(context.Background()); s.Auto || s.Reason != update.ErrNoChecksum.Error() {
 		t.Errorf("no sums: %+v", s)
 	}
 	f.latest = func(context.Context) (domain.Release, error) {
 		return domain.Release{Tag: "v1.1.0", Assets: []domain.Asset{{Name: update.AssetSums}}}, nil
 	}
+	f.relAt = time.Time{} // drop the cached release
 	if s := f.support(context.Background()); s.Auto || s.Reason != update.ErrNoAsset.Error() {
 		t.Errorf("no asset: %+v", s)
 	}
@@ -321,5 +329,71 @@ func TestProductVersion(t *testing.T) {
 	}
 	if productVersion([]byte("{")) != "" {
 		t.Error("bad json gave a version")
+	}
+}
+
+func TestUpdateStateCarriesVersion(t *testing.T) {
+	f := newFakeUpdater(t, "darwin")
+	f.start(context.Background())
+	f.wait(t)
+	f.evMu.Lock()
+	defer f.evMu.Unlock()
+	for _, st := range f.states {
+		if st.Version != "1.1.0" {
+			t.Errorf("%s: version = %q, want 1.1.0", st.State, st.Version)
+		}
+	}
+}
+
+func TestReleaseReusedWhileRecent(t *testing.T) {
+	f := newFakeUpdater(t, "windows")
+	now := time.Unix(1_000_000, 0)
+	f.now = func() time.Time { return now }
+	inner := f.latest
+	calls := 0
+	f.latest = func(ctx context.Context) (domain.Release, error) { calls++; return inner(ctx) }
+
+	if _, err := f.latestRelease(context.Background()); err != nil { // the UI's check
+		t.Fatal(err)
+	}
+	f.support(context.Background())
+	f.start(context.Background())
+	f.wait(t)
+	if calls != 1 {
+		t.Fatalf("lookups = %d, want 1 (check, support and update share it)", calls)
+	}
+	now = now.Add(releaseMaxAge + time.Second)
+	f.support(context.Background())
+	if calls != 2 {
+		t.Fatalf("lookups = %d, want 2 after the cache expired", calls)
+	}
+}
+
+func TestStopCancelsDownload(t *testing.T) {
+	f := newFakeUpdater(t, "linux")
+	started := make(chan struct{})
+	f.fetch = func(ctx context.Context, _ domain.Release, _, _ string, _ func(int64, int64)) (string, string, error) {
+		close(started)
+		<-ctx.Done()
+		return "", "", ctx.Err()
+	}
+	f.start(context.Background())
+	<-started
+	f.stop()
+	f.wait(t)
+	if st := f.lastState(); st.State != updError || st.Error != update.ErrNetwork.Error() {
+		t.Fatalf("state = %+v", st)
+	}
+	f.stop() // nothing running: no-op
+}
+
+func TestUserErrorSentinelBeforeContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if got := userError(ctx, update.ErrChecksum); got != update.ErrChecksum.Error() {
+		t.Errorf("got %q, want the checksum text", got)
+	}
+	if got := userError(ctx, errors.New("boom")); got != update.ErrNetwork.Error() {
+		t.Errorf("got %q, want the network text", got)
 	}
 }

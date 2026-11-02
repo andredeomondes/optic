@@ -61,8 +61,9 @@ func (a *App) LaunchApp(name string) error { return a.svc.LaunchApp(name) }
 // message when the TV's MAC was never learned.
 func (a *App) PowerOn(ip string) error { return a.svc.PowerOn(ip) }
 
-// LatestRelease returns the newest published OPTIC release.
-func (a *App) LatestRelease() (domain.Release, error) { return a.svc.LatestRelease(a.ctx) }
+// LatestRelease returns the newest published OPTIC release. The updater
+// remembers it so "Atualizar agora" right after needs no second lookup.
+func (a *App) LatestRelease() (domain.Release, error) { return a.upd.latestRelease(a.ctx) }
 
 // UpdateSupport says whether the latest release can be installed from here.
 func (a *App) UpdateSupport() UpdateSupport { return a.upd.support(a.ctx) }
@@ -116,6 +117,7 @@ func (a *App) Toast(msg string) error {
 
 // shutdown runs when the app quits for real.
 func (a *App) shutdown(context.Context) {
+	a.upd.stop() // a cancelled download deletes its temp file
 	a.svc.Disconnect()
 	a.Shell.shutdown()
 }

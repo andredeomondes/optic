@@ -235,18 +235,19 @@ w.go = {
         updating = true
         const total = 9_400_000
         const kind = 'installer'
+        const version = '1.2.0'
         // Like Go, return at once and report through events.
         void (async () => {
-          emit('update:state', { state: 'downloading', kind })
+          emit('update:state', { state: 'downloading', kind, version })
           for (let i = 1; i <= 30; i++) {
             await wait(100)
             emit('update:progress', { got: Math.round((total * i) / 30), total })
           }
-          emit('update:state', { state: 'verifying', kind })
+          emit('update:state', { state: 'verifying', kind, version })
           await wait(400)
-          emit('update:state', { state: 'installing', kind })
+          emit('update:state', { state: 'installing', kind, version })
           await wait(1200)
-          emit('update:state', { state: 'ready', kind })
+          emit('update:state', { state: 'ready', kind, version })
           updating = false
         })()
       },

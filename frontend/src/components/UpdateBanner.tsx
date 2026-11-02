@@ -50,7 +50,7 @@ export function UpdateStatus({ run }: { run: UpdateRun }) {
   const key = updateStateKey(run.state, run.kind)
   if (!key) return null
   const pct = run.state === 'downloading' ? updatePercent(run.got, run.total) : null
-  const text = run.state === 'error' && run.error ? translateError(run.error, lang) : t(key)
+  const text = run.state === 'error' && run.error ? translateError(run.error, lang) : t(key, { version: run.version || '?' })
   return (
     <div className={`update-status ${run.state}`} aria-live="polite">
       {run.state === 'downloading' && (

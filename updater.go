@@ -28,8 +28,15 @@ const (
 	updError       = "error"
 )
 
-// updateTimeout bounds a whole update run (download + install start).
-const updateTimeout = 15 * time.Minute
+const (
+	// updateTimeout bounds a whole update run (download + install start).
+	updateTimeout = 15 * time.Minute
+	// releaseMaxAge is how long the release from the last check is reused,
+	// so an update normally costs one release lookup.
+	releaseMaxAge = 10 * time.Minute
+	// stopWait is how long shutdown waits for a cancelled download to clean up.
+	stopWait = 2 * time.Second
+)
 
 // errUpToDate is returned when the latest release is not newer than this one.
 var errUpToDate = errors.New("Você já está na versão mais recente.")
@@ -48,11 +55,13 @@ type UpdateProgress struct {
 	Total int64 `json:"total"`
 }
 
-// UpdateState is the payload of update:state.
+// UpdateState is the payload of update:state. Version is the release being
+// installed, once known.
 type UpdateState struct {
-	State string `json:"state"`
-	Error string `json:"error,omitempty"`
-	Kind  string `json:"kind"`
+	State   string `json:"state"`
+	Error   string `json:"error,omitempty"`
+	Kind    string `json:"kind"`
+	Version string `json:"version,omitempty"`
 }
 
 // updater runs the in-app update. Everything that touches the network, the
@@ -73,14 +82,26 @@ type updater struct {
 	// quit closes the TV session and exits; called only after a Windows
 	// apply step has started.
 	quit func()
+	now  func() time.Time // nil → time.Now
 
 	mu      sync.Mutex
 	running bool
+	cancel  context.CancelFunc // of the running update
+	done    chan struct{}      // closed when the running update returns
 	last    *update.Result
+	rel     domain.Release // from the last lookup
+	relAt   time.Time
+}
+
+func (u *updater) clock() time.Time {
+	if u.now != nil {
+		return u.now()
+	}
+	return time.Now()
 }
 
 // load reads the outcome of the previous update and removes stale
-// downloads. Called once at startup.
+// downloads. Called once at startup, before any update can run.
 func (u *updater) load() {
 	r, err := update.ReadResult(u.dir)
 	if err != nil {
@@ -105,6 +126,28 @@ func (u *updater) lastResult() *update.Result {
 	return r
 }
 
+// latestRelease looks the latest release up and remembers it.
+func (u *updater) latestRelease(ctx context.Context) (domain.Release, error) {
+	rel, err := u.latest(ctx)
+	if err == nil {
+		u.mu.Lock()
+		u.rel, u.relAt = rel, u.clock()
+		u.mu.Unlock()
+	}
+	return rel, err
+}
+
+// release reuses the last looked-up release while it is recent.
+func (u *updater) release(ctx context.Context) (domain.Release, error) {
+	u.mu.Lock()
+	rel, at := u.rel, u.relAt
+	u.mu.Unlock()
+	if !at.IsZero() && u.clock().Sub(at) < releaseMaxAge {
+		return rel, nil
+	}
+	return u.latestRelease(ctx)
+}
+
 func (u *updater) target() (update.Target, error) {
 	exe, err := u.exe()
 	if err != nil {
@@ -120,7 +163,7 @@ func (u *updater) support(ctx context.Context) UpdateSupport {
 		return UpdateSupport{Reason: err.Error()}
 	}
 	s := UpdateSupport{Kind: string(t.Kind)}
-	rel, err := u.latest(ctx)
+	rel, err := u.release(ctx)
 	if err != nil {
 		s.Reason = err.Error()
 		return s
@@ -149,28 +192,46 @@ func (u *updater) start(parent context.Context) {
 		u.mu.Unlock()
 		return
 	}
-	u.running = true
+	ctx, cancel := context.WithTimeout(parent, updateTimeout)
+	done := make(chan struct{})
+	u.running, u.cancel, u.done = true, cancel, done
 	u.mu.Unlock()
 	go func() {
-		ctx, cancel := context.WithTimeout(parent, updateTimeout)
-		defer cancel()
 		quit := u.run(ctx)
-		if quit {
-			u.quit() // the session is closed there; running stays true until exit
-			return
-		}
+		cancel()
 		u.mu.Lock()
-		u.running = false
+		u.running = quit // stays true until the app exits
+		u.cancel = nil
 		u.mu.Unlock()
+		close(done)
+		if quit {
+			u.quit() // closes the session and exits; may call stop
+		}
 	}()
+}
+
+// stop cancels a running update and waits briefly so the download can
+// delete its temp file. Called on shutdown.
+func (u *updater) stop() {
+	u.mu.Lock()
+	cancel, done := u.cancel, u.done
+	u.mu.Unlock()
+	if cancel == nil {
+		return
+	}
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(stopWait):
+	}
 }
 
 // run does one update and reports each step. It returns true when the app
 // must exit so the Windows script can install.
 func (u *updater) run(ctx context.Context) bool {
-	kind := ""
+	kind, version := "", ""
 	state := func(s string, err error) {
-		st := UpdateState{State: s, Kind: kind}
+		st := UpdateState{State: s, Kind: kind, Version: version}
 		if err != nil {
 			st.Error = userError(ctx, err)
 		}
@@ -183,16 +244,16 @@ func (u *updater) run(ctx context.Context) bool {
 		return fail(err)
 	}
 	kind = string(t.Kind)
-	state(updDownloading, nil)
-	rel, err := u.latest(ctx)
+	rel, err := u.release(ctx)
 	if err != nil {
 		return fail(err)
 	}
 	if !update.IsNewer(u.version, rel.Tag) {
 		return fail(errUpToDate)
 	}
-	version := strings.TrimPrefix(rel.Tag, "v")
+	version = strings.TrimPrefix(rel.Tag, "v")
 	dir := filepath.Join(u.dir, version)
+	state(updDownloading, nil)
 
 	gate := progressGate{}
 	verifying := false
@@ -229,12 +290,9 @@ func (u *updater) run(ctx context.Context) bool {
 }
 
 // userError turns an update failure into the text shown to the user: the
-// known pt-BR sentinel without technical tails, a timeout as a network
-// error, anything else as it came.
+// known pt-BR sentinel without technical tails, a timeout or cancel as a
+// network error, anything else as it came.
 func userError(ctx context.Context, err error) string {
-	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) || ctx.Err() != nil {
-		return update.ErrNetwork.Error()
-	}
 	if errors.Is(err, update.ErrNoXdgOpen) {
 		return err.Error() // keeps the folder to open by hand
 	}
@@ -247,11 +305,14 @@ func userError(ctx context.Context, err error) string {
 			return s.Error()
 		}
 	}
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) || ctx.Err() != nil {
+		return update.ErrNetwork.Error()
+	}
 	return err.Error()
 }
 
 // progressGate thins out progress events: one per whole percent or per
-// 250 ms, plus the final one.
+// 250 ms, plus the first and the final one.
 type progressGate struct {
 	at      time.Time
 	percent int64

@@ -385,6 +385,8 @@ kbd + kbd { margin-left: 2px; }
 }
 .toast.ok svg:first-child { color: var(--ok); }
 .toast.err { border-color: rgba(255, 77, 109, 0.5); }
+.toast-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.toast-detail { font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
 .toast.err svg:first-child { color: var(--danger); }
 .toast.info svg:first-child { color: var(--accent-2); }
 

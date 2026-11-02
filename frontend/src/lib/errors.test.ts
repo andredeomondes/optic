@@ -118,3 +118,7 @@ test('update errors keep their technical tail', () => {
   )
   assert.equal(translateError('Algo novo. (detalhe)', 'en'), 'Algo novo. (detalhe)')
 })
+
+test('release check unavailable', () => {
+  assert.equal(translateError('checagem de versão indisponível', 'en'), 'Update check unavailable.')
+})

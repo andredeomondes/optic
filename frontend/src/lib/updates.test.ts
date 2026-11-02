@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { en, ptBR } from './i18n.ts'
+import { en, ptBR, type Lang } from './i18n.ts'
 import { isUpdateBusy, lastResultNotice, updatePercent, updateStateKey } from './updates.ts'
 
 test('updatePercent', () => {
@@ -39,12 +39,45 @@ test('every state key exists in both languages', () => {
   }
 })
 
-test('lastResultNotice', () => {
-  assert.equal(lastResultNotice(null), null)
-  assert.deepEqual(lastResultNotice({ version: 'v1.1.0', ok: true }), { kind: 'ok', key: 'update.done', vars: { version: '1.1.0' } })
-  assert.deepEqual(lastResultNotice({ version: '1.1.0', ok: false }), { kind: 'err', key: 'update.notInstalled' })
+test('lastResultNotice: ok and nothing', () => {
+  assert.equal(lastResultNotice(null, 'pt-BR'), null)
+  assert.deepEqual(lastResultNotice({ version: 'v1.1.0', ok: true, error: '' }, 'pt-BR'), { kind: 'ok', text: 'Atualizado para 1.1.0' })
+  assert.deepEqual(lastResultNotice({ version: '1.1.0', ok: true }, 'en'), { kind: 'ok', text: 'Updated to 1.1.0' })
+})
+
+test('lastResultNotice: empty reason (version did not change) makes no Smart App Control claim', () => {
+  const pt = lastResultNotice({ version: '1.1.0', ok: false, error: '' }, 'pt-BR')
+  assert.deepEqual(pt, { kind: 'err', text: 'A atualização não foi instalada. Baixe pela página de releases.' })
+  assert.deepEqual(lastResultNotice({ version: '1.1.0', ok: false }, 'en'), {
+    kind: 'err',
+    text: "The update wasn't installed. Download it from the releases page.",
+  })
+})
+
+test('lastResultNotice: app did not close in time', () => {
+  const r = { version: '1.1.0', ok: false, error: 'O OPTIC não fechou a tempo.' }
+  assert.deepEqual(lastResultNotice(r, 'pt-BR'), { kind: 'err', text: 'A atualização não foi feita: o OPTIC não fechou a tempo. Tente de novo.' })
+  assert.deepEqual(lastResultNotice(r, 'en'), { kind: 'err', text: "The update wasn't applied: OPTIC didn't close in time. Try again." })
+})
+
+test('lastResultNotice: checksum re-check failed in the script', () => {
+  const r = { version: '1.1.0', ok: false, error: 'checksum' }
+  assert.deepEqual(lastResultNotice(r, 'pt-BR'), { kind: 'err', text: 'O download não confere (checksum). Tente de novo.' })
+  assert.deepEqual(lastResultNotice(r, 'en'), { kind: 'err', text: "The download doesn't match its checksum. Try again." })
+})
+
+test('lastResultNotice: other reasons keep the Smart App Control hint and show the reason', () => {
+  for (const lang of ['pt-BR', 'en'] as Lang[]) {
+    const reason = 'A operação foi cancelada pelo usuário'
+    const n = lastResultNotice({ version: '1.1.0', ok: false, error: reason }, lang)
+    assert.equal(n?.kind, 'err')
+    assert.equal(n?.text, (lang === 'en' ? en : ptBR)['update.notInstalled'])
+    assert.equal(n?.detail, reason)
+  }
   assert.equal(
     ptBR['update.notInstalled'],
     'A atualização não foi instalada. O Windows pode ter bloqueado o instalador (Controle Inteligente de Aplicativos). Baixe pela página de releases.',
   )
+  const long = lastResultNotice({ version: '1.1.0', ok: false, error: 'x'.repeat(500) }, 'en')
+  assert.equal(long?.detail?.length, 160)
 })

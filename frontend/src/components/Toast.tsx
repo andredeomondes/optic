@@ -11,7 +11,10 @@ export function ToastHost() {
   return (
     <div className={`toast ${toast.kind}`} key={toast.id} role="status" aria-live="polite">
       <Icon size={16} />
-      <span>{toast.text}</span>
+      <span className="toast-text">
+        {toast.text}
+        {toast.detail && <small className="toast-detail">{toast.detail}</small>}
+      </span>
       {toast.action && (
         <button
           className="link"

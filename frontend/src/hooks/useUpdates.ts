@@ -22,6 +22,8 @@ export interface UpdateRun {
   kind: UpdateKindName
   /** pt-BR text from Go (translate before showing). */
   error: string
+  /** Version being installed ("1.2.0"), once known. */
+  version: string
   got: number
   total: number
 }
@@ -44,7 +46,7 @@ export interface Updates {
   startUpdate: () => void
 }
 
-const IDLE: UpdateRun = { state: 'idle', kind: '', error: '', got: 0, total: 0 }
+const IDLE: UpdateRun = { state: 'idle', kind: '', error: '', version: '', got: 0, total: 0 }
 
 // The previous update's outcome is shown once per app start, even if the hook remounts.
 let resultAsked = false
@@ -52,7 +54,9 @@ let resultAsked = false
 /** Looks up the latest GitHub release (once a day while open), remembers the user's choices and runs the in-app update. */
 export function useUpdates(): Updates {
   const { notify } = useRemote()
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
+  const langRef = useRef(lang)
+  langRef.current = lang
   const tRef = useRef(t)
   tRef.current = t
   const [prefs, setPrefs] = useState<Prefs>(() => ({ auto: true, skipped: null, lastChecked: null, ...load<Partial<Prefs>>(KEY, {}) }))
@@ -127,8 +131,8 @@ export function useUpdates(): Updates {
     const offProgress = api.onEvent('update:progress', (p: { got: number; total: number }) =>
       setRun((r) => ({ ...r, got: p.got, total: p.total })),
     )
-    const offState = api.onEvent('update:state', (s: { state: UpdateStateName; kind: UpdateKindName; error?: string }) =>
-      setRun((r) => ({ ...r, state: s.state, kind: s.kind, error: s.error ?? '' })),
+    const offState = api.onEvent('update:state', (s: { state: UpdateStateName; kind: UpdateKindName; error?: string; version?: string }) =>
+      setRun((r) => ({ ...r, state: s.state, kind: s.kind, error: s.error ?? '', version: s.version || r.version })),
     )
     return () => {
       offProgress()
@@ -143,20 +147,19 @@ export function useUpdates(): Updates {
     api
       .LastUpdateResult()
       .then((r) => {
-        const n = lastResultNotice(r)
+        const n = lastResultNotice(r, langRef.current)
         if (!n) return
-        const text = tRef.current(n.key, n.vars)
-        if (n.kind === 'ok') notify('ok', text)
-        else notify('err', text, { label: tRef.current('update.openReleases'), run: () => api.BrowserOpenURL(RELEASES_URL) })
+        if (n.kind === 'ok') notify('ok', n.text)
+        else notify('err', n.text, { label: tRef.current('update.openReleases'), run: () => api.BrowserOpenURL(RELEASES_URL) }, n.detail)
       })
       .catch(() => {})
   }, [notify])
 
   const startUpdate = useCallback(() => {
     if (isUpdateBusy(runRef.current.state)) return
-    setRun({ ...IDLE, state: 'downloading', kind: support?.kind ?? '' })
+    setRun({ ...IDLE, state: 'downloading', kind: support?.kind ?? '', version: release?.tag.replace(/^v/, '') ?? '' })
     api.StartUpdate().catch((e) => setRun((r) => ({ ...r, state: 'error', error: api.errText(e) })))
-  }, [support])
+  }, [support, release])
 
   return {
     release,
