@@ -62,7 +62,7 @@ if (Get-Process -Id 4242 -ErrorAction SilentlyContinue) {
 func TestWindowsScriptInstaller(t *testing.T) {
 	want := scriptHead + `try {
   if ((Get-FileHash -LiteralPath 'C:\Users\Jo''ão Conceição\AppData\Roaming\optic\updates\1.1.0\OPTIC-windows-amd64-setup.exe' -Algorithm SHA256 -ErrorAction Stop).Hash -ne '0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF') { throw 'checksum' }
-  $p = Start-Process -FilePath 'C:\Users\Jo''ão Conceição\AppData\Roaming\optic\updates\1.1.0\OPTIC-windows-amd64-setup.exe' -ArgumentList '/S' -Verb RunAs -Wait -PassThru -ErrorAction Stop
+  $p = Start-Process -FilePath 'C:\Users\Jo''ão Conceição\AppData\Roaming\optic\updates\1.1.0\OPTIC-windows-amd64-setup.exe' -ArgumentList '/S','/D=C:\Program Files\OPTIC Ação' -Verb RunAs -Wait -PassThru -ErrorAction Stop
   if ($null -ne $p.ExitCode -and $p.ExitCode -ne 0) { throw "installer exit code $($p.ExitCode)" }
   Write-Result $true ''
 } catch {
@@ -97,9 +97,21 @@ try {
 } catch {
   Write-Result $false $_.Exception.Message
 }
-if (-not (Test-Path -LiteralPath $exe)) { $exe = $old }
-Start-Process -FilePath $exe
-if ($ok) { Remove-Item -LiteralPath $old -Force -ErrorAction SilentlyContinue }
+if (-not (Test-Path -LiteralPath $exe)) { $exe = $old; $ok = $false }
+if ($ok) {
+  try {
+    Start-Process -FilePath $exe -ErrorAction Stop
+    Remove-Item -LiteralPath $old -Force -ErrorAction SilentlyContinue
+  } catch {
+    $msg = $_.Exception.Message
+    Move-Item -LiteralPath $exe -Destination 'D:\Meus Apps\Jo''ão\OPTIC ç.exe.blocked' -Force -ErrorAction SilentlyContinue
+    Move-Item -LiteralPath $old -Destination $exe -Force -ErrorAction SilentlyContinue
+    Write-Result $false $msg
+    Start-Process -FilePath $exe -ErrorAction SilentlyContinue
+  }
+} else {
+  Start-Process -FilePath $exe -ErrorAction SilentlyContinue
+}
 `
 	got := windowsScript(KindPortable, src, trickySum, exe, 4242, trickyResult, trickyMarker, trickyCancel, "1.1.0")
 	if got != want {
@@ -607,5 +619,24 @@ func TestCleanupLeftovers(t *testing.T) {
 		if _, err := os.Stat(k); err != nil {
 			t.Errorf("%s removed: %v", k, err)
 		}
+	}
+}
+
+func TestWinDir(t *testing.T) {
+	cases := map[string]string{
+		`C:\Program Files\OPTIC\optic-desktop.exe`: `C:\Program Files\OPTIC`,
+		`D:/Apps/optic.exe`:                         `D:/Apps`,
+		`optic.exe`:                                 ``,
+	}
+	for in, want := range cases {
+		if got := winDir(in); got != want {
+			t.Errorf("winDir(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestExtractErrorText(t *testing.T) {
+	if ErrExtract.Error() != "Não foi possível descompactar a nova versão." {
+		t.Errorf("ErrExtract = %q", ErrExtract)
 	}
 }

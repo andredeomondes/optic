@@ -94,7 +94,7 @@ func (d Downloader) Fetch(ctx context.Context, rel domain.Release, asset, dir st
 	}
 
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("%w: %v", ErrDest, err)
 	}
 	final := filepath.Join(dir, asset)
 	f, err := os.CreateTemp(dir, asset+".*.part")

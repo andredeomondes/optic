@@ -537,3 +537,13 @@ func TestReplaceWrapsCauseInErrDest(t *testing.T) {
 		t.Fatalf("err = %v, want ErrDest with its cause", err)
 	}
 }
+
+func TestFetchUnwritableDirIsErrDest(t *testing.T) {
+	fx := newFixture(t)
+	blocker := filepath.Join(t.TempDir(), "file")
+	os.WriteFile(blocker, []byte("x"), 0o644)
+	fx.dir = filepath.Join(blocker, "1.1.0") // parent is a file
+	if _, err := fx.fetch(context.Background(), nil); !errors.Is(err, ErrDest) {
+		t.Fatalf("err = %v, want ErrDest", err)
+	}
+}

@@ -15,7 +15,7 @@ func Apply(t Target, path, sha256, exe string, pid int, dir, version string) (qu
 	}
 	dest := filepath.Dir(path)
 	if err := extractTarball(path, dest, defaultExtractLimits); err != nil {
-		return false, err
+		return false, fmt.Errorf("%w (%v)", ErrExtract, err)
 	}
 	folder := filepath.Join(dest, tarRoot)
 	xdg, err := exec.LookPath("xdg-open")

@@ -1,6 +1,7 @@
 package update
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -43,7 +44,7 @@ func Apply(t Target, path, sha256, exe string, pid int, dir, version string) (qu
 	text := windowsScript(t.Kind, path, sha256, exe, pid, resultPath, marker, cancel, version)
 	// On Windows the mode only decides the read-only bit.
 	if err := os.WriteFile(script, scriptBytes(text), 0o600); err != nil {
-		return false, err
+		return false, fmt.Errorf("%w: %v", ErrDest, err)
 	}
 	cmd := exec.Command(ps, powerShellArgs(script)...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{

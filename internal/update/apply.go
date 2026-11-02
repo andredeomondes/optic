@@ -33,6 +33,7 @@ const (
 var (
 	ErrApplyBlocked = errors.New("O Windows não deixou o atualizador rodar. Baixe a nova versão pela página de releases.")
 	ErrNoXdgOpen    = errors.New("xdg-open não encontrado; abra a pasta da nova versão manualmente.")
+	ErrExtract      = errors.New("Não foi possível descompactar a nova versão.")
 )
 
 // How long Apply waits for the script's start marker, and how often it looks.
@@ -331,7 +332,9 @@ func windowsScript(kind Kind, src, sha256, exe string, pid int, resultPath, mark
 		// Smart App Control block lands in catch.
 		w("try {")
 		w("  %s", hashCheck)
-		w("  $p = Start-Process -FilePath %s -ArgumentList '/S' -Verb RunAs -Wait -PassThru -ErrorAction Stop", psQuote(src))
+		// /D= keeps a custom install folder; NSIS wants it last and unquoted,
+		// so it goes as one literal argument.
+		w("  $p = Start-Process -FilePath %s -ArgumentList '/S',%s -Verb RunAs -Wait -PassThru -ErrorAction Stop", psQuote(src), psQuote("/D="+winDir(exe)))
 		w(`  if ($null -ne $p.ExitCode -and $p.ExitCode -ne 0) { throw "installer exit code $($p.ExitCode)" }`)
 		w("  Write-Result $true ''")
 		w("} catch {")
@@ -358,10 +361,35 @@ func windowsScript(kind Kind, src, sha256, exe string, pid int, resultPath, mark
 	w("} catch {")
 	w("  Write-Result $false $_.Exception.Message")
 	w("}")
-	w("if (-not (Test-Path -LiteralPath $exe)) { $exe = $old }")
-	w("Start-Process -FilePath $exe")
-	w("if ($ok) { Remove-Item -LiteralPath $old -Force -ErrorAction SilentlyContinue }")
+	w("if (-not (Test-Path -LiteralPath $exe)) { $exe = $old; $ok = $false }")
+	// The old exe is deleted only once the new one has started. If Windows
+	// blocks the new one (Smart App Control), it is set aside, the old one
+	// comes back and the failure is reported.
+	w("if ($ok) {")
+	w("  try {")
+	w("    Start-Process -FilePath $exe -ErrorAction Stop")
+	w("    Remove-Item -LiteralPath $old -Force -ErrorAction SilentlyContinue")
+	w("  } catch {")
+	w("    $msg = $_.Exception.Message")
+	w("    Move-Item -LiteralPath $exe -Destination %s -Force -ErrorAction SilentlyContinue", psQuote(exe+".blocked"))
+	w("    Move-Item -LiteralPath $old -Destination $exe -Force -ErrorAction SilentlyContinue")
+	w("    Write-Result $false $msg")
+	w("    Start-Process -FilePath $exe -ErrorAction SilentlyContinue")
+	w("  }")
+	w("} else {")
+	w("  Start-Process -FilePath $exe -ErrorAction SilentlyContinue")
+	w("}")
 	return b.String()
+}
+
+// winDir is the folder of a Windows path ("" without one), independent of
+// the host OS.
+func winDir(p string) string {
+	i := strings.LastIndexAny(p, `\/`)
+	if i < 0 {
+		return ""
+	}
+	return p[:i]
 }
 
 // scriptBytes prefixes a UTF-8 BOM so Windows PowerShell 5.1 reads non-ASCII
