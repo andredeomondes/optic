@@ -42,7 +42,7 @@ Controle remoto desktop open source para **Android TV, Google TV, Roku, LG webOS
 - **Teclas de mídia** do teclado do PC (play/pause, próxima, anterior, parar) controlando a TV, opcional.
 - **Volume pela roda do mouse** sobre o controle (com a TV conectada) e pelo menu da bandeja.
 - **Timer para desligar** a TV em 15, 30, 60 ou 90 minutos (ou "desligar em 45 min" no `Ctrl+K`).
-- **Aviso de nova versão:** o app avisa quando sai uma release nova (dá para desligar em Configurações). A checagem só consulta a página pública de releases no GitHub; nenhum dado seu ou da TV é enviado.
+- **Aviso e atualização pelo próprio app:** o app avisa quando sai uma release nova (dá para desligar em Configurações) e atualiza pelo próprio app, com o download conferido pelo SHA256. No Windows instala e reabre o OPTIC (se o SmartScreen ou o Controle Inteligente de Aplicativos bloquear, ele avisa e aponta a página de releases); no macOS abre o DMG para arrastar para Aplicativos; no Linux descompacta o pacote e abre a pasta para rodar `./install.sh`. Quem está numa versão anterior à 1.1.0 precisa de uma atualização manual. A checagem só consulta a página pública de releases no GitHub; nenhum dado seu ou da TV é enviado.
 - **Modo compacto** 360×520 que pode ficar sempre no topo, ao lado do que você estiver fazendo.
 - **Bandeja do sistema** (Windows): fechar esconde o app na área de ícones ocultos; abrir de novo traz a mesma janela.
 - **Tela cheia** com `F11` e janela maximizável.
